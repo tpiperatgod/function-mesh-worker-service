@@ -25,7 +25,7 @@ jobs:
           yq --help
 
       - name: Auto generate crd model
-        run: ./tool/generate-crd.sh
+        run: ./scripts/generate-crd.sh
 
       - name: Format license
         run: mvn license:format

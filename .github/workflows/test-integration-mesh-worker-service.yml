@@ -44,16 +44,16 @@ jobs:
           password: ${{ secrets.IMAGE_GITHUB_TOKEN }}
 
       - name: Auto generate crd model
-        run: cd mesh-worker-service && ./tool/generate-crd.sh
+        run: ./scripts/generate-crd.sh
 
       - name: Format license
-        run: cd mesh-worker-service && mvn license:format
+        run: mvn license:format
 
       - name: Build mesh-worker-service
-        run: cd mesh-worker-service && mvn clean install -DskipTests
+        run: mvn clean install -DskipTests
 
       - name: Build pulsar image with mesh-worker-service
-        run: cd mesh-worker-service && docker build --tag mesh-worker-service-integration-pulsar:latest -f integration-tests/docker/Dockerfile ./
+        run: docker build --tag mesh-worker-service-integration-pulsar:latest -f integration-tests/docker/Dockerfile ./
 
       - name: Deploy k8s cluster env
         uses: nick-invision/retry@v2

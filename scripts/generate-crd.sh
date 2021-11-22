@@ -18,20 +18,26 @@
 #
 
 set -x
+DEST_DIR=$PWD
+
+FUNCTION_MESH_VERSION=`${DEST_DIR}/scripts/get-function-mesh-version.sh`
+BASE_DOWNLOAD_URL="https://raw.githubusercontent.com/streamnative/function-mesh/${FUNCTION_MESH_VERSION}/config/crd/bases"
+
 CRD_FUNCTIONS_FILE=compute.functionmesh.io_functions.yaml # Target functions CRD file
 CRD_SOURCES_FILE=compute.functionmesh.io_sources.yaml # Target sources CRD file
 CRD_SINKS_FILE=compute.functionmesh.io_sinks.yaml # Target sinks CRD file
 
-DEST_DIR=$PWD
 GEN_DIR=/tmp/functions-mesh/crd
 mkdir -p $GEN_DIR
-cp ../config/crd/bases/* $GEN_DIR
 cd $GEN_DIR
 
 LOCAL_MANIFEST_FUNCTIONS_FILE=$GEN_DIR/$CRD_FUNCTIONS_FILE
 LOCAL_MANIFEST_SOURCES_FILE=$GEN_DIR/$CRD_SOURCES_FILE
 LOCAL_MANIFEST_SINKS_FILE=$GEN_DIR/$CRD_SINKS_FILE
 
+wget $BASE_DOWNLOAD_URL/$CRD_FUNCTIONS_FILE -O $LOCAL_MANIFEST_FUNCTIONS_FILE
+wget $BASE_DOWNLOAD_URL/$CRD_SOURCES_FILE -O $LOCAL_MANIFEST_SOURCES_FILE
+wget $BASE_DOWNLOAD_URL/$CRD_SINKS_FILE -O $LOCAL_MANIFEST_SINKS_FILE
 # yq site: https://mikefarah.gitbook.io/yq/
 yq eval ".spec.preserveUnknownFields = false" -i $CRD_FUNCTIONS_FILE
 yq eval ".spec.preserveUnknownFields = false" -i $CRD_SOURCES_FILE
@@ -39,7 +45,7 @@ yq eval ".spec.preserveUnknownFields = false" -i $CRD_SINKS_FILE
 
 docker pull docker.pkg.github.com/kubernetes-client/java/crd-model-gen:v1.0.4
 docker pull kindest/node:v1.15.12
-docker build --tag crd-model-gen:latest "${DEST_DIR}/tool/crd-model-gen"
+docker build --tag crd-model-gen:latest "${DEST_DIR}/scripts/crd-model-gen"
 #docker rm -f kind-control-plane
 # Generate functions crd
 docker run \
