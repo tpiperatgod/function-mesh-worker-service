@@ -18,6 +18,9 @@ jobs:
         with:
           java-version: 1.8
 
+      - name: Checkout
+        uses: actions/checkout@v2
+
       - name: Set up yq
         run: |
           sudo wget https://github.com/mikefarah/yq/releases/download/v4.6.0/yq_linux_amd64 -O /usr/bin/yq
