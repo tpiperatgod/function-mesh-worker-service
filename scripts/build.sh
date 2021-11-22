@@ -14,6 +14,8 @@ fi
 ASSETS_DIR=release
 mkdir $ASSETS_DIR
 
+./scripts/generate-crd.sh
+mvn license:format
 mvn clean install -DskipTests
 mv target/mesh-worker-service-*.nar  ./$ASSETS_DIR
 cp README.md ./$ASSETS_DIR/mesh-worker-service-readme.md
