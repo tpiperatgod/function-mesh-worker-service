@@ -532,10 +532,10 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                             }
                         } else {
                             log.error("Get function {}-{} status failed from namespace {}, cannot find status for shardId {}",
-                                finalStatefulSetName,
-                                shardId,
-                                nameSpaceName,
-                                shardId);
+                                    finalStatefulSetName,
+                                    shardId,
+                                    nameSpaceName,
+                                    shardId);
                         }
                     });
                 }

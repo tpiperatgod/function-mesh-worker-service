@@ -628,7 +628,7 @@ public class FunctionsUtil {
     }
 
     private static Class<?>[] extractTypeArgs(final FunctionConfig functionConfig,
-                                             final File componentPackageFile,
+                                              final File componentPackageFile,
                                               final boolean isForwardSourceMessageProperty) {
         Class<?>[] typeArgs = null;
         FunctionConfigUtils.inferMissingArguments(
@@ -662,12 +662,12 @@ public class FunctionsUtil {
     }
 
     public static String uploadPackageToPackageService(PulsarAdmin admin,
-                                                     final String tenant,
-                                                     final String namespace,
-                                                     final String functionName,
-                                                     final InputStream uploadedInputStream,
-                                                     final FormDataContentDisposition fileDetail,
-                                                     String tempDirectory) throws Exception {
+                                                       final String tenant,
+                                                       final String namespace,
+                                                       final String functionName,
+                                                       final InputStream uploadedInputStream,
+                                                       final FormDataContentDisposition fileDetail,
+                                                       String tempDirectory) throws Exception {
         Path tempDirectoryPath = Paths.get(tempDirectory);
         if (Files.notExists(tempDirectoryPath)) {
             Files.createDirectories(tempDirectoryPath);
