@@ -307,7 +307,7 @@ function ci::verify_mesh_worker_service_pulsar_admin() {
   fi
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sinks create --name data-generator-sink --sink-type data-generator --inputs persistent://public/default/random-data-topic --custom-runtime-options '{"inputTypeClassName": "org.apache.pulsar.io.datagenerator.Person"}')
   echo "${RET}"
-  if [[ $RET != *"successfully"* ]]; then
+  if [[ "${RET}" != *"successfully"* ]]; then
    return 1
   fi
   ${KUBECTL} get pods -n ${NAMESPACE}
