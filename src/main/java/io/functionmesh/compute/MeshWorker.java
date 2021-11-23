@@ -26,13 +26,11 @@ import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.authentication.AuthenticationService;
 import org.apache.pulsar.broker.authorization.AuthorizationService;
 import org.apache.pulsar.broker.cache.ConfigurationCacheService;
-import org.apache.pulsar.broker.resources.PulsarResources;
 import org.apache.pulsar.common.configuration.PulsarConfigurationLoader;
 import org.apache.pulsar.functions.worker.ErrorNotifier;
 import org.apache.pulsar.functions.worker.WorkerConfig;
 import org.apache.pulsar.functions.worker.WorkerService;
 import org.apache.pulsar.functions.worker.rest.WorkerServer;
-import org.apache.pulsar.metadata.api.extended.MetadataStoreExtended;
 import org.apache.pulsar.zookeeper.GlobalZooKeeperCache;
 import org.apache.pulsar.zookeeper.ZooKeeperClientFactory;
 import org.apache.pulsar.zookeeper.ZookeeperBkClientFactoryImpl;
@@ -52,8 +50,7 @@ public class MeshWorker {
     private final ScheduledExecutorService cacheExecutor = Executors.newScheduledThreadPool(10,
             new DefaultThreadFactory("zk-cache-callback"));
     private GlobalZooKeeperCache globalZkCache;
-    private PulsarResources pulsarResources;
-    private MetadataStoreExtended configMetadataStore;
+    private ConfigurationCacheService configurationCacheService;
     private final WorkerConfig workerConfig;
     private final WorkerService workerService;
     private final ErrorNotifier errorNotifier;
@@ -105,15 +102,9 @@ public class MeshWorker {
                 throw new PulsarServerException(e);
             }
 
-            try {
-                configMetadataStore = PulsarResources.createMetadataStore(workerConfig.getConfigurationStoreServers(),
-                        (int) workerConfig.getZooKeeperSessionTimeoutMillis());
-            } catch (IOException e) {
-                throw new PulsarServerException(e);
-            }
-
-            pulsarResources = new PulsarResources(null, configMetadataStore);
-            return new AuthorizationService(getServiceConfiguration(), this.pulsarResources);
+            this.configurationCacheService = new ConfigurationCacheService(
+                    this.globalZkCache, this.workerConfig.getPulsarFunctionsCluster());
+            return new AuthorizationService(getServiceConfiguration(), this.configurationCacheService);
         }
         return null;
     }
