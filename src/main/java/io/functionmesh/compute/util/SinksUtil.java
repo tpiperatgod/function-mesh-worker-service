@@ -135,7 +135,7 @@ public class SinksUtil {
             extractedSinkDetails.setSinkClassName(sinkConfig.getClassName());
         }
 
-        if (customConfigs.getFunctionRunnerImages() != null && !customConfigs.getFunctionRunnerImages().isEmpty()
+        if (customConfigs.getFunctionRunnerImages() != null && customConfigs.getFunctionRunnerImages().isEmpty()
                 && customConfigs.getFunctionRunnerImages().containsKey("JAVA")
                 && StringUtils.isNotEmpty(customConfigs.getFunctionRunnerImages().get("JAVA"))) {
             v1alpha1SinkSpec.setImage(customConfigs.getFunctionRunnerImages().get("JAVA"));

@@ -130,7 +130,7 @@ public class SourcesUtil {
             extractedSourceDetails.setSourceClassName(sourceConfig.getClassName());
         }
 
-        if (customConfigs.getFunctionRunnerImages() != null && !customConfigs.getFunctionRunnerImages().isEmpty()
+        if (customConfigs.getFunctionRunnerImages() != null && customConfigs.getFunctionRunnerImages().isEmpty()
                 && customConfigs.getFunctionRunnerImages().containsKey("JAVA")
                 && StringUtils.isNotEmpty(customConfigs.getFunctionRunnerImages().get("JAVA"))) {
             v1alpha1SourceSpec.setImage(customConfigs.getFunctionRunnerImages().get("JAVA"));
