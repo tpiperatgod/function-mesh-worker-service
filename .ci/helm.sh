@@ -281,7 +281,7 @@ function ci:verify_exclamation_function() {
 }
 
 function ci::ensure_mesh_worker_service_role() {
-  ${KUBECTL} create clusterrolebinding broker-acct-manager-role-binding --clusterrole=function-mesh-function-mesh-controller-manager --serviceaccount=default:pulsar-broker-acct
+  ${KUBECTL} create clusterrolebinding broker-acct-manager-role-binding --clusterrole=function-mesh-function-mesh-controller-manager --serviceaccount=default:sn-platform-pulsar-broker-acct
 }
 
 function ci::ensure_function_mesh_config() {
@@ -299,8 +299,7 @@ function ci::verify_mesh_worker_service_pulsar_admin() {
   if [[ $RET != *"data-generator"* ]]; then
    return 1
   fi
-  RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources create --name data-generator-source --source-type data-generator --destination-topic-name persistent://public/default/random-data-topic --custom-runtime-options '{"outputTypeClassName": "org.apache.pulsar.io.datagenerator.Person"}' --source-config '{"sleepBetweenMessages": "1000"}'
-  })
+  RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources create --name data-generator-source --source-type data-generator --destination-topic-name persistent://public/default/random-data-topic --custom-runtime-options '{"outputTypeClassName": "org.apache.pulsar.io.datagenerator.Person"}' --source-config '{"sleepBetweenMessages": "1000"}')
   echo $RET
   if [[ $RET != *"successfully"* ]]; then
    return 1
