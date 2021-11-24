@@ -72,6 +72,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_CHECKSUM;
+import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FILE_NAME;
+import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FILE_SIZE;
+import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FUNCTION_NAME;
+import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_NAMESPACE;
+import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_TENANT;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 
 @Slf4j
@@ -621,6 +627,11 @@ public class FunctionsUtil {
             Files.createDirectories(tempDirectory);
         }
         String fileName = String.format("function-%s.tmp", RandomStringUtils.random(5, true, true).toLowerCase());
+        PackageMetadata packageMetadata = worker.getBrokerAdmin().packages().getMetadata(packageName);
+        if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
+                StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
+            fileName = packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
+        }
         Path filePath = Paths.get(tempDirectory.toString(), fileName);
         Files.deleteIfExists(filePath);
         worker.getBrokerAdmin().packages().download(packageName, filePath.toString());
@@ -682,13 +693,13 @@ public class FunctionsUtil {
         packageMetadata.setContact("mesh-worker-service");
         packageMetadata.setDescription("mesh-worker-service created for " + packageName);
         Map<String, String> properties = new HashMap<>();
-        properties.put("tenant", tenant);
-        properties.put("namespace", namespace);
-        properties.put("functionName", functionName);
-        properties.put("fileName", fileDetail.getFileName());
-        properties.put("size", Long.toString(filePath.toFile().length()));
+        properties.put(PROPERTY_TENANT, tenant);
+        properties.put(PROPERTY_NAMESPACE, namespace);
+        properties.put(PROPERTY_FUNCTION_NAME, functionName);
+        properties.put(PROPERTY_FILE_NAME, fileDetail.getFileName());
+        properties.put(PROPERTY_FILE_SIZE, Long.toString(filePath.toFile().length()));
         long checksum = FileUtils.checksumCRC32(filePath.toFile());
-        properties.put("checksum", Long.toString(checksum));
+        properties.put(PROPERTY_CHECKSUM, Long.toString(checksum));
         packageMetadata.setProperties(properties);
         admin.packages().upload(packageMetadata, packageName, filePath.toString());
         log.info("upload file {} to package service {} successfully", filePath, packageName);
