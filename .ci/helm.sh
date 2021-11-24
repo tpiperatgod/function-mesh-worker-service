@@ -403,7 +403,8 @@ function ci::verify_java_package() {
     echo ${WC};
     sleep 20
     ${KUBECTL} get pods -n ${NAMESPACE}
-    ${KUBECTL} describe pod package-java-fn-function-0
+    RET=$(${KUBECTL} get pods -n ${NAMESPACE} -o name | grep package-java-fn)
+    ${KUBECTL} describe ${RET}
     WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "package-java-fn" | wc -l)
   done
   echo "java function test done"
@@ -433,7 +434,8 @@ function ci::verify_python_package() {
     echo ${WC};
     sleep 20
     ${KUBECTL} get pods -n ${NAMESPACE}
-    ${KUBECTL} describe pod package-python-fn-function-0
+    RET=$(${KUBECTL} get pods -n ${NAMESPACE} -o name | grep package-python-fn)
+    ${KUBECTL} describe ${RET}
     WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "package-python-fn" | wc -l)
   done
   echo "python function test done"
@@ -467,7 +469,8 @@ function ci::verify_go_package() {
     echo ${WC};
     sleep 20
     ${KUBECTL} get pods -n ${NAMESPACE}
-    ${KUBECTL} describe pod package-go-fn-function-0
+    RET=$(${KUBECTL} get pods -n ${NAMESPACE} -o name | grep package-go-fn)
+    ${KUBECTL} describe ${RET}
     WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "package-go-fn" | wc -l)
   done
   echo "go function test done"
