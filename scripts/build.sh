@@ -20,7 +20,7 @@ yq --help
 
 docker login -u="${DOCKER_USERNAME}" -p="${DOCKER_PASSWORD}" docker.pkg.github.com
 
-./scripts/generate-crd.sh
+source ./scripts/generate-crd.sh
 mvn license:format
 mvn clean install -DskipTests
 mv target/mesh-worker-service-*.nar  ./$ASSETS_DIR
