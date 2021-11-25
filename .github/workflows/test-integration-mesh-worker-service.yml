@@ -53,7 +53,9 @@ jobs:
         run: mvn clean install -DskipTests
 
       - name: Build pulsar image with mesh-worker-service
-        run: docker build --tag mesh-worker-service-integration-pulsar:latest -f integration-tests/docker/Dockerfile ./
+        run: |
+          PULSAR_IMAGE_TAG=$(mvn -q -Dexec.executable=echo -Dexec.args='${pulsar.version}' --non-recursive exec:exec)
+          docker build --tag mesh-worker-service-integration-pulsar:latest --build-arg PULSAR_IMAGE_TAG="$PULSAR_IMAGE_TAG" -f integration-tests/docker/Dockerfile ./
 
       - name: Deploy k8s cluster env
         uses: nick-invision/retry@v2
