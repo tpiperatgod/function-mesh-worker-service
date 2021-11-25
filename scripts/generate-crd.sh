@@ -29,7 +29,7 @@ CRD_SINKS_FILE=compute.functionmesh.io_sinks.yaml # Target sinks CRD file
 
 GEN_DIR=/tmp/functions-mesh/crd
 mkdir -p $GEN_DIR
-cd $GEN_DIR
+pushd $GEN_DIR
 
 LOCAL_MANIFEST_FUNCTIONS_FILE=$GEN_DIR/$CRD_FUNCTIONS_FILE
 LOCAL_MANIFEST_SOURCES_FILE=$GEN_DIR/$CRD_SOURCES_FILE
@@ -88,3 +88,4 @@ docker run \
 #open $GEN_DIR
 
 cp -r $GEN_DIR/src/main/java/io/functionmesh/compute/* $DEST_DIR/src/main/java/io/functionmesh/compute/
+popd

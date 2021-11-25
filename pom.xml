@@ -114,6 +114,10 @@
                     <excludes>
                         <exclude>LICENSE</exclude>
                         <exclude>NOTICE</exclude>
+                        <exclude>.ci/**</exclude>
+                        <exclude>.github/**</exclude>
+                        <exclude>hack/**</exclude>
+                        <exclude>scripts/**</exclude>
                     </excludes>
                     <mapping>
                         <proto>JAVADOC_STYLE</proto>
