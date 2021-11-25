@@ -17,7 +17,8 @@
 # under the License.
 #
 
-FROM streamnative/pulsar:2.9.0.0-rc-4
+ARG PULSAR_IMAGE_TAG
+FROM streamnative/pulsar:${PULSAR_IMAGE_TAG}
 COPY ./target/mesh-worker-service*.nar /pulsar/mesh-worker-service.nar
 COPY ./integration-tests/docker/connectors.yaml /pulsar/conf/connectors.yaml
 RUN mkdir -p /pulsar-nar
