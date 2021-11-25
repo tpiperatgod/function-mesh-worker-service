@@ -1,4 +1,4 @@
-name: Precommit - Unit Tests
+name: Precommit - Validate Release
 on: [pull_request]
 jobs:
   build:
