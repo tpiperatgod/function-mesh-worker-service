@@ -19,4 +19,10 @@ if [[ "x$version" == "x" ]]; then
   exit 1
 fi
 
+OLDVERSION=$(mvn -q -Dexec.executable=echo -Dexec.args='${pulsar.version}' --non-recursive exec:exec)
+echo "OLDVERSION=${OLDVERSION}"
 mvn versions:set-property -Dproperty=pulsar.version -DnewVersion=${version}
+
+# bump integration tests
+sed -i.bak -E "s/(CB)?${OLDVERSION}/${NEW_VERSION}/g" integration-tests/docker/connectors.yaml
+sed -i.bak -E "s/(CB)?${OLDVERSION}/${NEW_VERSION}/g" .ci/clusters/values_mesh_worker_service.yaml
