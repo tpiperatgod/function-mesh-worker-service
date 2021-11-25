@@ -25,7 +25,7 @@ jobs:
         env:
           DOCKER_USERNAME: ${{ secrets.IMAGE_GITHUB_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.IMAGE_GITHUB_TOKEN }}
-        run: ./scripts/build.sh
+        run: ./scripts/build.sh v2.0.0.0
 
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
