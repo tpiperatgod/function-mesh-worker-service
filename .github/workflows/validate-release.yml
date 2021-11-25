@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Auto generate crd model
-        with:
+        env:
           DOCKER_USERNAME: ${{ secrets.IMAGE_GITHUB_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.IMAGE_GITHUB_TOKEN }}
         run: ./scripts/build.sh
