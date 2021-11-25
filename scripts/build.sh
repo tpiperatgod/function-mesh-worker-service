@@ -14,6 +14,12 @@ fi
 ASSETS_DIR=release
 mkdir $ASSETS_DIR
 
+sudo wget https://github.com/mikefarah/yq/releases/download/v4.6.0/yq_linux_amd64 -O /usr/bin/yq
+sudo chmod +x /usr/bin/yq
+yq --help
+
+docker login -u="${DOCKER_USERNAME}" -p="${DOCKER_PASSWORD}" docker.pkg.github.com
+
 ./scripts/generate-crd.sh
 mvn license:format
 mvn clean install -DskipTests
