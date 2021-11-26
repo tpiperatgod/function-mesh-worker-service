@@ -32,6 +32,7 @@ import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecJava;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPod;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPulsar;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodResources;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecSecretsMap;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.custom.Quantity;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +56,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
+import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 
@@ -290,6 +293,19 @@ public class SinksUtil {
         }
         v1alpha1SinkSpec.setPod(specPod);
 
+        if (sinkConfig.getSecrets() != null && !sinkConfig.getSecrets().isEmpty()) {
+            Map<String, Object> secrets = sinkConfig.getSecrets();
+            Map<String, V1alpha1SinkSpecSecretsMap> secretsMapMap = new HashMap<>();
+            for (Map.Entry<String, Object> entry : secrets.entrySet()) {
+                Map<String, String> kv = (Map<String, String>) entry.getValue();
+                V1alpha1SinkSpecSecretsMap v1alpha1SinkSpecSecretsMap = new V1alpha1SinkSpecSecretsMap();
+                v1alpha1SinkSpecSecretsMap.path(kv.get(PATH_KEY));
+                v1alpha1SinkSpecSecretsMap.key(kv.get(KEY_KEY));
+                secretsMapMap.put(entry.getKey(), v1alpha1SinkSpecSecretsMap);
+            }
+            v1alpha1SinkSpec.setSecretsMap(secretsMapMap);
+        }
+
         v1alpha1Sink.setSpec(v1alpha1SinkSpec);
 
         return v1alpha1Sink;
@@ -411,7 +427,11 @@ public class SinksUtil {
         if (v1alpha1SinkSpec.getSinkConfig() != null) {
             sinkConfig.setConfigs((Map<String, Object>) v1alpha1SinkSpec.getSinkConfig());
         }
-        // TODO: secretsMap
+        if (v1alpha1SinkSpec.getSecretsMap() != null && !v1alpha1SinkSpec.getSecretsMap().isEmpty()) {
+            Map<String, V1alpha1SinkSpecSecretsMap> secretsMapMap = v1alpha1SinkSpec.getSecretsMap();
+            Map<String, Object> secrets = new HashMap<>(secretsMapMap);
+            sinkConfig.setSecrets(secrets);
+        }
 
         Resources resources = new Resources();
         Map<String, String> sinkResources = v1alpha1SinkSpec.getResources().getRequests();
