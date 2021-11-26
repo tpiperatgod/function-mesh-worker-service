@@ -18,6 +18,9 @@
  */
 package io.functionmesh.compute.util;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpec;
@@ -107,10 +110,17 @@ public class FunctionsUtilTest {
         Assert.assertEquals(v1alpha1FunctionSpec.getOutput().getTypeClassName(), typeClassName);
         Assert.assertEquals(v1alpha1FunctionSpec.getJava().getJar(), jar);
         Assert.assertEquals(v1alpha1FunctionSpec.getForwardSourceMessageProperty(), true);
+        Assert.assertNotNull(v1alpha1FunctionSpec.getSecretsMap());
+        Assert.assertFalse(v1alpha1FunctionSpec.getSecretsMap().isEmpty());
+        Assert.assertEquals(v1alpha1FunctionSpec.getSecretsMap().size(), 2);
+        Assert.assertEquals(v1alpha1FunctionSpec.getSecretsMap().get("secret1").getKey(), "secretKey1");
+        Assert.assertEquals(v1alpha1FunctionSpec.getSecretsMap().get("secret1").getPath(), "secretPath1");
+        Assert.assertEquals(v1alpha1FunctionSpec.getSecretsMap().get("secret2").getKey(), "secretKey2");
+        Assert.assertEquals(v1alpha1FunctionSpec.getSecretsMap().get("secret2").getPath(), "secretPath2");
     }
 
     @Test
-    public void testCreateFunctionConfigFromV1alpha1Function() {
+    public void testCreateFunctionConfigFromV1alpha1Function() throws JsonProcessingException {
         String tenant = "public";
         String namespace = "default";
         String functionName = "word-count";
@@ -161,6 +171,9 @@ public class FunctionsUtilTest {
         Assert.assertEquals(functionConfig.getCustomSchemaInputs(), newFunctionConfig.getCustomSchemaInputs());
         Assert.assertEquals(functionConfig.getCustomSerdeInputs(), newFunctionConfig.getCustomSerdeInputs());
         Assert.assertEquals(functionConfig.getCustomSchemaOutputs(), newFunctionConfig.getCustomSchemaOutputs());
-
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode oldSecretsJson = objectMapper.readTree(objectMapper.writeValueAsString(functionConfig.getSecrets()));
+        JsonNode newSecretsJson = objectMapper.readTree(objectMapper.writeValueAsString(newFunctionConfig.getSecrets()));
+        Assert.assertEquals(oldSecretsJson, newSecretsJson);
     }
 }
