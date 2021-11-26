@@ -378,12 +378,20 @@ public class FunctionsUtil {
             Map<String, V1alpha1FunctionSpecSecretsMap> secretsMapMap = new HashMap<>();
             for (Map.Entry<String, Object> entry : secrets.entrySet()) {
                 Map<String, String> kv = (Map<String, String>) entry.getValue();
+                if (kv == null || !kv.containsKey(PATH_KEY) || !kv.containsKey(KEY_KEY)) {
+                    log.error("Invalid secrets from function config for function {}, "
+                            + "the secret must contains path and key {}: {}",
+                            functionName, entry.getKey(), entry.getValue());
+                    continue;
+                }
                 V1alpha1FunctionSpecSecretsMap v1alpha1FunctionSpecSecretsMap = new V1alpha1FunctionSpecSecretsMap();
                 v1alpha1FunctionSpecSecretsMap.path(kv.get(PATH_KEY));
                 v1alpha1FunctionSpecSecretsMap.key(kv.get(KEY_KEY));
                 secretsMapMap.put(entry.getKey(), v1alpha1FunctionSpecSecretsMap);
             }
-            v1alpha1FunctionSpec.setSecretsMap(secretsMapMap);
+            if (!secretsMapMap.isEmpty()) {
+                v1alpha1FunctionSpec.setSecretsMap(secretsMapMap);
+            }
         }
 
         v1alpha1Function.setSpec(v1alpha1FunctionSpec);

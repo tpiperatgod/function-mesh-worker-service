@@ -257,12 +257,20 @@ public class SourcesUtil {
             Map<String, V1alpha1SourceSpecSecretsMap> secretsMapMap = new HashMap<>();
             for (Map.Entry<String, Object> entry : secrets.entrySet()) {
                 Map<String, String> kv = (Map<String, String>) entry.getValue();
+                if (kv == null || !kv.containsKey(PATH_KEY) || !kv.containsKey(KEY_KEY)) {
+                    log.error("Invalid secrets from source config for source {}, "
+                                    + "the secret must contains path and key {}: {}",
+                            sourceName, entry.getKey(), entry.getValue());
+                    continue;
+                }
                 V1alpha1SourceSpecSecretsMap v1alpha1SourceSpecSecretsMap = new V1alpha1SourceSpecSecretsMap();
                 v1alpha1SourceSpecSecretsMap.path(kv.get(PATH_KEY));
                 v1alpha1SourceSpecSecretsMap.key(kv.get(KEY_KEY));
                 secretsMapMap.put(entry.getKey(), v1alpha1SourceSpecSecretsMap);
             }
-            v1alpha1SourceSpec.setSecretsMap(secretsMapMap);
+            if (!secretsMapMap.isEmpty()) {
+                v1alpha1SourceSpec.setSecretsMap(secretsMapMap);
+            }
         }
 
         v1alpha1Source.setSpec(v1alpha1SourceSpec);
