@@ -503,3 +503,35 @@ function ci::create_java_function_by_upload() {
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin packages get-metadata function://public/default/package-upload-java-fn@latest)
   echo "${RET}"
 }
+
+function ci::verify_secrets_python_package() {
+  ${KUBECTL} apply -f ${FUNCTION_MESH_HOME}/.ci/examples/secret-py-example/secrets_python_secret.yaml
+  sleep 10
+
+  ${KUBECTL} cp "${FUNCTION_MESH_HOME}/.ci/examples/secret-py-example" "${NAMESPACE}/${CLUSTER}-pulsar-broker-0:/pulsar/examples/secret-py-example"
+  sleep 10
+
+  RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions create --py /pulsar/examples/secret-py-example/secretsfunction.py --name package-python-secret-fn --classname secretsfunction.SecretsFunction --inputs persistent://public/default/package-python-secret-fn-input --output persistent://public/default/package-python-secret-fn-output --cpu 0.1)
+  if [[ $RET != *"successfully"* ]]; then
+    echo "${RET}"
+    return 1
+  fi
+  sleep 15
+  ${KUBECTL} get pods -A
+  sleep 5
+  WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "package-python-secret-fn" | wc -l)
+  while [[ ${WC} -lt 1 ]]; do
+    echo ${WC};
+    sleep 20
+    ${KUBECTL} get pods -n ${NAMESPACE}
+    RET=$(${KUBECTL} get pods -n ${NAMESPACE} -o name | grep package-python-secret-fn)
+    ${KUBECTL} describe ${RET}
+    WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "package-python-secret-fn" | wc -l)
+  done
+
+  ci:verify_exclamation_function "persistent://public/default/package-python-secret-fn-input" "persistent://public/default/package-python-secret-fn-output" "test-message" "test-message!" 120
+
+  echo "python function test done"
+  RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions delete --name package-python-secret-fn)
+  echo "${RET}"
+}

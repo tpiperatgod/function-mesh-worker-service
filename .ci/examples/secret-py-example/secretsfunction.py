@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -18,25 +18,17 @@
 # under the License.
 #
 
-set -e
 
-BINDIR=`dirname "$0"`
-PULSAR_HOME=`cd ${BINDIR}/..;pwd`
-TLS=${TLS:-"false"}
-SYMMETRIC=${SYMMETRIC:-"false"}
-FUNCTION=${FUNCTION:-"false"}
+from pulsar import Function
 
-source ${PULSAR_HOME}/.ci/helm.sh
+# Function that read from secrets and write to the output topic
+class SecretsFunction(Function):
+    def __init__(self):
+        pass
 
-ci::upload_java_package
-ci::verify_java_package
-
-#ci::upload_python_package
-#ci::verify_python_package
-
-ci::upload_go_package
-ci::verify_go_package
-
-ci::create_java_function_by_upload
-
-ci::verify_secrets_python_package
+    def process(self, input, context):
+        key = "APPEND_VALUE"
+        append_value = context.get_secret(key)
+        if append_value is None:
+            append_value = ""
+        return input + str(append_value)
