@@ -31,7 +31,9 @@ import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1OwnerReference;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
+import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
 import org.apache.pulsar.common.util.RestException;
@@ -43,7 +45,9 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import org.apache.pulsar.packages.management.core.common.PackageMetadata;
 
+import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FILE_NAME;
 import static io.functionmesh.compute.util.KubernetesUtils.GRPC_TIMEOUT_SECS;
 
 @Slf4j
@@ -210,5 +214,15 @@ public class CommonUtil {
             }
         }, MoreExecutors.directExecutor());
         return retval;
+    }
+
+    public static String getFilenameFromPackageMetadata(String functionPkgUrl, MeshWorkerService worker)
+            throws PulsarAdminException {
+        PackageMetadata packageMetadata = worker.getBrokerAdmin().packages().getMetadata(functionPkgUrl);
+        if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
+                StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
+            return packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
+        }
+        return null;
     }
 }
