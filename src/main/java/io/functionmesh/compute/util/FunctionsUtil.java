@@ -267,13 +267,19 @@ public class FunctionsUtil {
         v1alpha1FunctionSpec.setPulsar(v1alpha1FunctionSpecPulsar);
 
         // TODO: dynamic file name to function CRD
-        String fileName = "/pulsar/function-executable";
+        String downloadDirectory = "/pulsar/";
+        String fileName = "function-executable";
         boolean isPkgUrlProvided = StringUtils.isNotEmpty(functionPkgUrl);
         File componentPackageFile = null;
         try {
             if (isPkgUrlProvided) {
                 if (Utils.hasPackageTypePrefix(functionPkgUrl)) {
+                    PackageMetadata packageMetadata = worker.getBrokerAdmin().packages().getMetadata(functionPkgUrl);
                     componentPackageFile = downloadPackageFile(worker, functionPkgUrl);
+                    if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
+                            StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
+                        fileName = packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
+                    }
                 } else {
                     log.warn("get unsupported function package url {}", functionPkgUrl);
                     throw new IllegalArgumentException("Function Package url is not valid. supported url (function/sink/source)");
@@ -293,7 +299,7 @@ public class FunctionsUtil {
         }
         if (StringUtils.isNotEmpty(functionConfig.getJar())) {
             V1alpha1FunctionSpecJava v1alpha1FunctionSpecJava = new V1alpha1FunctionSpecJava();
-            v1alpha1FunctionSpecJava.setJar(fileName);
+            v1alpha1FunctionSpecJava.setJar(Paths.get(downloadDirectory, fileName).toString());
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecJava.setJarLocation(functionPkgUrl);
             }
@@ -324,7 +330,7 @@ public class FunctionsUtil {
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getPy())) {
             V1alpha1FunctionSpecPython v1alpha1FunctionSpecPython = new V1alpha1FunctionSpecPython();
-            v1alpha1FunctionSpecPython.setPy(fileName);
+            v1alpha1FunctionSpecPython.setPy(Paths.get(downloadDirectory, fileName).toString());
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecPython.setPyLocation(functionPkgUrl);
             }
@@ -336,7 +342,7 @@ public class FunctionsUtil {
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getGo())) {
             V1alpha1FunctionSpecGolang v1alpha1FunctionSpecGolang = new V1alpha1FunctionSpecGolang();
-            v1alpha1FunctionSpecGolang.setGo(fileName);
+            v1alpha1FunctionSpecGolang.setGo(Paths.get(downloadDirectory, fileName).toString());
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecGolang.setGoLocation(functionPkgUrl);
             }
