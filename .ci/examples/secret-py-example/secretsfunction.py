@@ -18,7 +18,6 @@
 # under the License.
 #
 
-
 from pulsar import Function
 
 # Function that read from secrets and write to the output topic
@@ -29,6 +28,8 @@ class SecretsFunction(Function):
     def process(self, input, context):
         key = "APPEND_VALUE"
         append_value = context.get_secret(key)
+        print("input: ", input)
+        print("append_value: ", append_value)
         if append_value is None:
             append_value = ""
         return input + str(append_value)
