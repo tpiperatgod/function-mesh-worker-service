@@ -274,11 +274,9 @@ public class FunctionsUtil {
         try {
             if (isPkgUrlProvided) {
                 if (Utils.hasPackageTypePrefix(functionPkgUrl)) {
-                    PackageMetadata packageMetadata = worker.getBrokerAdmin().packages().getMetadata(functionPkgUrl);
                     componentPackageFile = downloadPackageFile(worker, functionPkgUrl);
-                    if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
-                            StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
-                        fileName = packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
+                    if (CommonUtil.getFilenameFromPackageMetadata(functionPkgUrl, worker) != null) {
+                        fileName = CommonUtil.getFilenameFromPackageMetadata(functionPkgUrl, worker);
                     }
                 } else {
                     log.warn("get unsupported function package url {}", functionPkgUrl);
@@ -633,10 +631,8 @@ public class FunctionsUtil {
             Files.createDirectories(tempDirectory);
         }
         String fileName = String.format("function-%s.tmp", RandomStringUtils.random(5, true, true).toLowerCase());
-        PackageMetadata packageMetadata = worker.getBrokerAdmin().packages().getMetadata(packageName);
-        if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
-                StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
-            fileName = packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
+        if (CommonUtil.getFilenameFromPackageMetadata(packageName, worker) != null) {
+            fileName = CommonUtil.getFilenameFromPackageMetadata(packageName, worker);
         }
         Path filePath = Paths.get(tempDirectory.toString(), fileName);
         Files.deleteIfExists(filePath);
