@@ -270,9 +270,9 @@ function ci:verify_exclamation_function() {
   inputmessage=$3
   outputmessage=$4
   timesleep=$5
-  ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-client produce -m ${inputmessage} -n 1 ${inputtopic}
+  ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-client produce -m ${inputmessage} -n 10 ${inputtopic}
   sleep $timesleep
-  MESSAGE=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-client consume -n 1 -s "sub" --subscription-position Earliest ${outputtopic})
+  MESSAGE=$(${KUBECTL} exec -n ${NAMESPACE} --request-timeout=5m ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-client consume -n 1 -s "sub" --subscription-position Earliest ${outputtopic})
   echo $MESSAGE
   if [[ "$MESSAGE" == *"$outputmessage"* ]]; then
     return 0
