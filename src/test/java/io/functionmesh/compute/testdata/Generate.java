@@ -18,6 +18,8 @@
  */
 package io.functionmesh.compute.testdata;
 
+import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
+import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
 import com.google.gson.Gson;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.util.FunctionsUtil;
@@ -82,7 +84,21 @@ public class Generate {
         functionConfig.setJar(String.format("function://public/default/%s@1.0", functionName));
         functionConfig.setAutoAck(true);
         functionConfig.setForwardSourceMessageProperty(true);
+        functionConfig.setSecrets(CreateSecretsData());
         return functionConfig;
+    }
+
+    public static Map<String, Object> CreateSecretsData() {
+        Map<String, Object> secrets = new HashMap<>();
+        Map<String, String> value1 = new HashMap<>();
+        value1.put(PATH_KEY, "secretPath1");
+        value1.put(KEY_KEY, "secretKey1");
+        secrets.put("secret1", value1);
+        Map<String, String> value2 = new HashMap<>();
+        value2.put(PATH_KEY, "secretPath2");
+        value2.put(KEY_KEY, "secretKey2");
+        secrets.put("secret2", value2);
+        return secrets;
     }
 
     public static SinkConfig CreateSinkConfig(String tenant, String namespace, String functionName) {
