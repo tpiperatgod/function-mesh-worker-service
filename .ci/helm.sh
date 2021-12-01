@@ -529,6 +529,11 @@ function ci::verify_secrets_python_package() {
     WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "package-python-secret-fn" | wc -l)
   done
 
+  sleep 120
+  ${KUBECTL} get pods -A
+  RET=$(${KUBECTL} get pods -n ${NAMESPACE} -o name | grep package-python-secret-fn)
+  ${KUBECTL} logs ${RET}
+
   ci:verify_exclamation_function "persistent://public/default/package-python-secret-fn-input" "persistent://public/default/package-python-secret-fn-output" "test-message" "test-message!" 120
 
   echo "python function test done"
