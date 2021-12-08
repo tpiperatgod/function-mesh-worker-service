@@ -85,6 +85,9 @@ public class Generate {
         functionConfig.setAutoAck(true);
         functionConfig.setForwardSourceMessageProperty(true);
         functionConfig.setSecrets(CreateSecretsData());
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("foo", "bar");
+        functionConfig.setUserConfig(configs);
         return functionConfig;
     }
 

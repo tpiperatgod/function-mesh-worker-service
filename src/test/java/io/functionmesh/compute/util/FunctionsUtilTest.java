@@ -30,6 +30,8 @@ import io.functionmesh.compute.testdata.Generate;
 import java.util.Collections;
 
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
+import java.util.HashMap;
+import java.util.Map;
 import okhttp3.Response;
 import okhttp3.internal.http.RealResponseBody;
 import org.apache.pulsar.client.admin.PulsarAdmin;
@@ -69,6 +71,8 @@ public class FunctionsUtilTest {
         String output = "persistent://public/default/count";
         String clusterName = "test-pulsar";
         String jar = "/pulsar/function-executable";
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("foo", "bar");
 
         MeshWorkerService meshWorkerService = PowerMockito.mock(MeshWorkerService.class);
         CustomObjectsApi customObjectsApi = PowerMockito.mock(CustomObjectsApi.class);
@@ -118,6 +122,7 @@ public class FunctionsUtilTest {
         Assert.assertEquals(v1alpha1FunctionSpec.getSecretsMap().get("secret1").getPath(), "secretPath1");
         Assert.assertEquals(v1alpha1FunctionSpec.getSecretsMap().get("secret2").getKey(), "secretKey2");
         Assert.assertEquals(v1alpha1FunctionSpec.getSecretsMap().get("secret2").getPath(), "secretPath2");
+        Assert.assertEquals(v1alpha1FunctionSpec.getFuncConfig(), configs);
     }
 
     @Test
@@ -178,5 +183,6 @@ public class FunctionsUtilTest {
         JsonNode oldSecretsJson = objectMapper.readTree(objectMapper.writeValueAsString(functionConfig.getSecrets()));
         JsonNode newSecretsJson = objectMapper.readTree(objectMapper.writeValueAsString(newFunctionConfig.getSecrets()));
         Assert.assertEquals(oldSecretsJson, newSecretsJson);
+        Assert.assertEquals(functionConfig.getUserConfig(), newFunctionConfig.getUserConfig());
     }
 }
