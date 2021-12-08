@@ -82,6 +82,9 @@ public class Generate {
         functionConfig.setJar(String.format("function://public/default/%s@1.0", functionName));
         functionConfig.setAutoAck(true);
         functionConfig.setForwardSourceMessageProperty(true);
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("foo", "bar");
+        functionConfig.setUserConfig(configs);
         return functionConfig;
     }
 

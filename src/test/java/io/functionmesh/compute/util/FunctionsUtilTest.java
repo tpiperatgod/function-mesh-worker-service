@@ -27,6 +27,8 @@ import io.functionmesh.compute.testdata.Generate;
 import java.util.Collections;
 
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
+import java.util.HashMap;
+import java.util.Map;
 import okhttp3.Response;
 import okhttp3.internal.http.RealResponseBody;
 import org.apache.pulsar.client.admin.PulsarAdmin;
@@ -66,6 +68,8 @@ public class FunctionsUtilTest {
         String output = "persistent://public/default/count";
         String clusterName = "test-pulsar";
         String jar = "/pulsar/function-executable";
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("foo", "bar");
 
         MeshWorkerService meshWorkerService = PowerMockito.mock(MeshWorkerService.class);
         CustomObjectsApi customObjectsApi = PowerMockito.mock(CustomObjectsApi.class);
@@ -108,6 +112,7 @@ public class FunctionsUtilTest {
         Assert.assertEquals(v1alpha1FunctionSpec.getOutput().getTypeClassName(), typeClassName);
         Assert.assertEquals(v1alpha1FunctionSpec.getJava().getJar(), jar);
         Assert.assertEquals(v1alpha1FunctionSpec.getForwardSourceMessageProperty(), true);
+        Assert.assertEquals(v1alpha1FunctionSpec.getFuncConfig(), configs);
     }
 
     @Test
@@ -164,6 +169,6 @@ public class FunctionsUtilTest {
         Assert.assertEquals(functionConfig.getCustomSchemaInputs(), newFunctionConfig.getCustomSchemaInputs());
         Assert.assertEquals(functionConfig.getCustomSerdeInputs(), newFunctionConfig.getCustomSerdeInputs());
         Assert.assertEquals(functionConfig.getCustomSchemaOutputs(), newFunctionConfig.getCustomSchemaOutputs());
-
+        Assert.assertEquals(functionConfig.getUserConfig(), newFunctionConfig.getUserConfig());
     }
 }

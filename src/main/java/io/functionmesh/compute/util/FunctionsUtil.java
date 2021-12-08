@@ -354,6 +354,7 @@ public class FunctionsUtil {
 
         v1alpha1FunctionSpec.setClusterName(clusterName);
         v1alpha1FunctionSpec.setAutoAck(functionConfig.getAutoAck());
+        v1alpha1FunctionSpec.setFuncConfig(functionConfig.getUserConfig());
 
         V1alpha1FunctionSpecPod specPod = new V1alpha1FunctionSpecPod();
         if (worker.getMeshWorkerServiceCustomConfig().isAllowUserDefinedServiceAccountName() &&
@@ -556,6 +557,9 @@ public class FunctionsUtil {
             }
         }
         functionConfig.setClassName(v1alpha1FunctionSpec.getClassName());
+        if (v1alpha1FunctionSpec.getFuncConfig() != null) {
+            functionConfig.setUserConfig((Map<String, Object>) v1alpha1FunctionSpec.getFuncConfig());
+        }
 
         // TODO: secretsMap
         // TODO: externalPulsarConfig
