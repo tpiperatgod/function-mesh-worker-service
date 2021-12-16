@@ -727,12 +727,14 @@ public class FunctionsUtil {
                                                        final String namespace,
                                                        final String functionName) throws Exception {
         String packageName = generatePackageURL(tenant, namespace, functionName);
-        PackageMetadata packageMetadata = admin.packages().getMetadata(packageName);
-        if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
-                StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME)) &&
-                StringUtils.isNotEmpty(packageMetadata.getContact()) &&
-                packageMetadata.getContact().equals(MESH_WORKER_SERVICE_PACKAGE_CONTACT)) {
-            admin.packages().delete(packageName);
-        }
+        try {
+            PackageMetadata packageMetadata = admin.packages().getMetadata(packageName);
+            if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
+                    StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME)) &&
+                    StringUtils.isNotEmpty(packageMetadata.getContact()) &&
+                    packageMetadata.getContact().equals(MESH_WORKER_SERVICE_PACKAGE_CONTACT)) {
+                admin.packages().delete(packageName);
+            }
+        } catch (PulsarAdminException.NotFoundException ignore) {}
     }
 }
