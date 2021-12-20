@@ -33,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
+import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
@@ -216,9 +217,9 @@ public class CommonUtil {
         return retval;
     }
 
-    public static String getFilenameFromPackageMetadata(String functionPkgUrl, MeshWorkerService worker)
+    public static String getFilenameFromPackageMetadata(String functionPkgUrl, PulsarAdmin admin)
             throws PulsarAdminException {
-        PackageMetadata packageMetadata = worker.getBrokerAdmin().packages().getMetadata(functionPkgUrl);
+        PackageMetadata packageMetadata = admin.packages().getMetadata(functionPkgUrl);
         if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
                 StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
             return packageMetadata.getProperties().get(PROPERTY_FILE_NAME);

@@ -21,6 +21,7 @@ package io.functionmesh.compute.rest.api;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.util.CommonUtil;
+import io.functionmesh.compute.util.FunctionsUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
@@ -53,6 +54,7 @@ import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.apache.pulsar.functions.proto.Function.FunctionDetails.ComponentType.FUNCTION;
 
 @Slf4j
 public abstract class MeshComponentImpl implements Component<MeshWorkerService> {
@@ -124,6 +126,11 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
                     null
             );
             executeCall(deleteObjectCall, null);
+
+            if (componentType == FUNCTION) {
+                // currently only function package is supported, so we only do cleanup for function package.
+                FunctionsUtil.deletePackageFromPackageService(worker().getBrokerAdmin(), tenant, namespace, componentName);
+            }
 
             if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
                     && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
