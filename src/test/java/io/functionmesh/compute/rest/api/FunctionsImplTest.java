@@ -40,6 +40,7 @@ import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
 import io.kubernetes.client.openapi.models.V1StatefulSetSpec;
 import io.kubernetes.client.openapi.models.V1StatefulSetStatus;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
@@ -83,6 +84,7 @@ import static org.powermock.api.mockito.PowerMockito.spy;
         FunctionsUtil.class,
         InstanceControlGrpc.InstanceControlFutureStub.class})
 @PowerMockIgnore({"javax.management.*"})
+@Slf4j
 public class FunctionsImplTest {
     @Test
     public void getFunctionStatusTest() throws ApiException, IOException {
@@ -335,6 +337,7 @@ public class FunctionsImplTest {
         ResponseBody responseBody = PowerMockito.mock(RealResponseBody.class);
         ApiClient apiClient = PowerMockito.mock(ApiClient.class);
         PowerMockito.stub(PowerMockito.method(FunctionsUtil.class, "downloadPackageFile")).toReturn(null);
+        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata")).toReturn("word-count.jar");
 
         MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
@@ -403,7 +406,7 @@ public class FunctionsImplTest {
     }
 
     @Test
-    public void updateFunctionTest() throws ApiException, IOException {
+    public void updateFunctionTest() throws ApiException, IOException, PulsarAdminException {
         String getBody = "{\n" +
                 "  \"apiVersion\": \"compute.functionmesh.io/v1alpha1\",\n" +
                 "  \"kind\": \"Function\",\n" +
@@ -524,6 +527,12 @@ public class FunctionsImplTest {
         PowerMockito.when(meshWorkerService.getFactoryConfig()).thenReturn(factoryConfig);
         PowerMockito.when(factoryConfig.getExtraFunctionDependenciesDir()).thenReturn("");
 
+        PulsarAdmin pulsarAdmin = PowerMockito.mock(PulsarAdmin.class);
+        PowerMockito.when(meshWorkerService.getBrokerAdmin()).thenReturn(pulsarAdmin);
+        Tenants tenants = PowerMockito.mock(Tenants.class);
+        PowerMockito.when(pulsarAdmin.tenants()).thenReturn(tenants);
+        PowerMockito.when(tenants.getTenantInfo(tenant)).thenReturn(null);
+
         Call getCall = PowerMockito.mock(Call.class);
         Response getResponse = PowerMockito.mock(Response.class);
         ResponseBody getResponseBody = PowerMockito.mock(RealResponseBody.class);
@@ -562,6 +571,8 @@ public class FunctionsImplTest {
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
 
         PowerMockito.stub(PowerMockito.method(FunctionsUtil.class, "downloadPackageFile")).toReturn(null);
+        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata")).toReturn("word-count.jar");
+        PowerMockito.stub(PowerMockito.method(FunctionsUtil.class, "deletePackageFromPackageService")).toReturn(null);
 
         FunctionConfig functionConfig = Generate.CreateJavaFunctionWithPackageURLConfig(tenant, namespace, functionName);
 
@@ -593,6 +604,7 @@ public class FunctionsImplTest {
                     null,
                     null);
         } catch (Exception exception) {
+            log.info("got exception", exception);
             Assert.fail("Expected no exception to be thrown but got exception: " + exception);
         }
     }
@@ -745,6 +757,8 @@ public class FunctionsImplTest {
                 null
         )).thenReturn(deleteTlsSecretCall);
         PowerMockito.when(deleteTlsSecretCall.execute()).thenReturn(response);
+        PowerMockito.stub(PowerMockito.method(FunctionsUtil.class, "deletePackageFromPackageService")).toReturn(null);
+
         FunctionsImpl functions = spy(new FunctionsImpl(meshWorkerServiceSupplier));
         try {
             functions.deregisterFunction(tenant, namespace, functionName, null, null);

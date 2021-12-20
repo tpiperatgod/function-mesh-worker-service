@@ -77,6 +77,7 @@ import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_
 import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FILE_NAME;
 import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FILE_SIZE;
 import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FUNCTION_NAME;
+import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_MANAGED_BY_MESH_WORKER_SERVICE;
 import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_NAMESPACE;
 import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_TENANT;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
@@ -88,6 +89,7 @@ public class FunctionsUtil {
     public final static String cpuKey = "cpu";
     public final static String memoryKey = "memory";
     public final static String sourceKey = "source";
+    public final static String MESH_WORKER_SERVICE_PACKAGE_CONTACT = "mesh-worker-service";
 
     public static V1alpha1Function createV1alpha1FunctionFromFunctionConfig(String kind, String group, String version
             , String functionName, String functionPkgUrl, FunctionConfig functionConfig
@@ -270,13 +272,17 @@ public class FunctionsUtil {
         v1alpha1FunctionSpec.setPulsar(v1alpha1FunctionSpecPulsar);
 
         // TODO: dynamic file name to function CRD
-        String fileName = "/pulsar/function-executable";
+        String downloadDirectory = "/pulsar/";
+        String fileName = "function-executable";
         boolean isPkgUrlProvided = StringUtils.isNotEmpty(functionPkgUrl);
         File componentPackageFile = null;
         try {
             if (isPkgUrlProvided) {
                 if (Utils.hasPackageTypePrefix(functionPkgUrl)) {
                     componentPackageFile = downloadPackageFile(worker, functionPkgUrl);
+                    if (CommonUtil.getFilenameFromPackageMetadata(functionPkgUrl, worker.getBrokerAdmin()) != null) {
+                        fileName = CommonUtil.getFilenameFromPackageMetadata(functionPkgUrl, worker.getBrokerAdmin());
+                    }
                 } else {
                     log.warn("get unsupported function package url {}", functionPkgUrl);
                     throw new IllegalArgumentException("Function Package url is not valid. supported url (function/sink/source)");
@@ -296,7 +302,7 @@ public class FunctionsUtil {
         }
         if (StringUtils.isNotEmpty(functionConfig.getJar())) {
             V1alpha1FunctionSpecJava v1alpha1FunctionSpecJava = new V1alpha1FunctionSpecJava();
-            v1alpha1FunctionSpecJava.setJar(fileName);
+            v1alpha1FunctionSpecJava.setJar(Paths.get(downloadDirectory, fileName).toString());
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecJava.setJarLocation(functionPkgUrl);
             }
@@ -327,7 +333,7 @@ public class FunctionsUtil {
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getPy())) {
             V1alpha1FunctionSpecPython v1alpha1FunctionSpecPython = new V1alpha1FunctionSpecPython();
-            v1alpha1FunctionSpecPython.setPy(fileName);
+            v1alpha1FunctionSpecPython.setPy(Paths.get(downloadDirectory, fileName).toString());
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecPython.setPyLocation(functionPkgUrl);
             }
@@ -339,7 +345,7 @@ public class FunctionsUtil {
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getGo())) {
             V1alpha1FunctionSpecGolang v1alpha1FunctionSpecGolang = new V1alpha1FunctionSpecGolang();
-            v1alpha1FunctionSpecGolang.setGo(fileName);
+            v1alpha1FunctionSpecGolang.setGo(Paths.get(downloadDirectory, fileName).toString());
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecGolang.setGoLocation(functionPkgUrl);
             }
@@ -353,6 +359,7 @@ public class FunctionsUtil {
 
         v1alpha1FunctionSpec.setClusterName(clusterName);
         v1alpha1FunctionSpec.setAutoAck(functionConfig.getAutoAck());
+        v1alpha1FunctionSpec.setFuncConfig(functionConfig.getUserConfig());
 
         V1alpha1FunctionSpecPod specPod = new V1alpha1FunctionSpecPod();
         if (worker.getMeshWorkerServiceCustomConfig().isAllowUserDefinedServiceAccountName() &&
@@ -576,6 +583,9 @@ public class FunctionsUtil {
             }
         }
         functionConfig.setClassName(v1alpha1FunctionSpec.getClassName());
+        if (v1alpha1FunctionSpec.getFuncConfig() != null) {
+            functionConfig.setUserConfig((Map<String, Object>) v1alpha1FunctionSpec.getFuncConfig());
+        }
 
         if (v1alpha1FunctionSpec.getSecretsMap() != null && !v1alpha1FunctionSpec.getSecretsMap().isEmpty()) {
             Map<String, V1alpha1FunctionSpecSecretsMap> secretsMapMap = v1alpha1FunctionSpec.getSecretsMap();
@@ -655,10 +665,8 @@ public class FunctionsUtil {
             Files.createDirectories(tempDirectory);
         }
         String fileName = String.format("function-%s.tmp", RandomStringUtils.random(5, true, true).toLowerCase());
-        PackageMetadata packageMetadata = worker.getBrokerAdmin().packages().getMetadata(packageName);
-        if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
-                StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
-            fileName = packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
+        if (CommonUtil.getFilenameFromPackageMetadata(packageName, worker.getBrokerAdmin()) != null) {
+            fileName = CommonUtil.getFilenameFromPackageMetadata(packageName, worker.getBrokerAdmin());
         }
         Path filePath = Paths.get(tempDirectory.toString(), fileName);
         Files.deleteIfExists(filePath);
@@ -716,9 +724,15 @@ public class FunctionsUtil {
         FileUtils.copyInputStreamToFile(uploadedInputStream, filePath.toFile());
         uploadedInputStream.close();
 
-        PackageMetadata packageMetadata = new PackageMetadata();
         String packageName = generatePackageURL(tenant, namespace, functionName);
-        packageMetadata.setContact("mesh-worker-service");
+        try {
+            log.info("Try to overwrite the function file if it is already exists at '{}'.", packageName);
+            deletePackageFromPackageService(admin, tenant, namespace, functionName);
+        } catch (Exception ex) {
+            log.warn("Overwriting function package '{}' failed", packageName, ex);
+        }
+        PackageMetadata packageMetadata = new PackageMetadata();
+        packageMetadata.setContact(MESH_WORKER_SERVICE_PACKAGE_CONTACT);
         packageMetadata.setDescription("mesh-worker-service created for " + packageName);
         Map<String, String> properties = new HashMap<>();
         properties.put(PROPERTY_TENANT, tenant);
@@ -728,10 +742,27 @@ public class FunctionsUtil {
         properties.put(PROPERTY_FILE_SIZE, Long.toString(filePath.toFile().length()));
         long checksum = FileUtils.checksumCRC32(filePath.toFile());
         properties.put(PROPERTY_CHECKSUM, Long.toString(checksum));
+        properties.put(PROPERTY_MANAGED_BY_MESH_WORKER_SERVICE, String.valueOf(true));
         packageMetadata.setProperties(properties);
         admin.packages().upload(packageMetadata, packageName, filePath.toString());
         log.info("upload file {} to package service {} successfully", filePath, packageName);
         Files.deleteIfExists(filePath);
         return packageName;
+    }
+
+    public static void deletePackageFromPackageService(PulsarAdmin admin,
+                                                       final String tenant,
+                                                       final String namespace,
+                                                       final String functionName) throws Exception {
+        String packageName = generatePackageURL(tenant, namespace, functionName);
+        try {
+            PackageMetadata packageMetadata = admin.packages().getMetadata(packageName);
+            if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
+                    StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME)) &&
+                    StringUtils.isNotEmpty(packageMetadata.getContact()) &&
+                    packageMetadata.getContact().equals(MESH_WORKER_SERVICE_PACKAGE_CONTACT)) {
+                admin.packages().delete(packageName);
+            }
+        } catch (PulsarAdminException.NotFoundException ignore) {}
     }
 }

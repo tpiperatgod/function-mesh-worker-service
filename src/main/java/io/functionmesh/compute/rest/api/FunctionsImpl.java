@@ -208,7 +208,22 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
         validateFunctionEnabled();
 
         validateUpdateFunctionRequestParams(tenant, namespace, functionName, functionConfig, uploadedInputStream != null);
-
+        this.validatePermission(tenant,
+                namespace,
+                clientRole,
+                clientAuthenticationDataHttps,
+                ComponentTypeUtils.toString(componentType));
+        this.validateTenantIsExist(tenant, namespace, functionName, clientRole);
+        String packageURL = functionPkgUrl;
+        if (uploadedInputStream != null) {
+            try {
+                String tempDirectory = System.getProperty("java.io.tmpdir");
+                packageURL = FunctionsUtil.uploadPackageToPackageService(worker().getBrokerAdmin(), tenant, namespace, functionName, uploadedInputStream, fileDetail, tempDirectory);
+            } catch (Exception e) {
+                log.error("update {}/{}/{} function failed, error message: {}", tenant, namespace, functionName, e);
+                throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        }
         try {
             String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
             V1alpha1Function v1alpha1Function = FunctionsUtil.createV1alpha1FunctionFromFunctionConfig(
@@ -216,7 +231,7 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                     group,
                     version,
                     functionName,
-                    functionPkgUrl,
+                    packageURL,
                     functionConfig,
                     cluster,
                     worker()

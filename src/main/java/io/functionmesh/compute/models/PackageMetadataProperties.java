@@ -25,4 +25,5 @@ public class PackageMetadataProperties {
     public final static String PROPERTY_FILE_NAME = "fileName";
     public final static String PROPERTY_FILE_SIZE = "fileSize";
     public final static String PROPERTY_CHECKSUM = "checksum";
+    public final static String PROPERTY_MANAGED_BY_MESH_WORKER_SERVICE = "managedByMeshWorkerService";
 }
