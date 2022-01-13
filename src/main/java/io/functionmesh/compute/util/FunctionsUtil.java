@@ -33,6 +33,7 @@ import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPod;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodResources;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsar;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPython;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecSecretsMap;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.kubernetes.client.custom.Quantity;
@@ -79,6 +80,8 @@ import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_
 import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_MANAGED_BY_MESH_WORKER_SERVICE;
 import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_NAMESPACE;
 import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_TENANT;
+import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
+import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 
 @Slf4j
@@ -373,6 +376,27 @@ public class FunctionsUtil {
         }
         v1alpha1FunctionSpec.setPod(specPod);
 
+        if (functionConfig.getSecrets() != null && !functionConfig.getSecrets().isEmpty()) {
+            Map<String, Object> secrets = functionConfig.getSecrets();
+            Map<String, V1alpha1FunctionSpecSecretsMap> secretsMapMap = new HashMap<>();
+            for (Map.Entry<String, Object> entry : secrets.entrySet()) {
+                Map<String, String> kv = (Map<String, String>) entry.getValue();
+                if (kv == null || !kv.containsKey(PATH_KEY) || !kv.containsKey(KEY_KEY)) {
+                    log.error("Invalid secrets from function config for function {}, "
+                            + "the secret must contains path and key {}: {}",
+                            functionName, entry.getKey(), entry.getValue());
+                    continue;
+                }
+                V1alpha1FunctionSpecSecretsMap v1alpha1FunctionSpecSecretsMap = new V1alpha1FunctionSpecSecretsMap();
+                v1alpha1FunctionSpecSecretsMap.path(kv.get(PATH_KEY));
+                v1alpha1FunctionSpecSecretsMap.key(kv.get(KEY_KEY));
+                secretsMapMap.put(entry.getKey(), v1alpha1FunctionSpecSecretsMap);
+            }
+            if (!secretsMapMap.isEmpty()) {
+                v1alpha1FunctionSpec.setSecretsMap(secretsMapMap);
+            }
+        }
+
         v1alpha1Function.setSpec(v1alpha1FunctionSpec);
 
         return v1alpha1Function;
@@ -563,7 +587,11 @@ public class FunctionsUtil {
             functionConfig.setUserConfig((Map<String, Object>) v1alpha1FunctionSpec.getFuncConfig());
         }
 
-        // TODO: secretsMap
+        if (v1alpha1FunctionSpec.getSecretsMap() != null && !v1alpha1FunctionSpec.getSecretsMap().isEmpty()) {
+            Map<String, V1alpha1FunctionSpecSecretsMap> secretsMapMap = v1alpha1FunctionSpec.getSecretsMap();
+            Map<String, Object> secrets = new HashMap<>(secretsMapMap);
+            functionConfig.setSecrets(secrets);
+        }
         // TODO: externalPulsarConfig
 
         Resources resources = new Resources();

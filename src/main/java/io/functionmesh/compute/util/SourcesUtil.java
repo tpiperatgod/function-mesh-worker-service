@@ -32,6 +32,7 @@ import io.functionmesh.compute.sources.models.V1alpha1SourceSpecOutputProducerCo
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPod;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodResources;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPulsar;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecSecretsMap;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.custom.Quantity;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +55,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
+import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 
 @Slf4j
@@ -249,6 +252,27 @@ public class SourcesUtil {
         }
         v1alpha1SourceSpec.setPod(specPod);
 
+        if (sourceConfig.getSecrets() != null && !sourceConfig.getSecrets().isEmpty()) {
+            Map<String, Object> secrets = sourceConfig.getSecrets();
+            Map<String, V1alpha1SourceSpecSecretsMap> secretsMapMap = new HashMap<>();
+            for (Map.Entry<String, Object> entry : secrets.entrySet()) {
+                Map<String, String> kv = (Map<String, String>) entry.getValue();
+                if (kv == null || !kv.containsKey(PATH_KEY) || !kv.containsKey(KEY_KEY)) {
+                    log.error("Invalid secrets from source config for source {}, "
+                                    + "the secret must contains path and key {}: {}",
+                            sourceName, entry.getKey(), entry.getValue());
+                    continue;
+                }
+                V1alpha1SourceSpecSecretsMap v1alpha1SourceSpecSecretsMap = new V1alpha1SourceSpecSecretsMap();
+                v1alpha1SourceSpecSecretsMap.path(kv.get(PATH_KEY));
+                v1alpha1SourceSpecSecretsMap.key(kv.get(KEY_KEY));
+                secretsMapMap.put(entry.getKey(), v1alpha1SourceSpecSecretsMap);
+            }
+            if (!secretsMapMap.isEmpty()) {
+                v1alpha1SourceSpec.setSecretsMap(secretsMapMap);
+            }
+        }
+
         v1alpha1Source.setSpec(v1alpha1SourceSpec);
 
         return v1alpha1Source;
@@ -326,7 +350,11 @@ public class SourcesUtil {
             sourceConfig.setConfigs((Map<String, Object>) v1alpha1SourceSpec.getSourceConfig());
         }
 
-        // TODO: secretsMap
+        if (v1alpha1SourceSpec.getSecretsMap() != null && !v1alpha1SourceSpec.getSecretsMap().isEmpty()) {
+            Map<String, V1alpha1SourceSpecSecretsMap> secretsMapMap = v1alpha1SourceSpec.getSecretsMap();
+            Map<String, Object> secrets = new HashMap<>(secretsMapMap);
+            sourceConfig.setSecrets(secrets);
+        }
 
         Resources resources = new Resources();
         Map<String, String> sourceResource = v1alpha1SourceSpec.getResources().getRequests();
