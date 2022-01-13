@@ -69,10 +69,12 @@ jobs:
             .ci/cleanup.sh
 
       - name: verify mesh-worker-service
+        timeout-minutes: 15
         run: |
           .ci/verify_mesh_worker_service.sh
 
       - name: verify package management service
+        timeout-minutes: 15
         run: |
           .ci/verify_package_management_service.sh
 
