@@ -93,5 +93,24 @@ public class WorkerConfigTest {
         assertEquals("streamnative/pulsar-functions-java-runner", customConfig.getFunctionRunnerImages().get("JAVA"));
         assertEquals("streamnative/pulsar-functions-python-runner", customConfig.getFunctionRunnerImages().get("PYTHON"));
         assertEquals("streamnative/pulsar-functions-go-runner", customConfig.getFunctionRunnerImages().get("GO"));
+
+        assertEquals(2, customConfig.getLabels().size());
+        assertEquals("function-mesh", customConfig.getLabels().get("functionmesh.io/managedBy"));
+        assertEquals("bar", customConfig.getLabels().get("foo"));
+        assertEquals(1, customConfig.getAnnotations().size());
+        assertEquals("barAnnotation", customConfig.getAnnotations().get("fooAnnotation"));
+
+        assertEquals(1, customConfig.getFunctionLabels().size());
+        assertEquals(1, customConfig.getSinkLabels().size());
+        assertEquals(1, customConfig.getSourceLabels().size());
+        assertEquals(1, customConfig.getFunctionAnnotations().size());
+        assertEquals(1, customConfig.getSinkAnnotations().size());
+        assertEquals(1, customConfig.getSourceAnnotations().size());
+        assertEquals("function", customConfig.getFunctionLabels().get("appType"));
+        assertEquals("function", customConfig.getFunctionAnnotations().get("appType"));
+        assertEquals("sink", customConfig.getSinkLabels().get("appType"));
+        assertEquals("sink", customConfig.getSinkAnnotations().get("appType"));
+        assertEquals("source", customConfig.getSourceLabels().get("appType"));
+        assertEquals("source", customConfig.getSourceAnnotations().get("appType"));
     }
 }
