@@ -374,6 +374,34 @@ public class FunctionsUtil {
             log.error("Invalid register function request {}: {}", functionName, e);
             throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
         }
+        Map<String, String> customLabels = new HashMap<>();
+        if (!CommonUtil.isMapEmpty(customConfig.getLabels())) {
+            customConfig.getLabels().forEach((k, v) -> {
+                customLabels.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customConfig.getFunctionLabels())) {
+            customConfig.getFunctionLabels().forEach((k, v) -> {
+                customLabels.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customLabels)) {
+            specPod.setLabels(customLabels);
+        }
+        Map<String, String> customAnnotations = new HashMap<>();
+        if (!CommonUtil.isMapEmpty(customConfig.getAnnotations())) {
+            customConfig.getAnnotations().forEach((k, v) -> {
+                customAnnotations.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customConfig.getFunctionAnnotations())) {
+            customConfig.getFunctionAnnotations().forEach((k, v) -> {
+                customAnnotations.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customAnnotations)) {
+            specPod.setAnnotations(customAnnotations);
+        }
         v1alpha1FunctionSpec.setPod(specPod);
 
         if (functionConfig.getSecrets() != null && !functionConfig.getSecrets().isEmpty()) {

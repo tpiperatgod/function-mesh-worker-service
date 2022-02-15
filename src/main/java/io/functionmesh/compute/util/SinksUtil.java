@@ -70,7 +70,7 @@ public class SinksUtil {
             , String sinkName, String sinkPkgUrl, InputStream uploadedInputStream, SinkConfig sinkConfig,
                                                                 MeshConnectorsManager connectorsManager,
                                                                 String cluster, MeshWorkerService worker) {
-        MeshWorkerServiceCustomConfig customConfigs = worker.getMeshWorkerServiceCustomConfig();
+        MeshWorkerServiceCustomConfig customConfig = worker.getMeshWorkerServiceCustomConfig();
         CustomRuntimeOptions customRuntimeOptions = CommonUtil.getCustomRuntimeOptions(sinkConfig.getCustomRuntimeOptions());
         String clusterName = CommonUtil.getClusterName(cluster, customRuntimeOptions);
         String serviceAccountName = customRuntimeOptions.getServiceAccountName();
@@ -102,12 +102,12 @@ public class SinksUtil {
                 functionDetails.getNamespace(),
                 functionDetails.getTenant(),
                 clusterName,
-                CommonUtil.getOwnerReferenceFromCustomConfigs(customConfigs)));
+                CommonUtil.getOwnerReferenceFromCustomConfigs(customConfig)));
 
         V1alpha1SinkSpec v1alpha1SinkSpec = new V1alpha1SinkSpec();
 
-        if (StringUtils.isNotEmpty(customConfigs.getImagePullPolicy())) {
-            v1alpha1SinkSpec.setImagePullPolicy(customConfigs.getImagePullPolicy());
+        if (StringUtils.isNotEmpty(customConfig.getImagePullPolicy())) {
+            v1alpha1SinkSpec.setImagePullPolicy(customConfig.getImagePullPolicy());
         }
         v1alpha1SinkSpec.setClassName(sinkConfig.getClassName());
 
@@ -138,10 +138,10 @@ public class SinksUtil {
             extractedSinkDetails.setSinkClassName(sinkConfig.getClassName());
         }
 
-        if (customConfigs.getFunctionRunnerImages() != null && customConfigs.getFunctionRunnerImages().isEmpty()
-                && customConfigs.getFunctionRunnerImages().containsKey("JAVA")
-                && StringUtils.isNotEmpty(customConfigs.getFunctionRunnerImages().get("JAVA"))) {
-            v1alpha1SinkSpec.setImage(customConfigs.getFunctionRunnerImages().get("JAVA"));
+        if (customConfig.getFunctionRunnerImages() != null && customConfig.getFunctionRunnerImages().isEmpty()
+                && customConfig.getFunctionRunnerImages().containsKey("JAVA")
+                && StringUtils.isNotEmpty(customConfig.getFunctionRunnerImages().get("JAVA"))) {
+            v1alpha1SinkSpec.setImage(customConfig.getFunctionRunnerImages().get("JAVA"));
         }
 
         V1alpha1SinkSpecInput v1alpha1SinkSpecInput = new V1alpha1SinkSpecInput();
@@ -284,12 +284,40 @@ public class SinksUtil {
             specPod.setServiceAccountName(serviceAccountName);
         }
         try {
-            if (customConfigs.getImagePullSecrets() != null && !customConfigs.getImagePullSecrets().isEmpty()) {
-                specPod.setImagePullSecrets(customConfigs.asV1alpha1SinkSpecPodImagePullSecrets());
+            if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
+                specPod.setImagePullSecrets(customConfig.asV1alpha1SinkSpecPodImagePullSecrets());
             }
         } catch (Exception e) {
             log.error("Error converting ImagePullSecrets for sink connector {}: {}", sinkName, e);
             throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
+        }
+        Map<String, String> customLabels = new HashMap<>();
+        if (!CommonUtil.isMapEmpty(customConfig.getLabels())) {
+            customConfig.getLabels().forEach((k, v) -> {
+                customLabels.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customConfig.getSinkLabels())) {
+            customConfig.getSinkLabels().forEach((k, v) -> {
+                customLabels.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customLabels)) {
+            specPod.setLabels(customLabels);
+        }
+        Map<String, String> customAnnotations = new HashMap<>();
+        if (!CommonUtil.isMapEmpty(customConfig.getAnnotations())) {
+            customConfig.getAnnotations().forEach((k, v) -> {
+                customAnnotations.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customConfig.getSinkAnnotations())) {
+            customConfig.getSinkAnnotations().forEach((k, v) -> {
+                customAnnotations.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customAnnotations)) {
+            specPod.setAnnotations(customAnnotations);
         }
         v1alpha1SinkSpec.setPod(specPod);
 

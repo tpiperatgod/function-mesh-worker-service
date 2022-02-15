@@ -226,4 +226,8 @@ public class CommonUtil {
         }
         return null;
     }
+
+    public static boolean isMapEmpty(Map<String, String> map) {
+        return map == null || map.isEmpty();
+    }
 }

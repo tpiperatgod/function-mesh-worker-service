@@ -70,7 +70,7 @@ public class SourcesUtil {
                                                                       SourceConfig sourceConfig,
                                                                       MeshConnectorsManager connectorsManager,
                                                                       String cluster, MeshWorkerService worker) {
-        MeshWorkerServiceCustomConfig customConfigs = worker.getMeshWorkerServiceCustomConfig();
+        MeshWorkerServiceCustomConfig customConfig = worker.getMeshWorkerServiceCustomConfig();
         CustomRuntimeOptions customRuntimeOptions = CommonUtil.getCustomRuntimeOptions(sourceConfig.getCustomRuntimeOptions());
         String clusterName = CommonUtil.getClusterName(cluster, customRuntimeOptions);
         String serviceAccountName = customRuntimeOptions.getServiceAccountName();
@@ -100,12 +100,12 @@ public class SourcesUtil {
                 functionDetails.getNamespace(),
                 functionDetails.getTenant(),
                 clusterName,
-                CommonUtil.getOwnerReferenceFromCustomConfigs(customConfigs)));
+                CommonUtil.getOwnerReferenceFromCustomConfigs(customConfig)));
 
         V1alpha1SourceSpec v1alpha1SourceSpec = new V1alpha1SourceSpec();
 
-        if (StringUtils.isNotEmpty(customConfigs.getImagePullPolicy())) {
-            v1alpha1SourceSpec.setImagePullPolicy(customConfigs.getImagePullPolicy());
+        if (StringUtils.isNotEmpty(customConfig.getImagePullPolicy())) {
+            v1alpha1SourceSpec.setImagePullPolicy(customConfig.getImagePullPolicy());
         }
         v1alpha1SourceSpec.setClassName(sourceConfig.getClassName());
 
@@ -133,10 +133,10 @@ public class SourcesUtil {
             extractedSourceDetails.setSourceClassName(sourceConfig.getClassName());
         }
 
-        if (customConfigs.getFunctionRunnerImages() != null && customConfigs.getFunctionRunnerImages().isEmpty()
-                && customConfigs.getFunctionRunnerImages().containsKey("JAVA")
-                && StringUtils.isNotEmpty(customConfigs.getFunctionRunnerImages().get("JAVA"))) {
-            v1alpha1SourceSpec.setImage(customConfigs.getFunctionRunnerImages().get("JAVA"));
+        if (customConfig.getFunctionRunnerImages() != null && customConfig.getFunctionRunnerImages().isEmpty()
+                && customConfig.getFunctionRunnerImages().containsKey("JAVA")
+                && StringUtils.isNotEmpty(customConfig.getFunctionRunnerImages().get("JAVA"))) {
+            v1alpha1SourceSpec.setImage(customConfig.getFunctionRunnerImages().get("JAVA"));
         }
 
         V1alpha1SourceSpecOutput v1alpha1SourceSpecOutput = new V1alpha1SourceSpecOutput();
@@ -243,12 +243,40 @@ public class SourcesUtil {
             specPod.setServiceAccountName(serviceAccountName);
         }
         try {
-            if (customConfigs.getImagePullSecrets() != null && !customConfigs.getImagePullSecrets().isEmpty()) {
-                specPod.setImagePullSecrets(customConfigs.asV1alpha1SourceSpecPodImagePullSecrets());
+            if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
+                specPod.setImagePullSecrets(customConfig.asV1alpha1SourceSpecPodImagePullSecrets());
             }
         } catch (Exception e) {
             log.error("Error converting ImagePullSecrets for source connector {}: {}", sourceName, e);
             throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
+        }
+        Map<String, String> customLabels = new HashMap<>();
+        if (!CommonUtil.isMapEmpty(customConfig.getLabels())) {
+            customConfig.getLabels().forEach((k, v) -> {
+                customLabels.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customConfig.getSourceLabels())) {
+            customConfig.getSourceLabels().forEach((k, v) -> {
+                customLabels.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customLabels)) {
+            specPod.setLabels(customLabels);
+        }
+        Map<String, String> customAnnotations = new HashMap<>();
+        if (!CommonUtil.isMapEmpty(customConfig.getAnnotations())) {
+            customConfig.getAnnotations().forEach((k, v) -> {
+                customAnnotations.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customConfig.getSourceAnnotations())) {
+            customConfig.getSourceAnnotations().forEach((k, v) -> {
+                customAnnotations.merge(k, v, (a, b) -> b);
+            });
+        }
+        if (!CommonUtil.isMapEmpty(customAnnotations)) {
+            specPod.setAnnotations(customAnnotations);
         }
         v1alpha1SourceSpec.setPod(specPod);
 
