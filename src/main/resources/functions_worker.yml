@@ -268,3 +268,28 @@ functionsWorkerServiceCustomConfigs:
   extraDependenciesDir: /pulsar/lib/*
 
   defaultServiceAccountName: "service-account"
+
+  labels:
+    functionmesh.io/managedBy: function-mesh
+    foo: bar
+
+  functionLabels:
+    appType: function
+
+  sinkLabels:
+    appType: sink
+
+  sourceLabels:
+    appType: source
+
+  annotations:
+    fooAnnotation: barAnnotation
+
+  functionAnnotations:
+    appType: function
+
+  sinkAnnotations:
+    appType: sink
+
+  sourceAnnotations:
+    appType: source
