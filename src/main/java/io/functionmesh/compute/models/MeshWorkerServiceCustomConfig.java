@@ -109,6 +109,46 @@ public class MeshWorkerServiceCustomConfig {
     )
     protected List<V1LocalObjectReference> imagePullSecrets;
 
+    @FieldContext(
+            doc = "Labels specifies the labels to attach to pod the operator creates for the cluster."
+    )
+    protected Map<String, String> labels;
+
+    @FieldContext(
+            doc = "FunctionLabels specifies the labels to attach to function's pod, will override the labels if specified."
+    )
+    protected Map<String, String> functionLabels;
+
+    @FieldContext(
+            doc = "SinkLabels specifies the labels to attach to sink's pod, will override the labels if specified."
+    )
+    protected Map<String, String> sinkLabels;
+
+    @FieldContext(
+            doc = "SourceLabels specifies the labels to attach to source's pod, will override the labels if specified."
+    )
+    protected Map<String, String> sourceLabels;
+
+    @FieldContext(
+            doc = "Annotations specifies the annotations to attach to pods the operator creates"
+    )
+    protected Map<String, String> annotations;
+
+    @FieldContext(
+            doc = "FunctionAnnotations specifies the annotations to attach to function's pod, will override the annotations if specified."
+    )
+    protected Map<String, String> functionAnnotations;
+
+    @FieldContext(
+            doc = "SinkAnnotations specifies the annotations to attach to sink's pod, will override the annotations if specified."
+    )
+    protected Map<String, String> sinkAnnotations;
+
+    @FieldContext(
+            doc = "SourceAnnotations specifies the annotations to attach to source's pod, will override the annotations if specified."
+    )
+    protected Map<String, String> sourceAnnotations;
+
     public List<V1alpha1SinkSpecPodVolumes> asV1alpha1SinkSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SinkSpecPodVolumes>> typeRef
