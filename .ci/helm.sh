@@ -141,6 +141,8 @@ function ci::install_function_mesh_charts() {
 
 function ci::test_pulsar_producer() {
     sleep 120
+    ${KUBECTL} describe pod -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0
+    ${KUBECTL} logs -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0
     ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-toolset-0 -- bash -c 'until nslookup sn-platform-pulsar-broker; do sleep 3; done'
     ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-bookie-0 -- df -h
     ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-bookie-0 -- cat conf/bookkeeper.conf
