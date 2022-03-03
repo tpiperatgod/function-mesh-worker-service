@@ -570,3 +570,30 @@ function ci::create_source_by_upload() {
     echo "${RET}"
   fi
 }
+
+function ci::create_sink_by_upload() {
+  PULSAR_IO_DATA_GENERATOR=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- ls connectors | grep pulsar-io-data-generator)
+  RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sinks create -a /pulsar/connectors/${PULSAR_IO_DATA_GENERATOR} --name package-upload-sink --inputs persistent://public/default/package-upload-connector-topic --custom-runtime-options '{"inputTypeClassName": "org.apache.pulsar.io.datagenerator.Person"}')
+  ${KUBECTL} logs -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0
+  sleep 15
+  echo "${RET}"
+  ${KUBECTL} logs -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0
+  sleep 15
+  ${KUBECTL} get pods -A
+  sleep 5
+  WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "package-upload-sink" | wc -l)
+  while [[ ${WC} -lt 1 ]]; do
+    echo ${WC};
+    sleep 20
+    ${KUBECTL} get pods -n ${NAMESPACE}
+    ${KUBECTL} describe pod package-upload-source-source-0
+    WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "package-upload-sink" | wc -l)
+  done
+  echo "sink test done"
+  RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sinks delete --name package-upload-sink)
+  echo "${RET}"
+  if ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin packages get-metadata sink://public/default/package-upload-sink@latest; then
+    RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin packages get-metadata sink://public/default/package-upload-sink@latest)
+    echo "${RET}"
+  fi
+}
