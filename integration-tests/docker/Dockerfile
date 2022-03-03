@@ -22,6 +22,7 @@ FROM streamnative/pulsar:${PULSAR_IMAGE_TAG}
 COPY ./target/mesh-worker-service*.nar /pulsar/mesh-worker-service.nar
 COPY ./integration-tests/docker/connectors.yaml /pulsar/conf/connectors.yaml
 RUN mkdir -p /pulsar/pulsar-nar
+USER root
 RUN mkdir -p /pulsar/examples/go-examples
 COPY ./.ci/examples/go-examples/ /pulsar/examples/go-examples/
-RUN chmod -R 777 /pulsar/examples/go-examples/
+USER 10000
