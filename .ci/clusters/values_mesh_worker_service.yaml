@@ -102,6 +102,7 @@ pulsar_metadata:
 functions:
   configData:
     functionsWorkerServiceNarPackage: /pulsar/mesh-worker-service.nar
+    narExtractionDirectory: /pulsar/pulsar-nar
     functionsWorkerServiceCustomConfigs:
       uploadEnabled: true
       functionEnabled: true
