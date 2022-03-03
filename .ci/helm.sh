@@ -542,3 +542,31 @@ function ci::verify_secrets_python_package() {
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions delete --name package-python-secret-fn)
   echo "${RET}"
 }
+
+function ci::create_source_by_upload() {
+  ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- cat conf/functions_worker.yml
+  PULSAR_IO_DATA_GENERATOR=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- ls connectors | grep pulsar-io-data-generator)
+  RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources create --jar /pulsar/connectors/${PULSAR_IO_DATA_GENERATOR} --name package-upload-source --destination-topic-name persistent://public/default/package-upload-connector-topic --custom-runtime-options '{"outputTypeClassName": "java.nio.ByteBuffer"}')
+  ${KUBECTL} logs -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0
+  sleep 15
+  echo "${RET}"
+  ${KUBECTL} logs -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0
+  sleep 15
+  ${KUBECTL} get pods -A
+  sleep 5
+  WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "package-upload-source" | wc -l)
+  while [[ ${WC} -lt 1 ]]; do
+    echo ${WC};
+    sleep 20
+    ${KUBECTL} get pods -n ${NAMESPACE}
+    ${KUBECTL} describe pod package-upload-source-source-0
+    WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "package-upload-source" | wc -l)
+  done
+  echo "source test done"
+  RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources delete --name package-upload-source)
+  echo "${RET}"
+  if ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin packages get-metadata source://public/default/package-upload-source@latest; then
+    RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin packages get-metadata source://public/default/package-upload-source@latest)
+    echo "${RET}"
+  fi
+}
