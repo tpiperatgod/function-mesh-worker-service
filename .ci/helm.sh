@@ -510,8 +510,8 @@ function ci::verify_secrets_python_package() {
   ${KUBECTL} apply -f ${FUNCTION_MESH_HOME}/.ci/examples/secret-py-example/secrets_python_secret.yaml
   sleep 10
 
-  ${KUBECTL} cp "${FUNCTION_MESH_HOME}/.ci/examples/secret-py-example" "${NAMESPACE}/${CLUSTER}-pulsar-broker-0:/pulsar/examples/secret-py-example"
-  sleep 10
+#  ${KUBECTL} cp "${FUNCTION_MESH_HOME}/.ci/examples/secret-py-example" "${NAMESPACE}/${CLUSTER}-pulsar-broker-0:/pulsar/examples/secret-py-example"
+#  sleep 10
 
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions create --py /pulsar/examples/secret-py-example/secretsfunction.py --name package-python-secret-fn --classname secretsfunction.SecretsFunction --inputs persistent://public/default/package-python-secret-fn-input --output persistent://public/default/package-python-secret-fn-output --subs-position "Earliest" --cpu 0.1 --secrets '{"APPEND_VALUE":{"path":"test-python-secret","key":"append_value"}}')
   if [[ $RET != *"successfully"* ]]; then

@@ -24,5 +24,7 @@ COPY ./integration-tests/docker/connectors.yaml /pulsar/conf/connectors.yaml
 RUN mkdir -p /pulsar/pulsar-nar
 USER root
 RUN mkdir -p /pulsar/examples/go-examples
+RUN mkdir -p /pulsar/examples/secret-py-example
 COPY ./.ci/examples/go-examples/ /pulsar/examples/go-examples/
+COPY ./.ci/examples/secret-py-example/ /pulsar/examples/secret-py-example/
 USER 10000
