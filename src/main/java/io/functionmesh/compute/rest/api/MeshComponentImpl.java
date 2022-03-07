@@ -23,6 +23,7 @@ import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.FunctionsUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
+import io.functionmesh.compute.util.PackageManagementServiceUtil;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import okhttp3.Response;
@@ -53,6 +54,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.pulsar.functions.proto.Function.FunctionDetails.ComponentType.FUNCTION;
 
@@ -127,10 +129,9 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             );
             executeCall(deleteObjectCall, null);
 
-            if (componentType == FUNCTION) {
-                // currently only function package is supported, so we only do cleanup for function package.
-                FunctionsUtil.deletePackageFromPackageService(worker().getBrokerAdmin(), tenant, namespace, componentName);
-            }
+            PackageManagementServiceUtil.deletePackageFromPackageService(
+                worker().getBrokerAdmin(), getPackageTypeFromComponentType(componentType),
+                tenant, namespace, componentName);
 
             if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
                     && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {

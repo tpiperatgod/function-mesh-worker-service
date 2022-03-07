@@ -89,7 +89,7 @@ public class FunctionsUtil {
     public final static String cpuKey = "cpu";
     public final static String memoryKey = "memory";
     public final static String sourceKey = "source";
-    public final static String MESH_WORKER_SERVICE_PACKAGE_CONTACT = "mesh-worker-service";
+
 
     public static V1alpha1Function createV1alpha1FunctionFromFunctionConfig(String kind, String group, String version
             , String functionName, String functionPkgUrl, FunctionConfig functionConfig
@@ -702,67 +702,4 @@ public class FunctionsUtil {
         return typeArgs;
     }
 
-    private static String generatePackageURL(final String tenant,
-                                             final String namespace,
-                                             final String functionName) {
-        return String.format("function://%s/%s/%s", tenant, namespace, functionName);
-    }
-
-    public static String uploadPackageToPackageService(PulsarAdmin admin,
-                                                       final String tenant,
-                                                       final String namespace,
-                                                       final String functionName,
-                                                       final InputStream uploadedInputStream,
-                                                       final FormDataContentDisposition fileDetail,
-                                                       String tempDirectory) throws Exception {
-        Path tempDirectoryPath = Paths.get(tempDirectory);
-        if (Files.notExists(tempDirectoryPath)) {
-            Files.createDirectories(tempDirectoryPath);
-        }
-        Path filePath = Files.createTempFile(tempDirectoryPath,
-                RandomStringUtils.random(5, true, true).toLowerCase(), fileDetail.getFileName());
-        FileUtils.copyInputStreamToFile(uploadedInputStream, filePath.toFile());
-        uploadedInputStream.close();
-
-        String packageName = generatePackageURL(tenant, namespace, functionName);
-        try {
-            log.info("Try to overwrite the function file if it is already exists at '{}'.", packageName);
-            deletePackageFromPackageService(admin, tenant, namespace, functionName);
-        } catch (Exception ex) {
-            log.warn("Overwriting function package '{}' failed", packageName, ex);
-        }
-        PackageMetadata packageMetadata = new PackageMetadata();
-        packageMetadata.setContact(MESH_WORKER_SERVICE_PACKAGE_CONTACT);
-        packageMetadata.setDescription("mesh-worker-service created for " + packageName);
-        Map<String, String> properties = new HashMap<>();
-        properties.put(PROPERTY_TENANT, tenant);
-        properties.put(PROPERTY_NAMESPACE, namespace);
-        properties.put(PROPERTY_FUNCTION_NAME, functionName);
-        properties.put(PROPERTY_FILE_NAME, fileDetail.getFileName());
-        properties.put(PROPERTY_FILE_SIZE, Long.toString(filePath.toFile().length()));
-        long checksum = FileUtils.checksumCRC32(filePath.toFile());
-        properties.put(PROPERTY_CHECKSUM, Long.toString(checksum));
-        properties.put(PROPERTY_MANAGED_BY_MESH_WORKER_SERVICE, String.valueOf(true));
-        packageMetadata.setProperties(properties);
-        admin.packages().upload(packageMetadata, packageName, filePath.toString());
-        log.info("upload file {} to package service {} successfully", filePath, packageName);
-        Files.deleteIfExists(filePath);
-        return packageName;
-    }
-
-    public static void deletePackageFromPackageService(PulsarAdmin admin,
-                                                       final String tenant,
-                                                       final String namespace,
-                                                       final String functionName) throws Exception {
-        String packageName = generatePackageURL(tenant, namespace, functionName);
-        try {
-            PackageMetadata packageMetadata = admin.packages().getMetadata(packageName);
-            if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
-                    StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME)) &&
-                    StringUtils.isNotEmpty(packageMetadata.getContact()) &&
-                    packageMetadata.getContact().equals(MESH_WORKER_SERVICE_PACKAGE_CONTACT)) {
-                admin.packages().delete(packageName);
-            }
-        } catch (PulsarAdminException.NotFoundException ignore) {}
-    }
 }

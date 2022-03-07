@@ -29,6 +29,7 @@ import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumes;
 import io.functionmesh.compute.sources.models.V1alpha1SourceStatus;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
+import io.functionmesh.compute.util.PackageManagementServiceUtil;
 import io.functionmesh.compute.util.SourcesUtil;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -143,6 +144,18 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                 clientAuthenticationDataHttps,
                 ComponentTypeUtils.toString(componentType));
         this.validateTenantIsExist(tenant, namespace, sourceName, clientRole);
+        String packageURL = sourcePkgUrl;
+        if (uploadedInputStream != null) {
+            try {
+                String tempDirectory = System.getProperty("java.io.tmpdir");
+                packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(
+                        worker().getBrokerAdmin(), PackageManagementServiceUtil.PACKAGE_TYPE_SOURCE, tenant,
+                        namespace, sourceName, uploadedInputStream, fileDetail, tempDirectory);
+            } catch (Exception e) {
+                log.error("register {}/{}/{} source failed, error message: {}", tenant, namespace, sourceName, e);
+                throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        }
         String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
         V1alpha1Source v1alpha1Source = SourcesUtil
                 .createV1alpha1SourceFromSourceConfig(
@@ -150,7 +163,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                         group,
                         version,
                         sourceName,
-                        sourcePkgUrl,
+                        packageURL,
                         uploadedInputStream,
                         sourceConfig,
                         this.meshWorkerServiceSupplier.get().getConnectorsManager(),
@@ -212,6 +225,19 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                 clientRole,
                 clientAuthenticationDataHttps,
                 ComponentTypeUtils.toString(componentType));
+        this.validateTenantIsExist(tenant, namespace, sourceName, clientRole);
+        String packageURL = sourcePkgUrl;
+        if (uploadedInputStream != null) {
+            try {
+                String tempDirectory = System.getProperty("java.io.tmpdir");
+                packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(
+                        worker().getBrokerAdmin(), PackageManagementServiceUtil.PACKAGE_TYPE_SOURCE, tenant,
+                        namespace, sourceName, uploadedInputStream, fileDetail, tempDirectory);
+            } catch (Exception e) {
+                log.error("update {}/{}/{} source failed, error message: {}", tenant, namespace, sourceName, e);
+                throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        }
         try {
             String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
             V1alpha1Source v1alpha1Source = SourcesUtil
@@ -220,7 +246,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                             group,
                             version,
                             sourceName,
-                            sourcePkgUrl,
+                            packageURL,
                             uploadedInputStream,
                             sourceConfig,
                             this.meshWorkerServiceSupplier.get().getConnectorsManager(),
@@ -234,6 +260,10 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                     null
             );
             V1alpha1Source oldRes = executeCall(getCall, V1alpha1Source.class);
+            if (oldRes.getMetadata() == null || oldRes.getMetadata().getLabels() == null) {
+                log.error("update {}/{}/{} source failed, the source resource cannot be found", tenant, namespace, sourceName);
+                throw new RestException(Response.Status.NOT_FOUND, "This source resource was not found");
+            }
 
             V1alpha1SourceSpecPod pod = new V1alpha1SourceSpecPod();
             Map<String, String> labels = oldRes.getMetadata().getLabels();
@@ -259,9 +289,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
             log.error("update {}/{}/{} source failed, error message: {}", tenant, namespace, sourceConfig, e);
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
-
     }
-
 
     public SourceStatus getSourceStatus(final String tenant,
                                         final String namespace,

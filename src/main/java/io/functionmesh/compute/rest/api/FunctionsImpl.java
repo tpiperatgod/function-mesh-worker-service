@@ -30,6 +30,7 @@ import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.FunctionsUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
+import io.functionmesh.compute.util.PackageManagementServiceUtil;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.kubernetes.client.openapi.models.V1ContainerState;
@@ -134,7 +135,9 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
         if (uploadedInputStream != null) {
             try {
                 String tempDirectory = System.getProperty("java.io.tmpdir");
-                packageURL = FunctionsUtil.uploadPackageToPackageService(worker().getBrokerAdmin(), tenant, namespace, functionName, uploadedInputStream, fileDetail, tempDirectory);
+                packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(
+                        worker().getBrokerAdmin(), PackageManagementServiceUtil.PACKAGE_TYPE_FUNCTION, tenant,
+                        namespace, functionName, uploadedInputStream, fileDetail, tempDirectory);
             } catch (Exception e) {
                 log.error("register {}/{}/{} function failed, error message: {}", tenant, namespace, functionName, e);
                 throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -218,7 +221,9 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
         if (uploadedInputStream != null) {
             try {
                 String tempDirectory = System.getProperty("java.io.tmpdir");
-                packageURL = FunctionsUtil.uploadPackageToPackageService(worker().getBrokerAdmin(), tenant, namespace, functionName, uploadedInputStream, fileDetail, tempDirectory);
+                packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(
+                        worker().getBrokerAdmin(), PackageManagementServiceUtil.PACKAGE_TYPE_FUNCTION, tenant,
+                        namespace, functionName, uploadedInputStream, fileDetail, tempDirectory);
             } catch (Exception e) {
                 log.error("update {}/{}/{} function failed, error message: {}", tenant, namespace, functionName, e);
                 throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
