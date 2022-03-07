@@ -27,6 +27,7 @@ import io.functionmesh.compute.testdata.Generate;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.FunctionsUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
+import io.functionmesh.compute.util.PackageManagementServiceUtil;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.JSON;
@@ -82,6 +83,7 @@ import static org.powermock.api.mockito.PowerMockito.spy;
         RealResponseBody.class,
         CommonUtil.class,
         FunctionsUtil.class,
+        PackageManagementServiceUtil.class,
         InstanceControlGrpc.InstanceControlFutureStub.class})
 @PowerMockIgnore({"javax.management.*"})
 @Slf4j
@@ -572,7 +574,7 @@ public class FunctionsImplTest {
 
         PowerMockito.stub(PowerMockito.method(FunctionsUtil.class, "downloadPackageFile")).toReturn(null);
         PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata")).toReturn("word-count.jar");
-        PowerMockito.stub(PowerMockito.method(FunctionsUtil.class, "deletePackageFromPackageService")).toReturn(null);
+        PowerMockito.stub(PowerMockito.method(PackageManagementServiceUtil.class, "deletePackageFromPackageService")).toReturn(null);
 
         FunctionConfig functionConfig = Generate.CreateJavaFunctionWithPackageURLConfig(tenant, namespace, functionName);
 
@@ -757,7 +759,7 @@ public class FunctionsImplTest {
                 null
         )).thenReturn(deleteTlsSecretCall);
         PowerMockito.when(deleteTlsSecretCall.execute()).thenReturn(response);
-        PowerMockito.stub(PowerMockito.method(FunctionsUtil.class, "deletePackageFromPackageService")).toReturn(null);
+        PowerMockito.stub(PowerMockito.method(PackageManagementServiceUtil.class, "deletePackageFromPackageService")).toReturn(null);
 
         FunctionsImpl functions = spy(new FunctionsImpl(meshWorkerServiceSupplier));
         try {
