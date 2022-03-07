@@ -40,3 +40,6 @@ ci::verify_go_package
 ci::create_java_function_by_upload
 
 ci::verify_secrets_python_package
+
+ci::create_source_by_upload
+ci::create_sink_by_upload

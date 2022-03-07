@@ -27,6 +27,7 @@ import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumeMounts;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumes;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
+import io.functionmesh.compute.util.PackageManagementServiceUtil;
 import io.functionmesh.compute.util.SinksUtil;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkStatus;
@@ -136,6 +137,18 @@ public class SinksImpl extends MeshComponentImpl
                 clientAuthenticationDataHttps,
                 ComponentTypeUtils.toString(componentType));
         this.validateTenantIsExist(tenant, namespace, sinkName, clientRole);
+        String packageURL = sinkPkgUrl;
+        if (uploadedInputStream != null) {
+            try {
+                String tempDirectory = System.getProperty("java.io.tmpdir");
+                packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(
+                        worker().getBrokerAdmin(), PackageManagementServiceUtil.PACKAGE_TYPE_SINK, tenant,
+                        namespace, sinkName, uploadedInputStream, fileDetail, tempDirectory);
+            } catch (Exception e) {
+                log.error("register {}/{}/{} sink failed, error message: {}", tenant, namespace, sinkName, e);
+                throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        }
         String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
         V1alpha1Sink v1alpha1Sink =
                 SinksUtil.createV1alpha1SkinFromSinkConfig(
@@ -143,7 +156,7 @@ public class SinksImpl extends MeshComponentImpl
                         group,
                         version,
                         sinkName,
-                        sinkPkgUrl,
+                        packageURL,
                         uploadedInputStream,
                         sinkConfig,
                         this.meshWorkerServiceSupplier.get().getConnectorsManager(),
@@ -215,6 +228,19 @@ public class SinksImpl extends MeshComponentImpl
                 clientRole,
                 clientAuthenticationDataHttps,
                 ComponentTypeUtils.toString(componentType));
+        this.validateTenantIsExist(tenant, namespace, sinkName, clientRole);
+        String packageURL = sinkPkgUrl;
+        if (uploadedInputStream != null) {
+            try {
+                String tempDirectory = System.getProperty("java.io.tmpdir");
+                packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(
+                        worker().getBrokerAdmin(), PackageManagementServiceUtil.PACKAGE_TYPE_FUNCTION, tenant,
+                        namespace, sinkName, uploadedInputStream, fileDetail, tempDirectory);
+            } catch (Exception e) {
+                log.error("update {}/{}/{} sink failed, error message: {}", tenant, namespace, sinkName, e);
+                throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        }
         String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
         try {
             V1alpha1Sink v1alpha1Sink =
@@ -223,7 +249,7 @@ public class SinksImpl extends MeshComponentImpl
                             group,
                             version,
                             sinkName,
-                            sinkPkgUrl,
+                            packageURL,
                             uploadedInputStream,
                             sinkConfig, this.meshWorkerServiceSupplier.get().getConnectorsManager(),
                             cluster, worker());
@@ -235,6 +261,7 @@ public class SinksImpl extends MeshComponentImpl
                                     v1alpha1Sink.getMetadata().getName(), null);
             V1alpha1Sink oldRes = executeCall(getCall, V1alpha1Sink.class);
             if (oldRes.getMetadata() == null || oldRes.getMetadata().getLabels() == null) {
+                log.error("update {}/{}/{} sink failed, the sink resource cannot be found", tenant, namespace, sinkName);
                 throw new RestException(Response.Status.NOT_FOUND, "This sink resource was not found");
             }
             Map<String, String> labels = oldRes.getMetadata().getLabels();
