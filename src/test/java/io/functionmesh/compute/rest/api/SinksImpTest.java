@@ -214,7 +214,6 @@ public class SinksImpTest {
         Map<String, Object> configs = new HashMap<>();
         File narFile = PowerMockito.mock(File.class);
         PowerMockito.when(narFile.getPath()).thenReturn("");
-        FileInputStream uploadedInputStream = PowerMockito.mock(FileInputStream.class);
 
         NarClassLoader narClassLoader = PowerMockito.mock(NarClassLoader.class);
         PowerMockito.when(narClassLoader.loadClass(className)).thenReturn(null);
@@ -251,7 +250,7 @@ public class SinksImpTest {
 
         V1alpha1Sink v1alpha1Sink =
                 SinksUtil.createV1alpha1SkinFromSinkConfig(
-                        kind, group, version, componentName, null, uploadedInputStream, sinkConfig, null,
+                        kind, group, version, componentName, null, null, sinkConfig, null,
                         null, meshWorkerService);
 
         Map<String, String> customLabels = Maps.newHashMap();
@@ -292,7 +291,7 @@ public class SinksImpTest {
                     tenant,
                     namespace,
                     componentName,
-                    uploadedInputStream,
+                    null,
                     null,
                     null,
                     sinkConfig,
@@ -406,7 +405,6 @@ public class SinksImpTest {
         configs.put("elasticSearchUrl", "https://testing-es.app");
         File narFile = PowerMockito.mock(File.class);
         PowerMockito.when(narFile.getPath()).thenReturn("");
-        FileInputStream uploadedInputStream = PowerMockito.mock(FileInputStream.class);
 
         NarClassLoader narClassLoader = PowerMockito.mock(NarClassLoader.class);
         PowerMockito.when(narClassLoader.loadClass(className)).thenReturn(null);
@@ -449,6 +447,11 @@ public class SinksImpTest {
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isSinkEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
+
+        PulsarAdmin pulsarAdmin = PowerMockito.mock(PulsarAdmin.class);
+        PowerMockito.when(meshWorkerService.getBrokerAdmin()).thenReturn(pulsarAdmin);
+        Tenants tenants = PowerMockito.mock(Tenants.class);
+        PowerMockito.when(pulsarAdmin.tenants()).thenReturn(tenants);
 
         Call getCall = PowerMockito.mock(Call.class);
         Response getResponse = PowerMockito.mock(Response.class);
@@ -498,7 +501,7 @@ public class SinksImpTest {
                     tenant,
                     namespace,
                     componentName,
-                    uploadedInputStream,
+                    null,
                     null,
                     null,
                     sinkConfig,

@@ -213,7 +213,6 @@ public class SourcesImpTest {
 
         File narFile = PowerMockito.mock(File.class);
         PowerMockito.when(narFile.getPath()).thenReturn("");
-        FileInputStream uploadedInputStream = PowerMockito.mock(FileInputStream.class);
 
         NarClassLoader narClassLoader = PowerMockito.mock(NarClassLoader.class);
         PowerMockito.when(narClassLoader.loadClass(className)).thenReturn(null);
@@ -248,7 +247,7 @@ public class SourcesImpTest {
                         version,
                         componentName,
                         null,
-                        uploadedInputStream,
+                        null,
                         sourceConfig,
                         null,
                         null, meshWorkerService);
@@ -294,7 +293,7 @@ public class SourcesImpTest {
                     tenant,
                     namespace,
                     componentName,
-                    uploadedInputStream,
+                    null,
                     null,
                     null,
                     sourceConfig,
@@ -419,7 +418,6 @@ public class SourcesImpTest {
 
         File narFile = PowerMockito.mock(File.class);
         PowerMockito.when(narFile.getPath()).thenReturn("");
-        FileInputStream uploadedInputStream = PowerMockito.mock(FileInputStream.class);
 
         NarClassLoader narClassLoader = PowerMockito.mock(NarClassLoader.class);
         PowerMockito.when(narClassLoader.loadClass(className)).thenReturn(null);
@@ -457,6 +455,11 @@ public class SourcesImpTest {
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
         PowerMockito.when(workerConfig.isAuthorizationEnabled()).thenReturn(false);
         PowerMockito.when(workerConfig.isAuthenticationEnabled()).thenReturn(false);
+
+        PulsarAdmin pulsarAdmin = PowerMockito.mock(PulsarAdmin.class);
+        PowerMockito.when(meshWorkerService.getBrokerAdmin()).thenReturn(pulsarAdmin);
+        Tenants tenants = PowerMockito.mock(Tenants.class);
+        PowerMockito.when(pulsarAdmin.tenants()).thenReturn(tenants);
 
         Call getCall = PowerMockito.mock(Call.class);
         Response getResponse = PowerMockito.mock(Response.class);
@@ -514,7 +517,7 @@ public class SourcesImpTest {
                     tenant,
                     namespace,
                     componentName,
-                    uploadedInputStream,
+                    null,
                     null,
                     null,
                     sourceConfig,
