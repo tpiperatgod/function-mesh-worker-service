@@ -39,21 +39,22 @@ wget $BASE_DOWNLOAD_URL/$CRD_FUNCTIONS_FILE -O $LOCAL_MANIFEST_FUNCTIONS_FILE
 wget $BASE_DOWNLOAD_URL/$CRD_SOURCES_FILE -O $LOCAL_MANIFEST_SOURCES_FILE
 wget $BASE_DOWNLOAD_URL/$CRD_SINKS_FILE -O $LOCAL_MANIFEST_SINKS_FILE
 # yq site: https://mikefarah.gitbook.io/yq/
-yq eval ".spec.preserveUnknownFields = false" -i $CRD_FUNCTIONS_FILE
-yq eval ".spec.preserveUnknownFields = false" -i $CRD_SOURCES_FILE
-yq eval ".spec.preserveUnknownFields = false" -i $CRD_SINKS_FILE
+yq eval "del(.spec.versions.[].schema.openAPIV3Schema.x-kubernetes-preserve-unknown-fields)" -i $CRD_FUNCTIONS_FILE
+yq eval "del(.spec.versions.[].schema.openAPIV3Schema.x-kubernetes-preserve-unknown-fields)" -i $CRD_SOURCES_FILE
+yq eval "del(.spec.versions.[].schema.openAPIV3Schema.x-kubernetes-preserve-unknown-fields)" -i $CRD_SINKS_FILE
 
-docker pull docker.pkg.github.com/kubernetes-client/java/crd-model-gen:v1.0.4
-docker pull kindest/node:v1.17.17
-docker build --tag crd-model-gen:latest "${DEST_DIR}/scripts/crd-model-gen"
-#docker rm -f kind-control-plane
+DEFAULT_IMAGE_NAME=docker.pkg.github.com/kubernetes-client/java/crd-model-gen
+DEFAULT_IMAGE_TAG=v1.0.4
+IMAGE_NAME=${IMAGE_NAME:=$DEFAULT_IMAGE_NAME}
+IMAGE_TAG=${IMAGE_TAG:=$DEFAULT_IMAGE_TAG}
+
 # Generate functions crd
 docker run \
   --rm \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v "$(pwd)":"$(pwd)" \
   --network host \
-  crd-model-gen:latest \
+  ${IMAGE_NAME}:${IMAGE_TAG} \
   /generate.sh \
   -u $LOCAL_MANIFEST_FUNCTIONS_FILE \
   -n io.functionmesh \
@@ -66,7 +67,7 @@ docker run \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v "$(pwd)":"$(pwd)" \
   --network host \
-  crd-model-gen:latest \
+  ${IMAGE_NAME}:${IMAGE_TAG} \
   /generate.sh \
   -u $LOCAL_MANIFEST_SOURCES_FILE \
   -n io.functionmesh \
@@ -79,7 +80,7 @@ docker run \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v "$(pwd)":"$(pwd)" \
   --network host \
-  crd-model-gen:latest \
+  ${IMAGE_NAME}:${IMAGE_TAG} \
   /generate.sh \
   -u $LOCAL_MANIFEST_SINKS_FILE \
   -n io.functionmesh \
