@@ -122,6 +122,7 @@ function ci::install_function_mesh_charts() {
   if [ -d "function-mesh" ]; then
     rm -rf function-mesh
   fi
+  FMV=master
   git clone --branch ${FMV} https://github.com/streamnative/function-mesh function-mesh
   cd function-mesh/charts/
   ${HELM} install function-mesh --values ./function-mesh-operator/values.yaml ./function-mesh-operator --debug -n ${NAMESPACE}
