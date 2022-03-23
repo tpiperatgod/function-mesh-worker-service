@@ -128,15 +128,15 @@ function ci::install_function_mesh_charts() {
   ${HELM} install function-mesh --values ./function-mesh-operator/values.yaml ./function-mesh-operator --debug -n ${NAMESPACE}
 
   echo "wait until controller-manager is alive"
-  WC=$(${KUBECTL} get pods -n function-mesh-system --field-selector=status.phase=Running -l app.kubernetes.io/component=controller-manager | wc -l)
+  WC=$(${KUBECTL} get pods -n function-mesh-system --field-selector=status.phase=Running | wc -l)
   while [[ ${WC} -lt 1 ]]; do
     echo ${WC};
     sleep 20
     ${KUBECTL} get pods -n function-mesh-system
-    WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running -l app.kubernetes.io/component=controller-manager | wc -l)
+    WC=$(${KUBECTL} get pods -n function-mesh-system --field-selector=status.phase=Running | wc -l)
   done
 
-  ${KUBECTL} get service -n ${NAMESPACE}
+  ${KUBECTL} get service -n function-mesh-system
   cd ../../
 }
 
