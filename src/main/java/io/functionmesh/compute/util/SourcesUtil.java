@@ -210,8 +210,8 @@ public class SourcesUtil {
         double cpu = sourceConfig.getResources() != null && sourceConfig.getResources().getCpu() != 0 ? sourceConfig.getResources().getCpu() : 1;
         long ramRequest = sourceConfig.getResources() != null && sourceConfig.getResources().getRam() != 0 ? sourceConfig.getResources().getRam() : 1073741824;
 
-        Map<String, String> limits = new HashMap<>();
-        Map<String, String> requests = new HashMap<>();
+        Map<String, Object> limits = new HashMap<>();
+        Map<String, Object> requests = new HashMap<>();
 
         long padding = Math.round(ramRequest * (10.0 / 100.0)); // percentMemoryPadding is 0.1
         long ramWithPadding = ramRequest + padding;
@@ -385,9 +385,9 @@ public class SourcesUtil {
         }
 
         Resources resources = new Resources();
-        Map<String, String> sourceResource = v1alpha1SourceSpec.getResources().getRequests();
-        Quantity cpuQuantity = Quantity.fromString(sourceResource.get(cpuKey));
-        Quantity memoryQuantity = Quantity.fromString(sourceResource.get(memoryKey));
+        Map<String, Object> sourceResource = v1alpha1SourceSpec.getResources().getRequests();
+        Quantity cpuQuantity = Quantity.fromString((String) sourceResource.get(cpuKey));
+        Quantity memoryQuantity = Quantity.fromString((String) sourceResource.get(memoryKey));
         resources.setCpu(cpuQuantity.getNumber().doubleValue());
         resources.setRam(memoryQuantity.getNumber().longValue());
         sourceConfig.setResources(resources);
