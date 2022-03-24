@@ -122,20 +122,15 @@ function ci::install_function_mesh_charts() {
   if [ -d "function-mesh" ]; then
     rm -rf function-mesh
   fi
+  FMV=master
   git clone --branch ${FMV} https://github.com/streamnative/function-mesh function-mesh
   cd function-mesh/charts/
   ${HELM} install function-mesh --values ./function-mesh-operator/values.yaml ./function-mesh-operator --debug -n ${NAMESPACE}
 
   echo "wait until controller-manager is alive"
-  WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running -l app.kubernetes.io/component=controller-manager | wc -l)
-  while [[ ${WC} -lt 1 ]]; do
-    echo ${WC};
-    sleep 20
-    ${KUBECTL} get pods -n ${NAMESPACE}
-    WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running -l app.kubernetes.io/component=controller-manager | wc -l)
-  done
+  ${KUBECTL} get deployment -n function-mesh-system
+  ${KUBECTL} wait --for condition=available --timeout=360s deployment/function-mesh-controller-manager -n function-mesh-system
 
-  ${KUBECTL} get service -n ${NAMESPACE}
   cd ../../
 }
 

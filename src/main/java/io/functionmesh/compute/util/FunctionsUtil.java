@@ -249,8 +249,8 @@ public class FunctionsUtil {
         long ramRequest = functionConfig.getResources() != null &&
                 functionConfig.getResources().getRam() != 0 ? functionConfig.getResources().getRam() : 1073741824;
 
-        Map<String, String> limits = new HashMap<>();
-        Map<String, String> requests = new HashMap<>();
+        Map<String, Object> limits = new HashMap<>();
+        Map<String, Object> requests = new HashMap<>();
 
         long padding = Math.round(ramRequest * (10.0 / 100.0)); // percentMemoryPadding is 0.1
         long ramWithPadding = ramRequest + padding;
@@ -595,9 +595,9 @@ public class FunctionsUtil {
         // TODO: externalPulsarConfig
 
         Resources resources = new Resources();
-        Map<String, String> functionResource = v1alpha1FunctionSpec.getResources().getLimits();
-        Quantity cpuQuantity = Quantity.fromString(functionResource.get(cpuKey));
-        Quantity memoryQuantity = Quantity.fromString(functionResource.get(memoryKey));
+        Map<String, Object> functionResource = v1alpha1FunctionSpec.getResources().getLimits();
+        Quantity cpuQuantity = Quantity.fromString((String) functionResource.get(cpuKey));
+        Quantity memoryQuantity = Quantity.fromString((String) functionResource.get(memoryKey));
         resources.setCpu(cpuQuantity.getNumber().doubleValue());
         resources.setRam(memoryQuantity.getNumber().longValue());
         functionConfig.setResources(resources);

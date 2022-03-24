@@ -251,8 +251,8 @@ public class SinksUtil {
         long ramRequest = sinkConfig.getResources() != null &&
                 sinkConfig.getResources().getRam() != 0 ? sinkConfig.getResources().getRam() : 1073741824;
 
-        Map<String, String> limits = new HashMap<>();
-        Map<String, String> requests = new HashMap<>();
+        Map<String, Object> limits = new HashMap<>();
+        Map<String, Object> requests = new HashMap<>();
 
         long padding = Math.round(ramRequest * (10.0 / 100.0)); // percentMemoryPadding is 0.1
         long ramWithPadding = ramRequest + padding;
@@ -442,9 +442,9 @@ public class SinksUtil {
         }
 
         Resources resources = new Resources();
-        Map<String, String> sinkResources = v1alpha1SinkSpec.getResources().getRequests();
-        Quantity cpuQuantity = Quantity.fromString(sinkResources.get(cpuKey));
-        Quantity memoryQuantity = Quantity.fromString(sinkResources.get(memoryKey));
+        Map<String, Object> sinkResources = v1alpha1SinkSpec.getResources().getRequests();
+        Quantity cpuQuantity = Quantity.fromString((String) sinkResources.get(cpuKey));
+        Quantity memoryQuantity = Quantity.fromString((String) sinkResources.get(memoryKey));
         resources.setCpu(cpuQuantity.getNumber().doubleValue());
         resources.setRam(memoryQuantity.getNumber().longValue());
         sinkConfig.setResources(resources);
