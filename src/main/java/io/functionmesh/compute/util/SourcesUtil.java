@@ -235,7 +235,11 @@ public class SourcesUtil {
 
         v1alpha1SourceSpec.setClusterName(clusterName);
 
-        v1alpha1SourceSpec.setSourceConfig(sourceConfig.getConfigs());
+        if (sourceConfig.getConfigs() != null && !sourceConfig.getConfigs().isEmpty()) {
+            v1alpha1SourceSpec.setSourceConfig(sourceConfig.getConfigs());
+        } else {
+            v1alpha1SourceSpec.setSourceConfig(new HashMap<>());
+        }
 
         V1alpha1SourceSpecPod specPod = new V1alpha1SourceSpecPod();
         if (worker.getMeshWorkerServiceCustomConfig().isAllowUserDefinedServiceAccountName() &&
