@@ -276,7 +276,11 @@ public class SinksUtil {
 
         v1alpha1SinkSpec.setClusterName(clusterName);
 
-        v1alpha1SinkSpec.setSinkConfig(sinkConfig.getConfigs());
+        if (sinkConfig.getConfigs() != null && !sinkConfig.getConfigs().isEmpty()) {
+            v1alpha1SinkSpec.setSinkConfig(sinkConfig.getConfigs());
+        } else {
+            v1alpha1SinkSpec.setSinkConfig(new HashMap<>());
+        }
 
         V1alpha1SinkSpecPod specPod = new V1alpha1SinkSpecPod();
         if (worker.getMeshWorkerServiceCustomConfig().isAllowUserDefinedServiceAccountName() &&
