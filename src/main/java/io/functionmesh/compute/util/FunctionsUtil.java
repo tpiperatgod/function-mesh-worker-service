@@ -359,7 +359,11 @@ public class FunctionsUtil {
 
         v1alpha1FunctionSpec.setClusterName(clusterName);
         v1alpha1FunctionSpec.setAutoAck(functionConfig.getAutoAck());
-        v1alpha1FunctionSpec.setFuncConfig(functionConfig.getUserConfig());
+        if (functionConfig.getUserConfig() != null && !functionConfig.getUserConfig().isEmpty()) {
+            v1alpha1FunctionSpec.setFuncConfig(functionConfig.getUserConfig());
+        } else {
+            v1alpha1FunctionSpec.setFuncConfig(new HashMap<>());
+        }
 
         V1alpha1FunctionSpecPod specPod = new V1alpha1FunctionSpecPod();
         if (worker.getMeshWorkerServiceCustomConfig().isAllowUserDefinedServiceAccountName() &&
