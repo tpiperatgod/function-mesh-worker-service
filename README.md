@@ -154,10 +154,10 @@ docker run \
 open $GEN_DIR
 ```
 
-### A auto tool for generated crd
+### Generated CRD's Java Model
 
 ```shell script
-./tool/generate-crd.sh
+./scripts/generate-crd.sh
 ```
 
 Then add license for crd model file
