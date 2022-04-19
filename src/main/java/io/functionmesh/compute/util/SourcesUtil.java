@@ -249,14 +249,6 @@ public class SourcesUtil {
                 StringUtils.isNotEmpty(serviceAccountName)) {
             specPod.setServiceAccountName(serviceAccountName);
         }
-        try {
-            if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
-                specPod.setImagePullSecrets(customConfig.asV1alpha1SourceSpecPodImagePullSecrets());
-            }
-        } catch (Exception e) {
-            log.error("Error converting ImagePullSecrets for source connector {}: {}", sourceName, e);
-            throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
-        }
         Map<String, String> customLabels = new HashMap<>();
         CommonUtil.mergeMap(customConfig.getLabels(), customLabels);
         CommonUtil.mergeMap(customConfig.getSourceLabels(), customLabels);

@@ -591,7 +591,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                     MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
                     List<V1alpha1SourceSpecPodVolumes> volumesList = customConfig.asV1alpha1SourceSpecPodVolumesList();
                     if (volumesList != null && !volumesList.isEmpty()) {
-                        v1alpha1Source.getSpec().getPod().setVolumes(volumesList);
+                        podPolicy.setVolumes(volumesList);
                     }
                     List<V1alpha1SourceSpecPodVolumeMounts> volumeMountsList =
                             customConfig.asV1alpha1SourceSpecPodVolumeMountsList();
@@ -626,10 +626,13 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                         v1alpha1Source.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
                     if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())
-                            && StringUtils.isEmpty(v1alpha1Source.getSpec().getPod().getServiceAccountName())) {
-                        v1alpha1Source.getSpec().getPod().setServiceAccountName(
-                                customConfig.getDefaultServiceAccountName());
+                            && StringUtils.isEmpty(podPolicy.getServiceAccountName())) {
+                        podPolicy.setServiceAccountName(customConfig.getDefaultServiceAccountName());
                     }
+                    if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
+                        podPolicy.setImagePullSecrets(customConfig.asV1alpha1SourceSpecPodImagePullSecrets());
+                    }
+                    v1alpha1Source.getSpec().setPod(podPolicy);
                 } catch (Exception e) {
                     log.error("Error create or update auth or tls secret for {} {}/{}/{}",
                             ComponentTypeUtils.toString(componentType), tenant, namespace, sourceName, e);
