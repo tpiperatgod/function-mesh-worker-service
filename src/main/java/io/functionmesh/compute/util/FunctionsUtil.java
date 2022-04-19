@@ -262,10 +262,6 @@ public class FunctionsUtil {
         // v1alpha1FunctionSpecPulsar.setAuthConfig(CommonUtil.getPulsarClusterAuthConfigMapName(clusterName));
         v1alpha1FunctionSpec.setPulsar(v1alpha1FunctionSpecPulsar);
 
-        String downloadDirectory = worker.getWorkerConfig().getDownloadDirectory();
-        if (StringUtils.isEmpty(downloadDirectory)) {
-            downloadDirectory = DEFAULT_FUNCTION_DOWNLOAD_DIRECTORY;
-        }
         String fileName = DEFAULT_FUNCTION_EXECUTABLE;
         boolean isPkgUrlProvided = StringUtils.isNotEmpty(functionPkgUrl);
         File componentPackageFile = null;
@@ -326,7 +322,7 @@ public class FunctionsUtil {
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getPy())) {
             V1alpha1FunctionSpecPython v1alpha1FunctionSpecPython = new V1alpha1FunctionSpecPython();
-            v1alpha1FunctionSpecPython.setPy(Paths.get(downloadDirectory, fileName).toString());
+            v1alpha1FunctionSpecPython.setPy(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecPython.setPyLocation(functionPkgUrl);
             }
@@ -338,7 +334,7 @@ public class FunctionsUtil {
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getGo())) {
             V1alpha1FunctionSpecGolang v1alpha1FunctionSpecGolang = new V1alpha1FunctionSpecGolang();
-            v1alpha1FunctionSpecGolang.setGo(Paths.get(downloadDirectory, fileName).toString());
+            v1alpha1FunctionSpecGolang.setGo(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecGolang.setGoLocation(functionPkgUrl);
             }
