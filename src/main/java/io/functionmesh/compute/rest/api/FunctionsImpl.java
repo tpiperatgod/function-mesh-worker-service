@@ -586,7 +586,7 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                     MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
                     List<V1alpha1FunctionSpecPodVolumes> volumesList = customConfig.asV1alpha1FunctionSpecPodVolumesList();
                     if (volumesList != null && !volumesList.isEmpty()) {
-                        v1alpha1Function.getSpec().getPod().setVolumes(volumesList);
+                        podPolicy.setVolumes(volumesList);
                     }
                     List<V1alpha1FunctionSpecPodVolumeMounts> volumeMountsList =
                             customConfig.asV1alpha1FunctionSpecPodVolumeMounts();
@@ -621,10 +621,13 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                         v1alpha1Function.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
                     if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())
-                            && StringUtils.isEmpty(v1alpha1Function.getSpec().getPod().getServiceAccountName())) {
-                        v1alpha1Function.getSpec().getPod().setServiceAccountName(
-                                customConfig.getDefaultServiceAccountName());
+                            && StringUtils.isEmpty(podPolicy.getServiceAccountName())) {
+                        podPolicy.setServiceAccountName(customConfig.getDefaultServiceAccountName());
                     }
+                    if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
+                        podPolicy.setImagePullSecrets(customConfig.asV1alpha1FunctionSpecPodImagePullSecrets());
+                    }
+                    v1alpha1Function.getSpec().setPod(podPolicy);
                 } catch (Exception e) {
                     log.error("Error create or update auth or tls secret for {} {}/{}/{}",
                             ComponentTypeUtils.toString(componentType), tenant, namespace, functionName, e);

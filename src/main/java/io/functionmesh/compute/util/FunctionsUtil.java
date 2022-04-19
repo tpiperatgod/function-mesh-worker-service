@@ -372,14 +372,6 @@ public class FunctionsUtil {
                 StringUtils.isNotEmpty(serviceAccountName)) {
             specPod.setServiceAccountName(serviceAccountName);
         }
-        try {
-            if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
-                specPod.setImagePullSecrets(customConfig.asV1alpha1FunctionSpecPodImagePullSecrets());
-            }
-        } catch (Exception e) {
-            log.error("Invalid register function request {}: {}", functionName, e);
-            throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
-        }
         Map<String, String> customLabels = new HashMap<>();
         CommonUtil.mergeMap(customConfig.getLabels(), customLabels);
         CommonUtil.mergeMap(customConfig.getFunctionLabels(), customLabels);
