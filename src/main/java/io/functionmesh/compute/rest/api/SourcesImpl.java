@@ -172,12 +172,19 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
 
             // override namesapce by configuration
             v1alpha1Source.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
-            Map<String, String> customLabels = Maps.newHashMap();
+            V1alpha1SourceSpecPod pod = v1alpha1Source.getSpec().getPod();
+            if (pod == null) {
+                pod = new V1alpha1SourceSpecPod();
+            }
+            Map<String, String> customLabels = pod.getLabels();
+            if (customLabels == null) {
+                customLabels = Maps.newHashMap();
+            }
             customLabels.put(CLUSTER_LABEL_CLAIM, v1alpha1Source.getSpec().getClusterName());
             customLabels.put(TENANT_LABEL_CLAIM, tenant);
             customLabels.put(NAMESPACE_LABEL_CLAIM, namespace);
             customLabels.put(COMPONENT_LABEL_CLAIM, sourceName);
-            V1alpha1SourceSpecPod pod = new V1alpha1SourceSpecPod();
+
             if (worker().getFactoryConfig() != null && worker().getFactoryConfig().getCustomLabels() != null) {
                 customLabels.putAll(worker().getFactoryConfig().getCustomLabels());
             }

@@ -164,12 +164,19 @@ public class SinksImpl extends MeshComponentImpl
         // override namesapce by configuration
         v1alpha1Sink.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
         try {
-            Map<String, String> customLabels = Maps.newHashMap();
+            V1alpha1SinkSpecPod pod = v1alpha1Sink.getSpec().getPod();
+            if (pod == null) {
+                pod = new V1alpha1SinkSpecPod();
+            }
+            Map<String, String> customLabels = pod.getLabels();
+            if (customLabels == null) {
+                customLabels = Maps.newHashMap();
+            }
             customLabels.put(CLUSTER_LABEL_CLAIM, v1alpha1Sink.getSpec().getClusterName());
             customLabels.put(TENANT_LABEL_CLAIM, tenant);
             customLabels.put(NAMESPACE_LABEL_CLAIM, namespace);
             customLabels.put(COMPONENT_LABEL_CLAIM, sinkName);
-            V1alpha1SinkSpecPod pod = new V1alpha1SinkSpecPod();
+
             if (worker().getFactoryConfig() != null && worker().getFactoryConfig().getCustomLabels() != null) {
                 customLabels.putAll(worker().getFactoryConfig().getCustomLabels());
             }

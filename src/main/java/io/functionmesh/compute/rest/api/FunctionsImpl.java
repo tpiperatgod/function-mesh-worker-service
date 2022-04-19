@@ -156,13 +156,20 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                 worker()
         );
         // override namespace by configuration file
+        V1alpha1FunctionSpecPod pod = v1alpha1Function.getSpec().getPod();
+        if (pod == null) {
+            pod = new V1alpha1FunctionSpecPod();
+        }
         v1alpha1Function.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
-        Map<String, String> customLabels = Maps.newHashMap();
+        Map<String, String> customLabels = pod.getLabels();
+        if (customLabels == null) {
+            customLabels = Maps.newHashMap();
+        }
         customLabels.put(CLUSTER_LABEL_CLAIM, v1alpha1Function.getSpec().getClusterName());
         customLabels.put(TENANT_LABEL_CLAIM, tenant);
         customLabels.put(NAMESPACE_LABEL_CLAIM, namespace);
         customLabels.put(COMPONENT_LABEL_CLAIM, functionName);
-        V1alpha1FunctionSpecPod pod = new V1alpha1FunctionSpecPod();
+
         if (worker().getFactoryConfig() != null && worker().getFactoryConfig().getCustomLabels() != null) {
             customLabels.putAll(worker().getFactoryConfig().getCustomLabels());
         }
