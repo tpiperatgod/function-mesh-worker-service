@@ -290,14 +290,6 @@ public class SinksUtil {
                 StringUtils.isNotEmpty(serviceAccountName)) {
             specPod.setServiceAccountName(serviceAccountName);
         }
-        try {
-            if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
-                specPod.setImagePullSecrets(customConfig.asV1alpha1SinkSpecPodImagePullSecrets());
-            }
-        } catch (Exception e) {
-            log.error("Error converting ImagePullSecrets for sink connector {}: {}", sinkName, e);
-            throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
-        }
         Map<String, String> customLabels = new HashMap<>();
         CommonUtil.mergeMap(customConfig.getLabels(), customLabels);
         CommonUtil.mergeMap(customConfig.getSinkLabels(), customLabels);

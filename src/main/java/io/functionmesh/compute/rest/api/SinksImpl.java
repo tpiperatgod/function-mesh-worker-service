@@ -631,7 +631,7 @@ public class SinksImpl extends MeshComponentImpl
                     }
                     List<V1alpha1SinkSpecPodVolumes> volumesList = customConfig.asV1alpha1SinkSpecPodVolumesList();
                     if (volumesList != null && !volumesList.isEmpty()) {
-                        v1alpha1Sink.getSpec().getPod().setVolumes(volumesList);
+                        podPolicy.setVolumes(volumesList);
                     }
                     List<V1alpha1SinkSpecPodVolumeMounts> volumeMountsList =
                             customConfig.asV1alpha1SinkSpecPodVolumeMountsList();
@@ -652,10 +652,13 @@ public class SinksImpl extends MeshComponentImpl
                         v1alpha1Sink.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
                     if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())
-                            && StringUtils.isEmpty(v1alpha1Sink.getSpec().getPod().getServiceAccountName())) {
-                        v1alpha1Sink.getSpec().getPod().setServiceAccountName(
-                                customConfig.getDefaultServiceAccountName());
+                            && StringUtils.isEmpty(podPolicy.getServiceAccountName())) {
+                        podPolicy.setServiceAccountName(customConfig.getDefaultServiceAccountName());
                     }
+                    if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
+                        podPolicy.setImagePullSecrets(customConfig.asV1alpha1SinkSpecPodImagePullSecrets());
+                    }
+                    v1alpha1Sink.getSpec().setPod(podPolicy);
                 } catch (Exception e) {
                     log.error("Error create or update auth or tls secret data for {} {}/{}/{}",
                             ComponentTypeUtils.toString(componentType), tenant, namespace, sinkName, e);
