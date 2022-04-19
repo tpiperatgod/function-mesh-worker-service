@@ -57,6 +57,7 @@ import java.util.Map;
 
 import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
+import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 
 @Slf4j
@@ -83,6 +84,7 @@ public class SourcesUtil {
         String archive = sourceConfig.getArchive();
         SourceConfigUtils.ExtractedSourceDetails extractedSourceDetails =
                 new SourceConfigUtils.ExtractedSourceDetails("", customRuntimeOptions.getInputTypeClassName());
+        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sourceConfig.getTenant(), sourceConfig.getNamespace(), sourceConfig.getName());
 
         Function.FunctionDetails functionDetails = null;
         try {
@@ -100,7 +102,8 @@ public class SourcesUtil {
                 functionDetails.getNamespace(),
                 functionDetails.getTenant(),
                 clusterName,
-                CommonUtil.getOwnerReferenceFromCustomConfigs(customConfig)));
+                CommonUtil.getOwnerReferenceFromCustomConfigs(customConfig),
+                customLabelClaims));
 
         V1alpha1SourceSpec v1alpha1SourceSpec = new V1alpha1SourceSpec();
 
@@ -255,30 +258,15 @@ public class SourcesUtil {
             throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
         }
         Map<String, String> customLabels = new HashMap<>();
-        if (!CommonUtil.isMapEmpty(customConfig.getLabels())) {
-            customConfig.getLabels().forEach((k, v) -> {
-                customLabels.merge(k, v, (a, b) -> b);
-            });
-        }
-        if (!CommonUtil.isMapEmpty(customConfig.getSourceLabels())) {
-            customConfig.getSourceLabels().forEach((k, v) -> {
-                customLabels.merge(k, v, (a, b) -> b);
-            });
-        }
+        CommonUtil.mergeMap(customConfig.getLabels(), customLabels);
+        CommonUtil.mergeMap(customConfig.getSourceLabels(), customLabels);
+        CommonUtil.mergeMap(customLabelClaims, customLabels);
         if (!CommonUtil.isMapEmpty(customLabels)) {
             specPod.setLabels(customLabels);
         }
         Map<String, String> customAnnotations = new HashMap<>();
-        if (!CommonUtil.isMapEmpty(customConfig.getAnnotations())) {
-            customConfig.getAnnotations().forEach((k, v) -> {
-                customAnnotations.merge(k, v, (a, b) -> b);
-            });
-        }
-        if (!CommonUtil.isMapEmpty(customConfig.getSourceAnnotations())) {
-            customConfig.getSourceAnnotations().forEach((k, v) -> {
-                customAnnotations.merge(k, v, (a, b) -> b);
-            });
-        }
+        CommonUtil.mergeMap(customConfig.getAnnotations(), customAnnotations);
+        CommonUtil.mergeMap(customConfig.getSourceAnnotations(), customAnnotations);
         if (!CommonUtil.isMapEmpty(customAnnotations)) {
             specPod.setAnnotations(customAnnotations);
         }

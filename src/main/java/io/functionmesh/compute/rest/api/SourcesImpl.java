@@ -168,29 +168,9 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                         sourceConfig,
                         this.meshWorkerServiceSupplier.get().getConnectorsManager(),
                         cluster, worker());
+
+        v1alpha1Source.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
         try {
-
-            // override namesapce by configuration
-            v1alpha1Source.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
-            V1alpha1SourceSpecPod pod = v1alpha1Source.getSpec().getPod();
-            if (pod == null) {
-                pod = new V1alpha1SourceSpecPod();
-            }
-            Map<String, String> customLabels = pod.getLabels();
-            if (customLabels == null) {
-                customLabels = Maps.newHashMap();
-            }
-            customLabels.put(CLUSTER_LABEL_CLAIM, v1alpha1Source.getSpec().getClusterName());
-            customLabels.put(TENANT_LABEL_CLAIM, tenant);
-            customLabels.put(NAMESPACE_LABEL_CLAIM, namespace);
-            customLabels.put(COMPONENT_LABEL_CLAIM, sourceName);
-
-            if (worker().getFactoryConfig() != null && worker().getFactoryConfig().getCustomLabels() != null) {
-                customLabels.putAll(worker().getFactoryConfig().getCustomLabels());
-            }
-            pod.setLabels(customLabels);
-            v1alpha1Source.getMetadata().setLabels(customLabels);
-            v1alpha1Source.getSpec().setPod(pod);
             this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source, clientAuthenticationDataHttps);
             Call call = worker().getCustomObjectsApi().createNamespacedCustomObjectCall(
                     group, version, KubernetesUtils.getNamespace(worker().getFactoryConfig()),
@@ -272,11 +252,6 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                 throw new RestException(Response.Status.NOT_FOUND, "This source resource was not found");
             }
 
-            V1alpha1SourceSpecPod pod = new V1alpha1SourceSpecPod();
-            Map<String, String> labels = oldRes.getMetadata().getLabels();
-            pod.setLabels(labels);
-            v1alpha1Source.getMetadata().setLabels(labels);
-            v1alpha1Source.getSpec().setPod(pod);
             v1alpha1Source.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
             v1alpha1Source.getMetadata().setResourceVersion(oldRes.getMetadata().getResourceVersion());
             this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source, clientAuthenticationDataHttps);

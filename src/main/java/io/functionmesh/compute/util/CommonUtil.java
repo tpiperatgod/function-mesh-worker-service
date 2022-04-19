@@ -18,6 +18,7 @@
  */
 package io.functionmesh.compute.util;
 
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -60,6 +61,10 @@ public class CommonUtil {
     public static final String COMPONENT_SERVICE = "Service";
     public static final String COMPONENT_HPA = "HorizontalPodAutoscaler";
     private static final String CLUSTER_NAME_ENV = "clusterName";
+    public static final String CLUSTER_LABEL_CLAIM = "pulsar-cluster";
+    public static final String TENANT_LABEL_CLAIM = "pulsar-tenant";
+    public static final String NAMESPACE_LABEL_CLAIM = "pulsar-namespace";
+    public static final String COMPONENT_LABEL_CLAIM = "pulsar-component";
 
     public static String getClusterNameEnv() {
         return System.getenv(CLUSTER_NAME_ENV);
@@ -97,13 +102,15 @@ public class CommonUtil {
     }
 
     public static V1ObjectMeta makeV1ObjectMeta(String name, String k8sNamespace, String pulsarNamespace, String tenant,
-                                                String cluster, V1OwnerReference ownerReference) {
+                                                String cluster, V1OwnerReference ownerReference,
+                                                Map<String, String> customLabelClaims) {
         V1ObjectMeta v1ObjectMeta = new V1ObjectMeta();
         v1ObjectMeta.setName(createObjectName(cluster, tenant, pulsarNamespace, name));
         v1ObjectMeta.setNamespace(k8sNamespace);
         if (ownerReference != null) {
             v1ObjectMeta.setOwnerReferences(Collections.singletonList(ownerReference));
         }
+        v1ObjectMeta.setLabels(customLabelClaims);
 
         return v1ObjectMeta;
     }
@@ -229,5 +236,31 @@ public class CommonUtil {
 
     public static boolean isMapEmpty(Map<String, String> map) {
         return map == null || map.isEmpty();
+    }
+
+    public static Map<String, String> mergeMap(Map<String, String> from, Map<String, String> to) {
+        if (!CommonUtil.isMapEmpty(from)) {
+            from.forEach((k, v) -> {
+                to.merge(k, v, (a, b) -> b);
+            });
+        }
+        return to;
+    }
+
+    public static Map<String, String> getCustomLabelClaims(String clusterName, String tenant, String namespace, String compName) {
+        Map<String, String> customLabelClaims = Maps.newHashMap();
+        customLabelClaims.put(CLUSTER_LABEL_CLAIM, clusterName);
+        customLabelClaims.put(TENANT_LABEL_CLAIM, tenant);
+        customLabelClaims.put(NAMESPACE_LABEL_CLAIM, namespace);
+        customLabelClaims.put(COMPONENT_LABEL_CLAIM, compName);
+        return customLabelClaims;
+    }
+
+    public static String getCustomLabelClaimsSelector(String clusterName, String tenant, String namespace) {
+        return String.format(
+                "%s=%s,%s=%s,%s=%s",
+                CLUSTER_LABEL_CLAIM, clusterName,
+                TENANT_LABEL_CLAIM, tenant,
+                NAMESPACE_LABEL_CLAIM, namespace);
     }
 }

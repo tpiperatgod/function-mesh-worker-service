@@ -58,6 +58,7 @@ import java.util.Map;
 
 import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
+import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 
@@ -85,6 +86,7 @@ public class SinksUtil {
         String archive = sinkConfig.getArchive();
         SinkConfigUtils.ExtractedSinkDetails extractedSinkDetails =
                 new SinkConfigUtils.ExtractedSinkDetails("", customRuntimeOptions.getInputTypeClassName());
+        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sinkConfig.getTenant(), sinkConfig.getNamespace(), sinkConfig.getName());
 
         Function.FunctionDetails functionDetails = null;
         try {
@@ -102,7 +104,8 @@ public class SinksUtil {
                 functionDetails.getNamespace(),
                 functionDetails.getTenant(),
                 clusterName,
-                CommonUtil.getOwnerReferenceFromCustomConfigs(customConfig)));
+                CommonUtil.getOwnerReferenceFromCustomConfigs(customConfig),
+                customLabelClaims));
 
         V1alpha1SinkSpec v1alpha1SinkSpec = new V1alpha1SinkSpec();
 
@@ -296,30 +299,15 @@ public class SinksUtil {
             throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
         }
         Map<String, String> customLabels = new HashMap<>();
-        if (!CommonUtil.isMapEmpty(customConfig.getLabels())) {
-            customConfig.getLabels().forEach((k, v) -> {
-                customLabels.merge(k, v, (a, b) -> b);
-            });
-        }
-        if (!CommonUtil.isMapEmpty(customConfig.getSinkLabels())) {
-            customConfig.getSinkLabels().forEach((k, v) -> {
-                customLabels.merge(k, v, (a, b) -> b);
-            });
-        }
+        CommonUtil.mergeMap(customConfig.getLabels(), customLabels);
+        CommonUtil.mergeMap(customConfig.getSinkLabels(), customLabels);
+        CommonUtil.mergeMap(customLabelClaims, customLabels);
         if (!CommonUtil.isMapEmpty(customLabels)) {
             specPod.setLabels(customLabels);
         }
         Map<String, String> customAnnotations = new HashMap<>();
-        if (!CommonUtil.isMapEmpty(customConfig.getAnnotations())) {
-            customConfig.getAnnotations().forEach((k, v) -> {
-                customAnnotations.merge(k, v, (a, b) -> b);
-            });
-        }
-        if (!CommonUtil.isMapEmpty(customConfig.getSinkAnnotations())) {
-            customConfig.getSinkAnnotations().forEach((k, v) -> {
-                customAnnotations.merge(k, v, (a, b) -> b);
-            });
-        }
+        CommonUtil.mergeMap(customConfig.getAnnotations(), customAnnotations);
+        CommonUtil.mergeMap(customConfig.getSinkAnnotations(), customAnnotations);
         if (!CommonUtil.isMapEmpty(customAnnotations)) {
             specPod.setAnnotations(customAnnotations);
         }

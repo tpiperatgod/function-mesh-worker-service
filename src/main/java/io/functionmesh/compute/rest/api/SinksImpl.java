@@ -164,25 +164,6 @@ public class SinksImpl extends MeshComponentImpl
         // override namesapce by configuration
         v1alpha1Sink.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
         try {
-            V1alpha1SinkSpecPod pod = v1alpha1Sink.getSpec().getPod();
-            if (pod == null) {
-                pod = new V1alpha1SinkSpecPod();
-            }
-            Map<String, String> customLabels = pod.getLabels();
-            if (customLabels == null) {
-                customLabels = Maps.newHashMap();
-            }
-            customLabels.put(CLUSTER_LABEL_CLAIM, v1alpha1Sink.getSpec().getClusterName());
-            customLabels.put(TENANT_LABEL_CLAIM, tenant);
-            customLabels.put(NAMESPACE_LABEL_CLAIM, namespace);
-            customLabels.put(COMPONENT_LABEL_CLAIM, sinkName);
-
-            if (worker().getFactoryConfig() != null && worker().getFactoryConfig().getCustomLabels() != null) {
-                customLabels.putAll(worker().getFactoryConfig().getCustomLabels());
-            }
-            pod.setLabels(customLabels);
-            v1alpha1Sink.getMetadata().setLabels(customLabels);
-            v1alpha1Sink.getSpec().setPod(pod);
             this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientAuthenticationDataHttps);
             Call call =
                     worker().getCustomObjectsApi()
@@ -271,16 +252,10 @@ public class SinksImpl extends MeshComponentImpl
                 log.error("update {}/{}/{} sink failed, the sink resource cannot be found", tenant, namespace, sinkName);
                 throw new RestException(Response.Status.NOT_FOUND, "This sink resource was not found");
             }
-            Map<String, String> labels = oldRes.getMetadata().getLabels();
-            V1alpha1SinkSpecPod pod = new V1alpha1SinkSpecPod();
-            pod.setLabels(labels);
-            v1alpha1Sink.getMetadata().setLabels(labels);
-            v1alpha1Sink.getSpec().setPod(pod);
-            this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientAuthenticationDataHttps);
             v1alpha1Sink.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
-            v1alpha1Sink
-                    .getMetadata()
-                    .setResourceVersion(oldRes.getMetadata().getResourceVersion());
+            v1alpha1Sink.getMetadata().setResourceVersion(oldRes.getMetadata().getResourceVersion());
+
+            this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientAuthenticationDataHttps);
             Call replaceCall = customObjectsApi.replaceNamespacedCustomObjectCall(
                                     group,
                                     version,

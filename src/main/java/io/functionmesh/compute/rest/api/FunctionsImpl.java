@@ -156,26 +156,8 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                 worker()
         );
         // override namespace by configuration file
-        V1alpha1FunctionSpecPod pod = v1alpha1Function.getSpec().getPod();
-        if (pod == null) {
-            pod = new V1alpha1FunctionSpecPod();
-        }
         v1alpha1Function.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
-        Map<String, String> customLabels = pod.getLabels();
-        if (customLabels == null) {
-            customLabels = Maps.newHashMap();
-        }
-        customLabels.put(CLUSTER_LABEL_CLAIM, v1alpha1Function.getSpec().getClusterName());
-        customLabels.put(TENANT_LABEL_CLAIM, tenant);
-        customLabels.put(NAMESPACE_LABEL_CLAIM, namespace);
-        customLabels.put(COMPONENT_LABEL_CLAIM, functionName);
 
-        if (worker().getFactoryConfig() != null && worker().getFactoryConfig().getCustomLabels() != null) {
-            customLabels.putAll(worker().getFactoryConfig().getCustomLabels());
-        }
-        pod.setLabels(customLabels);
-        v1alpha1Function.getSpec().setPod(pod);
-        v1alpha1Function.getMetadata().setLabels(customLabels);
         try {
             this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function, clientAuthenticationDataHttps);
             Call call = worker().getCustomObjectsApi().createNamespacedCustomObjectCall(
@@ -257,14 +239,14 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                     null
             );
             V1alpha1Function oldFn = executeCall(getCall, V1alpha1Function.class);
+            if (oldFn.getMetadata() == null || oldFn.getMetadata().getLabels() == null) {
+                log.error("update {}/{}/{} function failed, the function resource cannot be found", tenant, namespace, functionName);
+                throw new RestException(Response.Status.NOT_FOUND, "This function resource was not found");
+            }
 
             v1alpha1Function.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
-            Map<String, String> customLabels = oldFn.getMetadata().getLabels();
-            V1alpha1FunctionSpecPod pod = new V1alpha1FunctionSpecPod();
-            pod.setLabels(customLabels);
-            v1alpha1Function.getSpec().setPod(pod);
-            v1alpha1Function.getMetadata().setLabels(customLabels);
             v1alpha1Function.getMetadata().setResourceVersion(oldFn.getMetadata().getResourceVersion());
+
             this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function, clientAuthenticationDataHttps);
             Call replaceCall = worker().getCustomObjectsApi().replaceNamespacedCustomObjectCall(
                     group,
