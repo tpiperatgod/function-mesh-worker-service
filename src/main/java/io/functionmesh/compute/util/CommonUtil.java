@@ -29,6 +29,8 @@ import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1OwnerReference;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -59,6 +61,8 @@ public class CommonUtil {
     public static final String COMPONENT_STATEFUL_SET = "StatefulSet";
     public static final String COMPONENT_SERVICE = "Service";
     public static final String COMPONENT_HPA = "HorizontalPodAutoscaler";
+    public static final String DEFAULT_FUNCTION_EXECUTABLE = "function-executable";
+    public static final String DEFAULT_FUNCTION_DOWNLOAD_DIRECTORY = "/pulsar/";
     private static final String CLUSTER_NAME_ENV = "clusterName";
 
     public static String getClusterNameEnv() {
@@ -224,10 +228,23 @@ public class CommonUtil {
                 StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
             return packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
         }
-        return null;
+        return DEFAULT_FUNCTION_EXECUTABLE;
     }
 
     public static boolean isMapEmpty(Map<String, String> map) {
         return map == null || map.isEmpty();
+    }
+
+    public static String buildDownloadPath(String providedDownloadDirectory, String archive) {
+        Path p = Paths.get(archive);
+        String fileName = p.getFileName().toString();
+        String downloadDirectory = providedDownloadDirectory;
+        if (StringUtils.isEmpty(downloadDirectory)) {
+            downloadDirectory = DEFAULT_FUNCTION_DOWNLOAD_DIRECTORY;
+        }
+        if (StringUtils.isEmpty(fileName)){
+            fileName = DEFAULT_FUNCTION_EXECUTABLE;
+        }
+        return Paths.get(downloadDirectory, fileName).toString();
     }
 }

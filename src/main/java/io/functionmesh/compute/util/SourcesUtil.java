@@ -36,7 +36,7 @@ import io.functionmesh.compute.sources.models.V1alpha1SourceSpecSecretsMap;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.custom.Quantity;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.apache.pulsar.common.functions.ProducerConfig;
 import org.apache.pulsar.common.functions.Resources;
@@ -57,6 +57,7 @@ import java.util.Map;
 
 import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
+import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 
 @Slf4j
@@ -127,8 +128,11 @@ public class SourcesUtil {
                 throw new RestException(Response.Status.BAD_REQUEST, String.format("connectorType %s is not supported yet", connectorType));
             }
         } else {
-            v1alpha1SourceSpecJava.setJar(sourceConfig.getArchive());
-            v1alpha1SourceSpecJava.setJarLocation(location);
+
+            v1alpha1SourceSpecJava.setJar(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), sourceConfig.getArchive()));
+            if (StringUtils.isNotEmpty(sourcePkgUrl)) {
+                v1alpha1SourceSpecJava.setJarLocation(location);
+            }
             v1alpha1SourceSpec.setJava(v1alpha1SourceSpecJava);
             extractedSourceDetails.setSourceClassName(sourceConfig.getClassName());
         }
