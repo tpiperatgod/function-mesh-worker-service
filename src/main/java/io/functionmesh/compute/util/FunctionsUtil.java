@@ -82,6 +82,7 @@ import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_
 import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_TENANT;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
 import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
+import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 
 @Slf4j
@@ -98,7 +99,7 @@ public class FunctionsUtil {
         CustomRuntimeOptions customRuntimeOptions = CommonUtil.getCustomRuntimeOptions(functionConfig.getCustomRuntimeOptions());
         String clusterName = CommonUtil.getClusterName(cluster, customRuntimeOptions);
         String serviceAccountName = customRuntimeOptions.getServiceAccountName();
-
+        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, functionConfig.getTenant(), functionConfig.getNamespace(), functionConfig.getName());
         Function.FunctionDetails functionDetails;
         try {
             functionDetails = FunctionConfigUtils.convert(functionConfig, null);
@@ -115,7 +116,8 @@ public class FunctionsUtil {
                 functionDetails.getNamespace(),
                 functionDetails.getTenant(),
                 clusterName,
-                CommonUtil.getOwnerReferenceFromCustomConfigs(customConfig)));
+                CommonUtil.getOwnerReferenceFromCustomConfigs(customConfig),
+                customLabelClaims));
 
         V1alpha1FunctionSpec v1alpha1FunctionSpec = new V1alpha1FunctionSpec();
 
@@ -370,39 +372,16 @@ public class FunctionsUtil {
                 StringUtils.isNotEmpty(serviceAccountName)) {
             specPod.setServiceAccountName(serviceAccountName);
         }
-        try {
-            if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
-                specPod.setImagePullSecrets(customConfig.asV1alpha1FunctionSpecPodImagePullSecrets());
-            }
-        } catch (Exception e) {
-            log.error("Invalid register function request {}: {}", functionName, e);
-            throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
-        }
         Map<String, String> customLabels = new HashMap<>();
-        if (!CommonUtil.isMapEmpty(customConfig.getLabels())) {
-            customConfig.getLabels().forEach((k, v) -> {
-                customLabels.merge(k, v, (a, b) -> b);
-            });
-        }
-        if (!CommonUtil.isMapEmpty(customConfig.getFunctionLabels())) {
-            customConfig.getFunctionLabels().forEach((k, v) -> {
-                customLabels.merge(k, v, (a, b) -> b);
-            });
-        }
+        CommonUtil.mergeMap(customConfig.getLabels(), customLabels);
+        CommonUtil.mergeMap(customConfig.getFunctionLabels(), customLabels);
+        CommonUtil.mergeMap(customLabelClaims, customLabels);
         if (!CommonUtil.isMapEmpty(customLabels)) {
             specPod.setLabels(customLabels);
         }
         Map<String, String> customAnnotations = new HashMap<>();
-        if (!CommonUtil.isMapEmpty(customConfig.getAnnotations())) {
-            customConfig.getAnnotations().forEach((k, v) -> {
-                customAnnotations.merge(k, v, (a, b) -> b);
-            });
-        }
-        if (!CommonUtil.isMapEmpty(customConfig.getFunctionAnnotations())) {
-            customConfig.getFunctionAnnotations().forEach((k, v) -> {
-                customAnnotations.merge(k, v, (a, b) -> b);
-            });
-        }
+        CommonUtil.mergeMap(customConfig.getAnnotations(), customAnnotations);
+        CommonUtil.mergeMap(customConfig.getFunctionAnnotations(), customAnnotations);
         if (!CommonUtil.isMapEmpty(customAnnotations)) {
             specPod.setAnnotations(customAnnotations);
         }
