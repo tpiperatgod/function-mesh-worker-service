@@ -38,11 +38,9 @@ import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.kubernetes.client.custom.Quantity;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
-import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.common.functions.ConsumerConfig;
 import org.apache.pulsar.common.functions.FunctionConfig;
@@ -57,13 +55,10 @@ import org.apache.pulsar.functions.proto.Function;
 import org.apache.pulsar.functions.proto.InstanceCommunication;
 import org.apache.pulsar.functions.utils.FunctionCommon;
 import org.apache.pulsar.functions.utils.FunctionConfigUtils;
-import org.apache.pulsar.packages.management.core.common.PackageMetadata;
-import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 
 import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -73,15 +68,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_CHECKSUM;
-import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FILE_NAME;
-import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FILE_SIZE;
-import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FUNCTION_NAME;
-import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_MANAGED_BY_MESH_WORKER_SERVICE;
-import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_NAMESPACE;
-import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_TENANT;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
 import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
+import static io.functionmesh.compute.util.CommonUtil.DEFAULT_FUNCTION_DOWNLOAD_DIRECTORY;
+import static io.functionmesh.compute.util.CommonUtil.DEFAULT_FUNCTION_EXECUTABLE;
+import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 
@@ -273,9 +264,7 @@ public class FunctionsUtil {
         // v1alpha1FunctionSpecPulsar.setAuthConfig(CommonUtil.getPulsarClusterAuthConfigMapName(clusterName));
         v1alpha1FunctionSpec.setPulsar(v1alpha1FunctionSpecPulsar);
 
-        // TODO: dynamic file name to function CRD
-        String downloadDirectory = "/pulsar/";
-        String fileName = "function-executable";
+        String fileName = DEFAULT_FUNCTION_EXECUTABLE;
         boolean isPkgUrlProvided = StringUtils.isNotEmpty(functionPkgUrl);
         File componentPackageFile = null;
         try {
@@ -304,7 +293,7 @@ public class FunctionsUtil {
         }
         if (StringUtils.isNotEmpty(functionConfig.getJar())) {
             V1alpha1FunctionSpecJava v1alpha1FunctionSpecJava = new V1alpha1FunctionSpecJava();
-            v1alpha1FunctionSpecJava.setJar(Paths.get(downloadDirectory, fileName).toString());
+            v1alpha1FunctionSpecJava.setJar(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecJava.setJarLocation(functionPkgUrl);
             }
@@ -335,7 +324,7 @@ public class FunctionsUtil {
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getPy())) {
             V1alpha1FunctionSpecPython v1alpha1FunctionSpecPython = new V1alpha1FunctionSpecPython();
-            v1alpha1FunctionSpecPython.setPy(Paths.get(downloadDirectory, fileName).toString());
+            v1alpha1FunctionSpecPython.setPy(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecPython.setPyLocation(functionPkgUrl);
             }
@@ -347,7 +336,7 @@ public class FunctionsUtil {
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getGo())) {
             V1alpha1FunctionSpecGolang v1alpha1FunctionSpecGolang = new V1alpha1FunctionSpecGolang();
-            v1alpha1FunctionSpecGolang.setGo(Paths.get(downloadDirectory, fileName).toString());
+            v1alpha1FunctionSpecGolang.setGo(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecGolang.setGoLocation(functionPkgUrl);
             }
