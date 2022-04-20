@@ -562,7 +562,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
         List<ConnectorDefinition> connectorDefinitions = getListOfConnectors();
         List<ConnectorDefinition> retval = new ArrayList<>();
         for (ConnectorDefinition connectorDefinition : connectorDefinitions) {
-            if (!org.apache.commons.lang.StringUtils.isEmpty(connectorDefinition.getSourceClass())) {
+            if (!StringUtils.isEmpty(connectorDefinition.getSourceClass())) {
                 retval.add(connectorDefinition);
             }
         }

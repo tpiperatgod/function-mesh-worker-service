@@ -122,7 +122,7 @@ public class Generate {
         customRuntimeOptions.setInputTypeClassName("[B");
         String customRuntimeOptionsJSON = new Gson().toJson(customRuntimeOptions, CustomRuntimeOptions.class);
         sinkConfig.setCustomRuntimeOptions(customRuntimeOptionsJSON);
-        sinkConfig.setArchive("connectors/pulsar-io-elastic-search-2.7.0-rc-pm-3.nar");
+        sinkConfig.setArchive("/pulsar/pulsar-io-elastic-search-2.7.0-rc-pm-3.nar");
         sinkConfig.setAutoAck(true);
         Map<String, Object> configs = new HashMap<>();
         configs.put("elasticSearchUrl", "https://testing-es.app");
@@ -173,7 +173,7 @@ public class Generate {
         customRuntimeOptions.setOutputTypeClassName("org.apache.pulsar.common.schema.KeyValue");
         String customRuntimeOptionsJSON = new Gson().toJson(customRuntimeOptions, CustomRuntimeOptions.class);
         sourceConfig.setCustomRuntimeOptions(customRuntimeOptionsJSON);
-        sourceConfig.setArchive("connectors/pulsar-io-debezium-mongodb-2.7.0.nar");
+        sourceConfig.setArchive("/pulsar/pulsar-io-debezium-mongodb-2.7.0.nar");
         Map<String, Object> configs = new HashMap<>();
         String configsName = "test-sourceConfig";
         configs.put("name", configsName);

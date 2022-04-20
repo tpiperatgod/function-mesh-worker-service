@@ -31,6 +31,7 @@ import org.apache.pulsar.common.io.SourceConfig;
 import org.apache.pulsar.common.nar.NarClassLoader;
 import org.apache.pulsar.functions.utils.FunctionCommon;
 import org.apache.pulsar.functions.utils.io.ConnectorUtils;
+import org.apache.pulsar.functions.worker.WorkerConfig;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -64,6 +65,7 @@ public class SourcesUtilTest {
         String topicName = "persistent://public/default/destination";
         String typeClassName = "org.apache.pulsar.common.schema.KeyValue";
         String archive = "connectors/pulsar-io-debezium-mongodb-2.7.0.nar";
+        String jar = "/pulsar/pulsar-io-debezium-mongodb-2.7.0.nar";
         int parallelism = 1;
         String clusterName = "test-pulsar";
         Map<String, Object> configs = new HashMap<>();
@@ -87,6 +89,9 @@ public class SourcesUtilTest {
 
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
+        WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
+        PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
+
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
         V1alpha1Source v1alpha1Source = SourcesUtil.createV1alpha1SourceFromSourceConfig(kind, group, version,
                 componentName, null, uploadedInputStream, sourceConfig, null,
@@ -100,7 +105,7 @@ public class SourcesUtilTest {
         Assert.assertEquals(v1alpha1SourceSpec.getPulsar().getPulsarConfig(),
                 CommonUtil.getPulsarClusterConfigMapName(clusterName));
         Assert.assertEquals(v1alpha1SourceSpec.getOutput().getTypeClassName(), typeClassName);
-        Assert.assertEquals(v1alpha1SourceSpec.getJava().getJar(), archive);
+        Assert.assertEquals(v1alpha1SourceSpec.getJava().getJar(), jar);
         Assert.assertEquals(v1alpha1SourceSpec.getSourceConfig(), configs);
     }
 
@@ -130,6 +135,8 @@ public class SourcesUtilTest {
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
+        WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
+        PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
         V1alpha1Source v1alpha1Source = SourcesUtil.createV1alpha1SourceFromSourceConfig(kind, group, version,
                 componentName, null, uploadedInputStream, sourceConfig, null,
