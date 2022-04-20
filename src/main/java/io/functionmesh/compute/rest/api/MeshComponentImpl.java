@@ -54,6 +54,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM;
+import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
 import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.pulsar.functions.proto.Function.FunctionDetails.ComponentType.FUNCTION;
@@ -71,14 +73,6 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
     final String version = "v1alpha1";
 
     String kind = "Function";
-
-    final String CLUSTER_LABEL_CLAIM = "pulsar-cluster";
-
-    final String TENANT_LABEL_CLAIM = "pulsar-tenant";
-
-    final String NAMESPACE_LABEL_CLAIM = "pulsar-namespace";
-
-    final String COMPONENT_LABEL_CLAIM = "pulsar-component";
 
     MeshComponentImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier,
                       Function.FunctionDetails.ComponentType componentType) {
@@ -315,11 +309,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
         try {
             String labelSelector;
             String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
-            labelSelector = String.format(
-                    "%s=%s,%s=%s,%s=%s",
-                    CLUSTER_LABEL_CLAIM, cluster,
-                    TENANT_LABEL_CLAIM, tenant,
-                    NAMESPACE_LABEL_CLAIM, namespace);
+            labelSelector = getCustomLabelClaimsSelector(cluster, tenant, namespace);
             Call call = worker().getCustomObjectsApi().listNamespacedCustomObjectCall(
                     group,
                     version,
