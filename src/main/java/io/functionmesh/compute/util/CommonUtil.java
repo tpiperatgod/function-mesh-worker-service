@@ -250,10 +250,11 @@ public class CommonUtil {
         if (StringUtils.isEmpty(downloadDirectory)) {
             downloadDirectory = DEFAULT_FUNCTION_DOWNLOAD_DIRECTORY;
         }
-        if (StringUtils.isEmpty(fileName)){
+        if (StringUtils.isEmpty(fileName)) {
             fileName = DEFAULT_FUNCTION_EXECUTABLE;
         }
         return Paths.get(downloadDirectory, fileName).toString();
+    }
 
     public static Map<String, String> mergeMap(Map<String, String> from, Map<String, String> to) {
         if (!CommonUtil.isMapEmpty(from)) {
