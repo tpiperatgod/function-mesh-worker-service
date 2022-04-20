@@ -157,18 +157,7 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
         );
         // override namespace by configuration file
         v1alpha1Function.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
-        Map<String, String> customLabels = Maps.newHashMap();
-        customLabels.put(CLUSTER_LABEL_CLAIM, v1alpha1Function.getSpec().getClusterName());
-        customLabels.put(TENANT_LABEL_CLAIM, tenant);
-        customLabels.put(NAMESPACE_LABEL_CLAIM, namespace);
-        customLabels.put(COMPONENT_LABEL_CLAIM, functionName);
-        V1alpha1FunctionSpecPod pod = new V1alpha1FunctionSpecPod();
-        if (worker().getFactoryConfig() != null && worker().getFactoryConfig().getCustomLabels() != null) {
-            customLabels.putAll(worker().getFactoryConfig().getCustomLabels());
-        }
-        pod.setLabels(customLabels);
-        v1alpha1Function.getSpec().setPod(pod);
-        v1alpha1Function.getMetadata().setLabels(customLabels);
+
         try {
             this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function, clientAuthenticationDataHttps);
             Call call = worker().getCustomObjectsApi().createNamespacedCustomObjectCall(
@@ -250,14 +239,14 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                     null
             );
             V1alpha1Function oldFn = executeCall(getCall, V1alpha1Function.class);
+            if (oldFn.getMetadata() == null || oldFn.getMetadata().getLabels() == null) {
+                log.error("update {}/{}/{} function failed, the function resource cannot be found", tenant, namespace, functionName);
+                throw new RestException(Response.Status.NOT_FOUND, "This function resource was not found");
+            }
 
             v1alpha1Function.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
-            Map<String, String> customLabels = oldFn.getMetadata().getLabels();
-            V1alpha1FunctionSpecPod pod = new V1alpha1FunctionSpecPod();
-            pod.setLabels(customLabels);
-            v1alpha1Function.getSpec().setPod(pod);
-            v1alpha1Function.getMetadata().setLabels(customLabels);
             v1alpha1Function.getMetadata().setResourceVersion(oldFn.getMetadata().getResourceVersion());
+
             this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function, clientAuthenticationDataHttps);
             Call replaceCall = worker().getCustomObjectsApi().replaceNamespacedCustomObjectCall(
                     group,
@@ -597,7 +586,7 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                     MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
                     List<V1alpha1FunctionSpecPodVolumes> volumesList = customConfig.asV1alpha1FunctionSpecPodVolumesList();
                     if (volumesList != null && !volumesList.isEmpty()) {
-                        v1alpha1Function.getSpec().getPod().setVolumes(volumesList);
+                        podPolicy.setVolumes(volumesList);
                     }
                     List<V1alpha1FunctionSpecPodVolumeMounts> volumeMountsList =
                             customConfig.asV1alpha1FunctionSpecPodVolumeMounts();
@@ -632,10 +621,13 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                         v1alpha1Function.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
                     if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())
-                            && StringUtils.isEmpty(v1alpha1Function.getSpec().getPod().getServiceAccountName())) {
-                        v1alpha1Function.getSpec().getPod().setServiceAccountName(
-                                customConfig.getDefaultServiceAccountName());
+                            && StringUtils.isEmpty(podPolicy.getServiceAccountName())) {
+                        podPolicy.setServiceAccountName(customConfig.getDefaultServiceAccountName());
                     }
+                    if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
+                        podPolicy.setImagePullSecrets(customConfig.asV1alpha1FunctionSpecPodImagePullSecrets());
+                    }
+                    v1alpha1Function.getSpec().setPod(podPolicy);
                 } catch (Exception e) {
                     log.error("Error create or update auth or tls secret for {} {}/{}/{}",
                             ComponentTypeUtils.toString(componentType), tenant, namespace, functionName, e);

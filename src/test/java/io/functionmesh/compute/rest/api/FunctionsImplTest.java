@@ -34,6 +34,7 @@ import io.kubernetes.client.openapi.JSON;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
+import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
@@ -41,6 +42,7 @@ import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
 import io.kubernetes.client.openapi.models.V1StatefulSetSpec;
 import io.kubernetes.client.openapi.models.V1StatefulSetStatus;
+import java.util.HashMap;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import okhttp3.Response;
@@ -72,6 +74,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
@@ -266,7 +270,7 @@ public class FunctionsImplTest {
         expectedFunctionStatus.setNumInstances(1);
         expectedFunctionStatus.setNumRunning(1);
 
-        Assert.assertEquals(expectedFunctionStatus, functionStatus);
+        assertEquals(expectedFunctionStatus, functionStatus);
     }
 
     @Test
@@ -862,6 +866,6 @@ public class FunctionsImplTest {
         V1alpha1Function v1alpha1Function = json.getGson().fromJson(testBody, V1alpha1Function.class);
         FunctionConfig expectedFunctionConfig = FunctionsUtil.createFunctionConfigFromV1alpha1Function(tenant,
                 namespace, functionName, v1alpha1Function);
-        Assert.assertEquals(expectedFunctionConfig, functionConfig);
+        assertEquals(expectedFunctionConfig, functionConfig);
     }
 }
