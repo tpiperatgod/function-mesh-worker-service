@@ -164,7 +164,7 @@ public class SinksImpl extends MeshComponentImpl
                         this.meshWorkerServiceSupplier.get().getConnectorsManager(),
                         cluster, worker());
         // override namesapce by configuration
-        v1alpha1Sink.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
+        v1alpha1Sink.getMetadata().setNamespace(worker().getJobNamespace());
         try {
             this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientAuthenticationDataHttps);
             Call call =
@@ -172,7 +172,7 @@ public class SinksImpl extends MeshComponentImpl
                             .createNamespacedCustomObjectCall(
                                     group,
                                     version,
-                                    KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                                    worker().getJobNamespace(),
                                     plural,
                                     v1alpha1Sink,
                                     null,
@@ -247,27 +247,27 @@ public class SinksImpl extends MeshComponentImpl
             Call getCall =
                     customObjectsApi.getNamespacedCustomObjectCall(
                                     group, version,
-                                    KubernetesUtils.getNamespace(worker().getFactoryConfig()), plural,
+                                    worker().getJobNamespace(), plural,
                                     v1alpha1Sink.getMetadata().getName(), null);
             V1alpha1Sink oldRes = executeCall(getCall, V1alpha1Sink.class);
             if (oldRes.getMetadata() == null || oldRes.getMetadata().getLabels() == null) {
                 log.error("update {}/{}/{} sink failed, the sink resource cannot be found", tenant, namespace, sinkName);
                 throw new RestException(Response.Status.NOT_FOUND, "This sink resource was not found");
             }
-            v1alpha1Sink.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
+            v1alpha1Sink.getMetadata().setNamespace(worker().getJobNamespace());
             v1alpha1Sink.getMetadata().setResourceVersion(oldRes.getMetadata().getResourceVersion());
 
             this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientAuthenticationDataHttps);
             Call replaceCall = customObjectsApi.replaceNamespacedCustomObjectCall(
-                                    group,
-                                    version,
-                                    KubernetesUtils.getNamespace(worker().getFactoryConfig()),
-                                    plural,
-                                    v1alpha1Sink.getMetadata().getName(),
-                                    v1alpha1Sink,
-                                    null,
-                                    null,
-                                    null);
+                group,
+                version,
+                worker().getJobNamespace(),
+                plural,
+                v1alpha1Sink.getMetadata().getName(),
+                v1alpha1Sink,
+                null,
+                null,
+                null);
             executeCall(replaceCall, Object.class);
         } catch (Exception e) {
             log.error(
@@ -312,7 +312,7 @@ public class SinksImpl extends MeshComponentImpl
                 ComponentTypeUtils.toString(componentType));
         try {
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
-            String nameSpaceName = KubernetesUtils.getNamespace(worker().getFactoryConfig());
+            String nameSpaceName = worker().getJobNamespace();
             Call call =
                     worker().getCustomObjectsApi()
                             .getNamespacedCustomObjectCall(
@@ -557,7 +557,7 @@ public class SinksImpl extends MeshComponentImpl
             Call call =
                     worker().getCustomObjectsApi()
                             .getNamespacedCustomObjectCall(
-                                    group, version, KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                                    group, version, worker().getJobNamespace(),
                                     plural, hashName, null);
 
             V1alpha1Sink v1alpha1Sink = executeCall(call, V1alpha1Sink.class);
@@ -643,14 +643,12 @@ public class SinksImpl extends MeshComponentImpl
                     if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
                             && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
                         String authSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "auth",
-                                v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName,
-                                worker().getWorkerConfig(), worker().getCoreV1Api(), worker().getFactoryConfig());
+                                v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, worker());
                         v1alpha1Sink.getSpec().getPulsar().setAuthSecret(authSecretName);
                     }
                     if (worker().getWorkerConfig().getTlsEnabled()) {
                         String tlsSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "tls",
-                                v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName,
-                                worker().getWorkerConfig(), worker().getCoreV1Api(), worker().getFactoryConfig());
+                                v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, worker());
                         v1alpha1Sink.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
                     if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())

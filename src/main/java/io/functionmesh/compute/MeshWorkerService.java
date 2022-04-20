@@ -22,6 +22,7 @@ import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.rest.api.FunctionsImpl;
 import io.functionmesh.compute.rest.api.SinksImpl;
 import io.functionmesh.compute.rest.api.SourcesImpl;
+import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
@@ -74,6 +75,7 @@ public class MeshWorkerService implements WorkerService {
     private CustomObjectsApi customObjectsApi;
     private ApiClient apiClient;
     private PulsarAdmin brokerAdmin;
+    @Deprecated
     private KubernetesRuntimeFactoryConfig factoryConfig;
     private MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig;
 
@@ -192,4 +194,8 @@ public class MeshWorkerService implements WorkerService {
         // to do https://github.com/streamnative/function-mesh/issues/56
     }
 
+    public String getJobNamespace() {
+        String kubernetesJobNamespace = KubernetesUtils.getNamespace(getMeshWorkerServiceCustomConfig(), getFactoryConfig());
+        return kubernetesJobNamespace;
+    }
 }

@@ -111,7 +111,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             Call deleteObjectCall = worker().getCustomObjectsApi().deleteNamespacedCustomObjectCall(
                     group,
                     version,
-                    KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                    worker().getJobNamespace(),
                     plural,
                     hashName,
                     null,
@@ -137,7 +137,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
                                         DigestUtils.sha256Hex(
                                                 KubernetesUtils.getSecretName(
                                                         clusterName, tenant, namespace, componentName))),
-                                KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                                worker().getJobNamespace(),
                                 null,
                                 null,
                                 30,
@@ -157,7 +157,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
                                         DigestUtils.sha256Hex(
                                                 KubernetesUtils.getSecretName(
                                                         clusterName, tenant, namespace, componentName))),
-                                KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                                worker().getJobNamespace(),
                                 null,
                                 null,
                                 30,
@@ -313,7 +313,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             Call call = worker().getCustomObjectsApi().listNamespacedCustomObjectCall(
                     group,
                     version,
-                    KubernetesUtils.getNamespace(worker().getFactoryConfig()), plural,
+                    worker().getJobNamespace(), plural,
                     "false",
                     null,
                     null,
