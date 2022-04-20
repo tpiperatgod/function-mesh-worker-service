@@ -30,6 +30,7 @@ import org.apache.pulsar.common.io.SinkConfig;
 import org.apache.pulsar.common.nar.NarClassLoader;
 import org.apache.pulsar.functions.utils.FunctionCommon;
 import org.apache.pulsar.functions.utils.io.ConnectorUtils;
+import org.apache.pulsar.functions.worker.WorkerConfig;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -64,6 +65,7 @@ public class SinksUtilTest {
         String inputTopic = "persistent://public/default/input";
         String typeClassName = "[B";
         String archive = "connectors/pulsar-io-elastic-search-2.7.0-rc-pm-3.nar";
+        String jar = "/pulsar/pulsar-io-elastic-search-2.7.0-rc-pm-3.nar";
         boolean autoAck = true;
         int parallelism = 1;
         String clusterName = "test-pulsar";
@@ -88,6 +90,8 @@ public class SinksUtilTest {
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
+        WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
+        PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
         V1alpha1Sink actualV1alpha1Sink =
                 SinksUtil.createV1alpha1SkinFromSinkConfig(
@@ -103,7 +107,7 @@ public class SinksUtilTest {
         Assert.assertEquals(v1alpha1SinkSpec.getPulsar().getPulsarConfig(),
                 CommonUtil.getPulsarClusterConfigMapName(clusterName));
         Assert.assertEquals(v1alpha1SinkSpec.getInput().getTypeClassName(), typeClassName);
-        Assert.assertEquals(v1alpha1SinkSpec.getJava().getJar(), archive);
+        Assert.assertEquals(v1alpha1SinkSpec.getJava().getJar(), jar);
         Assert.assertEquals(v1alpha1SinkSpec.getAutoAck(), autoAck);
         Assert.assertEquals(v1alpha1SinkSpec.getSinkConfig(), configs);
     }
@@ -134,6 +138,8 @@ public class SinksUtilTest {
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
+        WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
+        PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
         V1alpha1Sink actualV1alpha1Sink =
                 SinksUtil.createV1alpha1SkinFromSinkConfig(

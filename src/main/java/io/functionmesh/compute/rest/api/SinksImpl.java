@@ -587,7 +587,7 @@ public class SinksImpl extends MeshComponentImpl
         List<ConnectorDefinition> connectorDefinitions = getListOfConnectors();
         List<ConnectorDefinition> retval = new ArrayList<>();
         for (ConnectorDefinition connectorDefinition : connectorDefinitions) {
-            if (!org.apache.commons.lang.StringUtils.isEmpty(connectorDefinition.getSinkClass())) {
+            if (!StringUtils.isEmpty(connectorDefinition.getSinkClass())) {
                 retval.add(connectorDefinition);
             }
         }

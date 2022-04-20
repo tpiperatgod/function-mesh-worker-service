@@ -36,7 +36,7 @@ import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecSecretsMap;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.custom.Quantity;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.apache.pulsar.common.functions.ConsumerConfig;
 import org.apache.pulsar.common.functions.Resources;
@@ -58,6 +58,7 @@ import java.util.Map;
 
 import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
+import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
@@ -134,9 +135,11 @@ public class SinksUtil {
                 log.warn("cannot find built-in connector {}", connectorType);
                 throw new RestException(Response.Status.BAD_REQUEST, String.format("connectorType %s is not supported yet", connectorType));
             }
-        } else {
-            v1alpha1SinkSpecJava.setJar(sinkConfig.getArchive());
-            v1alpha1SinkSpecJava.setJarLocation(location);
+        } else if (StringUtils.isNotEmpty(sinkConfig.getArchive())){
+            v1alpha1SinkSpecJava.setJar(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), sinkConfig.getArchive()));
+            if (StringUtils.isNotEmpty(sinkPkgUrl)) {
+                v1alpha1SinkSpecJava.setJarLocation(location);
+            }
             v1alpha1SinkSpec.setJava(v1alpha1SinkSpecJava);
             extractedSinkDetails.setSinkClassName(sinkConfig.getClassName());
         }
