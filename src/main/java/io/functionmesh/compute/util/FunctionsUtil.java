@@ -298,7 +298,7 @@ public class FunctionsUtil {
                 v1alpha1FunctionSpecJava.setJarLocation(functionPkgUrl);
             }
             String extraDependenciesDir = "";
-            if (StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
+            if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
                 if (Paths.get(worker.getFactoryConfig().getExtraFunctionDependenciesDir()).isAbsolute()) {
                     extraDependenciesDir = worker.getFactoryConfig().getExtraFunctionDependenciesDir();
                 } else {

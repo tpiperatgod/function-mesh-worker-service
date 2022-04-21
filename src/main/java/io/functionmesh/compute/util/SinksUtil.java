@@ -121,7 +121,7 @@ public class SinksUtil {
 
         V1alpha1SinkSpecJava v1alpha1SinkSpecJava = new V1alpha1SinkSpecJava();
         String extraDependenciesDir = "";
-        if (StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
+        if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
             if (Paths.get(worker.getFactoryConfig().getExtraFunctionDependenciesDir()).isAbsolute()) {
                 extraDependenciesDir = worker.getFactoryConfig().getExtraFunctionDependenciesDir();
             } else {

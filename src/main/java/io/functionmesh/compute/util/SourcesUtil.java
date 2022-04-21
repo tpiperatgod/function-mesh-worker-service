@@ -116,7 +116,7 @@ public class SourcesUtil {
 
         V1alpha1SourceSpecJava v1alpha1SourceSpecJava = new V1alpha1SourceSpecJava();
         String extraDependenciesDir = "";
-        if (StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
+        if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
             if (Paths.get(worker.getFactoryConfig().getExtraFunctionDependenciesDir()).isAbsolute()) {
                 extraDependenciesDir = worker.getFactoryConfig().getExtraFunctionDependenciesDir();
             } else {
