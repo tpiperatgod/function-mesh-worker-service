@@ -168,6 +168,15 @@ public class MeshWorkerServiceCustomConfig {
     )
     protected List<V1alpha1SinkSpecPodInitContainers> sinkInitContainers;
 
+    @FieldContext(
+            doc = "The Kubernetes namespace to run the function instances. It is `default`, if this setting is left to be empty"
+    )
+    protected String jobNamespace;
+
+    @FieldContext(
+            doc = "the directory for dropping extra function dependencies. If it is not absolute path, it is relative to `pulsarRootDir`"
+    )
+    protected String extraFunctionDependenciesDir;
 
     public List<V1alpha1SinkSpecPodVolumes> asV1alpha1SinkSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
