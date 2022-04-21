@@ -491,8 +491,7 @@ public class SourcesImpTest {
         PowerMockito.when(
                 meshWorkerService
                         .getCustomObjectsApi()
-                        .getNamespacedCustomObjectCall(
-                                group, version, namespace, plural, "source-mongodb-sample-d1dc115a", null))
+                        .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
                 .thenReturn(getCall);
 
         PowerMockito.when(
@@ -629,9 +628,6 @@ public class SourcesImpTest {
         ResponseBody responseBody = PowerMockito.mock(RealResponseBody.class);
         ApiClient apiClient = PowerMockito.mock(ApiClient.class);
 
-        String group = "compute.functionmesh.io";
-        String plural = "sources";
-        String version = "v1alpha1";
         String tenant = "public";
         String namespace = "default";
         String componentName = "source-sample";
@@ -642,10 +638,7 @@ public class SourcesImpTest {
         PowerMockito.when(
                 meshWorkerService
                         .getCustomObjectsApi()
-                        .getNamespacedCustomObjectCall(
-                                group, version, namespace, plural,
-                                CommonUtil.createObjectName("test-pulsar", tenant, namespace, componentName),
-                                null))
+                        .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
                 .thenReturn(call);
         PowerMockito.when(call.execute()).thenReturn(response);
         PowerMockito.when(response.isSuccessful()).thenReturn(true);
@@ -656,7 +649,7 @@ public class SourcesImpTest {
         PowerMockito.when(apiClient.getJSON()).thenReturn(json);
 
         V1StatefulSet v1StatefulSet = PowerMockito.mock(V1StatefulSet.class);
-        PowerMockito.when(appsV1Api.readNamespacedStatefulSet(jobName, namespace, null, null, null)).thenReturn(v1StatefulSet);
+        PowerMockito.when(appsV1Api.readNamespacedStatefulSet(any(), any(), any(), any(), any())).thenReturn(v1StatefulSet);
         V1ObjectMeta v1StatefulSetV1ObjectMeta = PowerMockito.mock(V1ObjectMeta.class);
         PowerMockito.when(v1StatefulSet.getMetadata()).thenReturn(v1StatefulSetV1ObjectMeta);
         V1StatefulSetSpec v1StatefulSetSpec = PowerMockito.mock(V1StatefulSetSpec.class);
@@ -803,9 +796,6 @@ public class SourcesImpTest {
         ResponseBody responseBody = PowerMockito.mock(RealResponseBody.class);
         ApiClient apiClient = PowerMockito.mock(ApiClient.class);
 
-        String group = "compute.functionmesh.io";
-        String plural = "sources";
-        String version = "v1alpha1";
         String tenant = "public";
         String namespace = "default";
         String componentName = "source-mongodb-sample";
@@ -813,9 +803,7 @@ public class SourcesImpTest {
         PowerMockito.when(
                 meshWorkerService
                         .getCustomObjectsApi()
-                        .getNamespacedCustomObjectCall(
-                                group, version, namespace, plural,
-                                CommonUtil.createObjectName("test-pulsar", tenant, namespace, componentName), null))
+                        .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
                 .thenReturn(call);
         PowerMockito.when(call.execute()).thenReturn(response);
         PowerMockito.when(response.isSuccessful()).thenReturn(true);

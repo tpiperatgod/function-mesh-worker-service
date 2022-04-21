@@ -18,7 +18,6 @@
  */
 package io.functionmesh.compute.rest.api;
 
-import com.google.common.collect.Maps;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecJava;
@@ -61,7 +60,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
@@ -157,14 +155,13 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                 worker()
         );
         // override namespace by configuration file
-        v1alpha1Function.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
-
+        v1alpha1Function.getMetadata().setNamespace(worker().getJobNamespace());
         try {
             this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function, clientAuthenticationDataHttps);
             Call call = worker().getCustomObjectsApi().createNamespacedCustomObjectCall(
                     group,
                     version,
-                    KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                    worker().getJobNamespace(),
                     plural,
                     v1alpha1Function,
                     null,
@@ -234,7 +231,7 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
             Call getCall = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     group,
                     version,
-                    KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                    worker().getJobNamespace(),
                     plural,
                     v1alpha1Function.getMetadata().getName(),
                     null
@@ -245,14 +242,14 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                 throw new RestException(Response.Status.NOT_FOUND, "This function resource was not found");
             }
 
-            v1alpha1Function.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
+            v1alpha1Function.getMetadata().setNamespace(worker().getJobNamespace());
             v1alpha1Function.getMetadata().setResourceVersion(oldFn.getMetadata().getResourceVersion());
 
             this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function, clientAuthenticationDataHttps);
             Call replaceCall = worker().getCustomObjectsApi().replaceNamespacedCustomObjectCall(
                     group,
                     version,
-                    KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                    worker().getJobNamespace(),
                     plural,
                     v1alpha1Function.getMetadata().getName(),
                     v1alpha1Function,
@@ -287,7 +284,7 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     group,
                     version,
-                    KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                    worker().getJobNamespace(),
                     plural,
                     hashName,
                     null
@@ -329,7 +326,7 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                 ComponentTypeUtils.toString(componentType));
         try {
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
-            String nameSpaceName = KubernetesUtils.getNamespace(worker().getFactoryConfig());
+            String nameSpaceName = worker().getJobNamespace();
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     group, version, nameSpaceName,
                     plural, hashName, null);
@@ -611,14 +608,12 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                     if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
                             && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
                         String authSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "auth",
-                                v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName,
-                                worker().getWorkerConfig(), worker().getCoreV1Api(), worker().getFactoryConfig());
+                                v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, worker());
                         v1alpha1Function.getSpec().getPulsar().setAuthSecret(authSecretName);
                     }
                     if (worker().getWorkerConfig().getTlsEnabled()) {
                         String tlsSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "tls",
-                                v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName,
-                                worker().getWorkerConfig(), worker().getCoreV1Api(), worker().getFactoryConfig());
+                                v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, worker());
                         v1alpha1Function.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
                     if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())
