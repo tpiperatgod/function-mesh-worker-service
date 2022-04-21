@@ -23,6 +23,7 @@ import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecJava;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPod;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodInitContainers;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumeMounts;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumes;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionStatus;
@@ -626,6 +627,11 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                     }
                     if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
                         podPolicy.setImagePullSecrets(customConfig.asV1alpha1FunctionSpecPodImagePullSecrets());
+                    }
+                    List<V1alpha1FunctionSpecPodInitContainers> initContainersList =
+                            customConfig.asV1alpha1FunctionSpecPodInitContainers();
+                    if (initContainersList != null && !initContainersList.isEmpty()) {
+                        podPolicy.setInitContainers(initContainersList);
                     }
                     v1alpha1Function.getSpec().setPod(podPolicy);
                 } catch (Exception e) {

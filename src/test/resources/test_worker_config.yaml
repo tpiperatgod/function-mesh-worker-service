@@ -86,3 +86,19 @@ functionsWorkerServiceCustomConfigs:
 
   sourceAnnotations:
     appType: source
+
+  functionInitContainers:
+    - name: init
+      image: streamnative/init:latest
+      command: ['sh', '-c', 'echo hello world']
+
+  sourceInitContainers:
+    - name: init
+      image: streamnative/init:latest
+      command: ['sh', '-c', 'echo hello world']
+
+  sinkInitContainers:
+    - name: init
+      image: streamnative/init:latest
+      command: ['sh', '-c', 'echo hello world']
+
