@@ -23,12 +23,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodImagePullSecrets;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodInitContainers;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumes;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodInitContainers;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumes;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodInitContainers;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumes;
 import io.kubernetes.client.openapi.models.V1OwnerReference;
 
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -112,5 +117,28 @@ public class WorkerConfigTest {
         assertEquals("sink", customConfig.getSinkAnnotations().get("appType"));
         assertEquals("source", customConfig.getSourceLabels().get("appType"));
         assertEquals("source", customConfig.getSourceAnnotations().get("appType"));
+
+
+        List<String> cmds = Arrays.asList("sh", "-c", "echo hello world");
+        List<V1alpha1FunctionSpecPodInitContainers> functionSpecPodInitContainers =
+                customConfig.asV1alpha1FunctionSpecPodInitContainers();
+        assertEquals(1, functionSpecPodInitContainers.size());
+        assertEquals("init", functionSpecPodInitContainers.get(0).getName());
+        assertEquals("streamnative/init:latest", functionSpecPodInitContainers.get(0).getImage());
+        assertEquals(cmds, functionSpecPodInitContainers.get(0).getCommand());
+
+        List<V1alpha1SourceSpecPodInitContainers> sourceSpecPodInitContainers =
+                customConfig.asV1alpha1SourceSpecPodInitContainers();
+        assertEquals(1, sourceSpecPodInitContainers.size());
+        assertEquals("init", sourceSpecPodInitContainers.get(0).getName());
+        assertEquals("streamnative/init:latest", sourceSpecPodInitContainers.get(0).getImage());
+        assertEquals(cmds, sourceSpecPodInitContainers.get(0).getCommand());
+
+        List<V1alpha1SinkSpecPodInitContainers> sinkSpecPodInitContainers =
+                customConfig.asV1alpha1SinkSpecPodInitContainers();
+        assertEquals(1, sinkSpecPodInitContainers.size());
+        assertEquals("init", sinkSpecPodInitContainers.get(0).getName());
+        assertEquals("streamnative/init:latest", sinkSpecPodInitContainers.get(0).getImage());
+        assertEquals(cmds, sinkSpecPodInitContainers.get(0).getCommand());
     }
 }

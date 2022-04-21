@@ -21,9 +21,11 @@ package io.functionmesh.compute.rest.api;
 import com.google.common.collect.Maps;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodInitContainers;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecJava;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPod;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodInitContainers;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumeMounts;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumes;
 import io.functionmesh.compute.sources.models.V1alpha1SourceStatus;
@@ -631,6 +633,11 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                     }
                     if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
                         podPolicy.setImagePullSecrets(customConfig.asV1alpha1SourceSpecPodImagePullSecrets());
+                    }
+                    List<V1alpha1SourceSpecPodInitContainers> initContainersList =
+                            customConfig.asV1alpha1SourceSpecPodInitContainers();
+                    if (initContainersList != null && !initContainersList.isEmpty()) {
+                        podPolicy.setInitContainers(initContainersList);
                     }
                     v1alpha1Source.getSpec().setPod(podPolicy);
                 } catch (Exception e) {

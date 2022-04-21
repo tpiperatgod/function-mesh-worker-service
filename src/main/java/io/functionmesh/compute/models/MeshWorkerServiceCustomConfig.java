@@ -22,12 +22,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodImagePullSecrets;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodInitContainers;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumeMounts;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumes;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodImagePullSecrets;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodInitContainers;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumeMounts;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumes;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodImagePullSecrets;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodInitContainers;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumeMounts;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumes;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
@@ -149,6 +152,23 @@ public class MeshWorkerServiceCustomConfig {
     )
     protected Map<String, String> sourceAnnotations;
 
+    @FieldContext(
+            doc = "PodInitContainers specifies the initContainers to attach to function's pod, will override the initContainers if specified."
+    )
+    protected List<V1alpha1FunctionSpecPodInitContainers> functionInitContainers;
+
+    @FieldContext(
+            doc = "SourceInitContainers specifies the initContainers to attach to source's pod, will override the initContainers if specified."
+    )
+    protected List<V1alpha1SourceSpecPodInitContainers> sourceInitContainers;
+
+
+    @FieldContext(
+            doc = "SinkInitContainers specifies the initContainers to attach to sink's pod, will override the initContainers if specified."
+    )
+    protected List<V1alpha1SinkSpecPodInitContainers> sinkInitContainers;
+
+
     public List<V1alpha1SinkSpecPodVolumes> asV1alpha1SinkSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SinkSpecPodVolumes>> typeRef
@@ -218,6 +238,30 @@ public class MeshWorkerServiceCustomConfig {
         TypeReference<List<V1alpha1SourceSpecPodImagePullSecrets>> typeRef
                 = new TypeReference<List<V1alpha1SourceSpecPodImagePullSecrets>>() {};
         String j = objectMapper.writeValueAsString(imagePullSecrets);
+        return objectMapper.readValue(j, typeRef);
+    }
+
+    public List<V1alpha1FunctionSpecPodInitContainers> asV1alpha1FunctionSpecPodInitContainers() throws JsonProcessingException {
+        ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
+        TypeReference<List<V1alpha1FunctionSpecPodInitContainers>> typeRef
+                = new TypeReference<List<V1alpha1FunctionSpecPodInitContainers>>() {};
+        String j = objectMapper.writeValueAsString(functionInitContainers);
+        return objectMapper.readValue(j, typeRef);
+    }
+
+    public List<V1alpha1SourceSpecPodInitContainers> asV1alpha1SourceSpecPodInitContainers() throws JsonProcessingException {
+        ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
+        TypeReference<List<V1alpha1SourceSpecPodInitContainers>> typeRef
+                = new TypeReference<List<V1alpha1SourceSpecPodInitContainers>>() {};
+        String j = objectMapper.writeValueAsString(sourceInitContainers);
+        return objectMapper.readValue(j, typeRef);
+    }
+
+    public List<V1alpha1SinkSpecPodInitContainers> asV1alpha1SinkSpecPodInitContainers() throws JsonProcessingException {
+        ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
+        TypeReference<List<V1alpha1SinkSpecPodInitContainers>> typeRef
+                = new TypeReference<List<V1alpha1SinkSpecPodInitContainers>>() {};
+        String j = objectMapper.writeValueAsString(functionInitContainers);
         return objectMapper.readValue(j, typeRef);
     }
 }
