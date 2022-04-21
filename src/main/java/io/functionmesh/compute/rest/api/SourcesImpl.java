@@ -431,11 +431,11 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                                     channel[podIndex].shutdown();
                                 }
                                 if (e != null) {
-                                    log.error("Get source {}-{} status from grpc failed from namespace {}, error message: {}",
+                                    log.error("Get source {}-{} status from grpc failed from namespace {}: ",
                                             finalStatefulSetName,
                                             shardId,
                                             nameSpaceName,
-                                            e.getMessage());
+                                            e);
                                     sourceInstanceStatusData.setError(e.getMessage());
                                 } else if (fs != null) {
                                     SourcesUtil.convertFunctionStatusToInstanceStatusData(fs, sourceInstanceStatusData);
@@ -514,8 +514,8 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                 }
             }
         } catch (Exception e) {
-            log.error("Get source {} status failed from namespace {}, error message: {}",
-                    componentName, namespace, e.getMessage());
+            log.error("Get source {} status failed from namespace {}: ",
+                    componentName, namespace, e);
         }
 
         return sourceStatus;

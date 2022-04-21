@@ -200,17 +200,11 @@ public class FunctionsImplTest {
         String tenant = "public";
         String namespace = "default";
         String name = "test";
-        String group = "compute.functionmesh.io";
-        String plural = "functions";
-        String version = "v1alpha1";
         String hashName = CommonUtil.generateObjectName(meshWorkerService, tenant, namespace, name);
         String jobName = CommonUtil.makeJobName(name, CommonUtil.COMPONENT_SINK);
 
         PowerMockito.when(meshWorkerService.getCustomObjectsApi()
-                .getNamespacedCustomObjectCall(
-                        group, version, namespace, plural,
-                        CommonUtil.createObjectName("test-pulsar", tenant, namespace, name),
-                        null)).thenReturn(call);
+                .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any())).thenReturn(call);
         PowerMockito.when(call.execute()).thenReturn(response);
         PowerMockito.when(response.isSuccessful()).thenReturn(true);
         PowerMockito.when(response.body()).thenReturn(responseBody);
@@ -377,15 +371,15 @@ public class FunctionsImplTest {
         v1alpha1Function.getMetadata().setLabels(customLabels);
         PowerMockito.when(meshWorkerService.getCustomObjectsApi()
                 .createNamespacedCustomObjectCall(
-                        group,
-                        version,
-                        KubernetesUtils.getNamespace(),
-                        plural,
-                        v1alpha1Function,
-                        null,
-                        null,
-                        null,
-                        null
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any()
                 )).thenReturn(call);
         PowerMockito.when(call.execute()).thenReturn(response);
         PowerMockito.when(response.isSuccessful()).thenReturn(true);
@@ -516,10 +510,6 @@ public class FunctionsImplTest {
         String tenant = "public";
         String namespace = "default";
         String functionName = "word-count";
-        String group = "compute.functionmesh.io";
-        String plural = "functions";
-        String version = "v1alpha1";
-        String kind = "Function";
 
         MeshWorkerService meshWorkerService = PowerMockito.mock(MeshWorkerService.class);
         Supplier<MeshWorkerService> meshWorkerServiceSupplier = () -> meshWorkerService;
@@ -562,14 +552,7 @@ public class FunctionsImplTest {
         PowerMockito.when(apiClient.getJSON()).thenReturn(json);
 
         PowerMockito.when(meshWorkerService.getCustomObjectsApi()
-                .getNamespacedCustomObjectCall(
-                        group,
-                        version,
-                        namespace,
-                        plural,
-                        "word-count-640ae9e6",
-                        null
-                )).thenReturn(getCall);
+                .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any())).thenReturn(getCall);
 
         MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
@@ -683,37 +666,34 @@ public class FunctionsImplTest {
         String tenant = "public";
         String namespace = "default";
         String functionName = "word-count";
-        String group = "compute.functionmesh.io";
-        String plural = "functions";
-        String version = "v1alpha1";
 
         Response functionInfoResponse = PowerMockito.mock(Response.class);
         Call functionInfoCall = PowerMockito.mock(Call.class);
         PowerMockito.when(meshWorkerService.getCustomObjectsApi()
                 .getNamespacedCustomObjectCall(
-                        group,
-                        version,
-                        namespace,
-                        plural,
-                        functionName,
-                        null)).thenReturn(functionInfoCall);
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any())).thenReturn(functionInfoCall);
         PowerMockito.when(functionInfoCall.execute()).thenReturn(functionInfoResponse);
         PowerMockito.when(functionInfoResponse.isSuccessful()).thenReturn(true);
         PowerMockito.when(functionInfoResponse.body()).thenReturn(responseBody);
 
         PowerMockito.when(meshWorkerService.getCustomObjectsApi()
                 .deleteNamespacedCustomObjectCall(
-                        group,
-                        version,
-                        namespace,
-                        plural,
-                        "word-count-640ae9e6",
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any()
                 )).thenReturn(call);
         PowerMockito.when(call.execute()).thenReturn(response);
         PowerMockito.when(response.isSuccessful()).thenReturn(true);
@@ -841,18 +821,15 @@ public class FunctionsImplTest {
         String tenant = "public";
         String namespace = "default";
         String functionName = "word-count";
-        String group = "compute.functionmesh.io";
-        String plural = "functions";
-        String version = "v1alpha1";
 
         PowerMockito.when(meshWorkerService.getCustomObjectsApi()
                 .getNamespacedCustomObjectCall(
-                        group,
-                        version,
-                        namespace,
-                        plural,
-                        CommonUtil.createObjectName("test-pulsar", tenant, namespace, functionName),
-                        null
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any()
                 )).thenReturn(call);
         PowerMockito.when(call.execute()).thenReturn(response);
         PowerMockito.when(response.isSuccessful()).thenReturn(true);
