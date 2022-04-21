@@ -18,7 +18,6 @@
  */
 package io.functionmesh.compute.rest.api;
 
-import com.google.common.collect.Maps;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodInitContainers;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1Sink;

@@ -58,7 +58,6 @@ import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
 import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.apache.pulsar.functions.proto.Function.FunctionDetails.ComponentType.FUNCTION;
 
 @Slf4j
 public abstract class MeshComponentImpl implements Component<MeshWorkerService> {
