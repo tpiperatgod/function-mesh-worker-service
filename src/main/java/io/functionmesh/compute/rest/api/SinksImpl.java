@@ -19,10 +19,12 @@
 package io.functionmesh.compute.rest.api;
 
 import com.google.common.collect.Maps;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodInitContainers;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1Sink;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecJava;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPod;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodInitContainers;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumeMounts;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumes;
 import io.functionmesh.compute.util.CommonUtil;
@@ -657,6 +659,11 @@ public class SinksImpl extends MeshComponentImpl
                     }
                     if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
                         podPolicy.setImagePullSecrets(customConfig.asV1alpha1SinkSpecPodImagePullSecrets());
+                    }
+                    List<V1alpha1SinkSpecPodInitContainers> initContainersList =
+                            customConfig.asV1alpha1SinkSpecPodInitContainers();
+                    if (initContainersList != null && !initContainersList.isEmpty()) {
+                        podPolicy.setInitContainers(initContainersList);
                     }
                     v1alpha1Sink.getSpec().setPod(podPolicy);
                 } catch (Exception e) {
