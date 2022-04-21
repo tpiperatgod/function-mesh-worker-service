@@ -70,7 +70,6 @@ import java.util.Map;
 
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
 import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
-import static io.functionmesh.compute.util.CommonUtil.DEFAULT_FUNCTION_DOWNLOAD_DIRECTORY;
 import static io.functionmesh.compute.util.CommonUtil.DEFAULT_FUNCTION_EXECUTABLE;
 import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
@@ -298,11 +297,17 @@ public class FunctionsUtil {
                 v1alpha1FunctionSpecJava.setJarLocation(functionPkgUrl);
             }
             String extraDependenciesDir = "";
-            if (StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
+            if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
                 if (Paths.get(worker.getFactoryConfig().getExtraFunctionDependenciesDir()).isAbsolute()) {
                     extraDependenciesDir = worker.getFactoryConfig().getExtraFunctionDependenciesDir();
                 } else {
                     extraDependenciesDir = "/pulsar/" + worker.getFactoryConfig().getExtraFunctionDependenciesDir();
+                }
+            } else if (StringUtils.isNotEmpty(customConfig.getExtraFunctionDependenciesDir())) {
+                if (Paths.get(customConfig.getExtraFunctionDependenciesDir()).isAbsolute()) {
+                    extraDependenciesDir = customConfig.getExtraFunctionDependenciesDir();
+                } else {
+                    extraDependenciesDir = "/pulsar/" + customConfig.getExtraFunctionDependenciesDir();
                 }
             } else {
                 extraDependenciesDir = "/pulsar/instances/deps";

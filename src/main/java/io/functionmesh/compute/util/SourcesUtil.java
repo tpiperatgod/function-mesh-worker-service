@@ -35,6 +35,7 @@ import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPulsar;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecSecretsMap;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.custom.Quantity;
+import java.nio.file.Paths;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
@@ -114,6 +115,23 @@ public class SourcesUtil {
         v1alpha1SourceSpec.setClassName(sourceConfig.getClassName());
 
         V1alpha1SourceSpecJava v1alpha1SourceSpecJava = new V1alpha1SourceSpecJava();
+        String extraDependenciesDir = "";
+        if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
+            if (Paths.get(worker.getFactoryConfig().getExtraFunctionDependenciesDir()).isAbsolute()) {
+                extraDependenciesDir = worker.getFactoryConfig().getExtraFunctionDependenciesDir();
+            } else {
+                extraDependenciesDir = "/pulsar/" + worker.getFactoryConfig().getExtraFunctionDependenciesDir();
+            }
+        } else if (StringUtils.isNotEmpty(customConfig.getExtraFunctionDependenciesDir())) {
+            if (Paths.get(customConfig.getExtraFunctionDependenciesDir()).isAbsolute()) {
+                extraDependenciesDir = customConfig.getExtraFunctionDependenciesDir();
+            } else {
+                extraDependenciesDir = "/pulsar/" + customConfig.getExtraFunctionDependenciesDir();
+            }
+        } else {
+            extraDependenciesDir = "/pulsar/instances/deps";
+        }
+        v1alpha1SourceSpecJava.setExtraDependenciesDir(extraDependenciesDir);
         if (connectorsManager != null && archive.startsWith(BUILTIN)) {
             String connectorType = archive.replaceFirst("^builtin://", "");
             FunctionMeshConnectorDefinition definition = connectorsManager.getConnectorDefinition(connectorType);
