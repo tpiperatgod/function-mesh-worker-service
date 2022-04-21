@@ -195,7 +195,6 @@ public class MeshWorkerService implements WorkerService {
     }
 
     public String getJobNamespace() {
-        String kubernetesJobNamespace = KubernetesUtils.getNamespace(getMeshWorkerServiceCustomConfig(), getFactoryConfig());
-        return kubernetesJobNamespace;
+        return KubernetesUtils.getNamespace(getMeshWorkerServiceCustomConfig(), this.getFactoryConfig());
     }
 }

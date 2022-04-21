@@ -304,6 +304,12 @@ public class FunctionsUtil {
                 } else {
                     extraDependenciesDir = "/pulsar/" + worker.getFactoryConfig().getExtraFunctionDependenciesDir();
                 }
+            } else if (StringUtils.isNotEmpty(customConfig.getExtraFunctionDependenciesDir())) {
+                if (Paths.get(customConfig.getExtraFunctionDependenciesDir()).isAbsolute()) {
+                    extraDependenciesDir = customConfig.getExtraFunctionDependenciesDir();
+                } else {
+                    extraDependenciesDir = "/pulsar/" + customConfig.getExtraFunctionDependenciesDir();
+                }
             } else {
                 extraDependenciesDir = "/pulsar/instances/deps";
             }

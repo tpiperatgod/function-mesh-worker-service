@@ -173,6 +173,11 @@ public class MeshWorkerServiceCustomConfig {
     )
     protected String jobNamespace;
 
+    @FieldContext(
+            doc = "the directory for dropping extra function dependencies. If it is not absolute path, it is relative to `pulsarRootDir`"
+    )
+    protected String extraFunctionDependenciesDir;
+
     public List<V1alpha1SinkSpecPodVolumes> asV1alpha1SinkSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SinkSpecPodVolumes>> typeRef
