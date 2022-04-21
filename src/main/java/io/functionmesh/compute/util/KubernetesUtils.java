@@ -19,21 +19,19 @@
 package io.functionmesh.compute.util;
 
 import com.google.common.collect.Maps;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
+import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.kubernetes.client.openapi.ApiException;
-import io.kubernetes.client.openapi.apis.AppsV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.V1ContainerStatus;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1Secret;
-import io.kubernetes.client.openapi.models.V1StatefulSet;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
-import org.apache.pulsar.functions.proto.InstanceControlGrpc;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.functions.runtime.kubernetes.KubernetesRuntimeFactoryConfig;
 import org.apache.pulsar.functions.utils.Actions;
 import org.apache.pulsar.functions.worker.WorkerConfig;
@@ -75,12 +73,29 @@ public class KubernetesUtils {
 		return namespace;
 	}
 
+	@Deprecated
 	public static String getNamespace(KubernetesRuntimeFactoryConfig kubernetesRuntimeFactoryConfig) {
 		if (kubernetesRuntimeFactoryConfig == null) {
 			return KubernetesUtils.getNamespace();
 		}
 		String namespace = kubernetesRuntimeFactoryConfig.getJobNamespace();
-		if (namespace == null) {
+		if (StringUtils.isEmpty(namespace)) {
+			return KubernetesUtils.getNamespace();
+		}
+		return namespace;
+	}
+
+	public static String getNamespace(MeshWorkerServiceCustomConfig customConfig, KubernetesRuntimeFactoryConfig kubernetesRuntimeFactoryConfig) {
+		if (kubernetesRuntimeFactoryConfig == null && customConfig == null) {
+			return KubernetesUtils.getNamespace();
+		}
+		String namespace;
+		if (kubernetesRuntimeFactoryConfig != null) {
+			namespace = kubernetesRuntimeFactoryConfig.getJobNamespace();
+		} else {
+			namespace = customConfig.getJobNamespace();
+		}
+		if (StringUtils.isEmpty(namespace)) {
 			return KubernetesUtils.getNamespace();
 		}
 		return namespace;
@@ -117,18 +132,16 @@ public class KubernetesUtils {
 			String tenant,
 			String namespace,
 			String name,
-			WorkerConfig workerConfig,
-			CoreV1Api coreV1Api,
-			KubernetesRuntimeFactoryConfig factoryConfig) throws ApiException, InterruptedException {
-
+			MeshWorkerService workerService) throws ApiException, InterruptedException {
+		CoreV1Api coreV1Api = workerService.getCoreV1Api();
 		String combinationName = getSecretName(cluster, tenant, namespace, name);
 		String hashcode = DigestUtils.sha256Hex(combinationName);
 		String secretName = getUniqueSecretName(component, type, hashcode);
 		Map<String, byte[]> data = Maps.newHashMap();
 		if ("auth".equals(type)) {
-			data = buildAuthConfigMap(workerConfig);
+			data = buildAuthConfigMap(workerService.getWorkerConfig());
 		} else if ("tls".equals(type)) {
-			data = buildTlsConfigMap(workerConfig);
+			data = buildTlsConfigMap(workerService.getWorkerConfig());
 		} else {
 			throw new RuntimeException(String.format("Failed to create secret type for %s %s/%s/%s",
 					type, tenant, namespace, name));
@@ -145,7 +158,7 @@ public class KubernetesUtils {
 							.data(finalData);
 					try {
 						coreV1Api.createNamespacedSecret(
-								KubernetesUtils.getNamespace(factoryConfig),
+								workerService.getJobNamespace(),
 								v1Secret, null, null, null);
 					} catch (ApiException e) {
 						// already exists
@@ -153,7 +166,7 @@ public class KubernetesUtils {
 							try {
 								coreV1Api.replaceNamespacedSecret(
 										secretName,
-										KubernetesUtils.getNamespace(factoryConfig),
+										workerService.getJobNamespace(),
 										v1Secret, null, null, null);
 								return Actions.ActionResult.builder().success(true).build();
 

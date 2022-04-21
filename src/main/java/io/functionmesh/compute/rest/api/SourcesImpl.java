@@ -18,7 +18,6 @@
  */
 package io.functionmesh.compute.rest.api;
 
-import com.google.common.collect.Maps;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodInitContainers;
@@ -65,7 +64,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
@@ -171,11 +169,11 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                         this.meshWorkerServiceSupplier.get().getConnectorsManager(),
                         cluster, worker());
 
-        v1alpha1Source.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
+        v1alpha1Source.getMetadata().setNamespace(worker().getJobNamespace());
         try {
             this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source, clientAuthenticationDataHttps);
             Call call = worker().getCustomObjectsApi().createNamespacedCustomObjectCall(
-                    group, version, KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                    group, version, worker().getJobNamespace(),
                     plural,
                     v1alpha1Source,
                     null,
@@ -243,7 +241,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
             Call getCall = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     group,
                     version,
-                    KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                    worker().getJobNamespace(),
                     plural,
                     v1alpha1Source.getMetadata().getName(),
                     null
@@ -254,13 +252,13 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                 throw new RestException(Response.Status.NOT_FOUND, "This source resource was not found");
             }
 
-            v1alpha1Source.getMetadata().setNamespace(KubernetesUtils.getNamespace(worker().getFactoryConfig()));
+            v1alpha1Source.getMetadata().setNamespace(worker().getJobNamespace());
             v1alpha1Source.getMetadata().setResourceVersion(oldRes.getMetadata().getResourceVersion());
             this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source, clientAuthenticationDataHttps);
             Call replaceCall = worker().getCustomObjectsApi().replaceNamespacedCustomObjectCall(
                     group,
                     version,
-                    KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                    worker().getJobNamespace(),
                     plural,
                     v1alpha1Source.getMetadata().getName(),
                     v1alpha1Source,
@@ -291,7 +289,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
 
         try {
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
-            String nameSpaceName = KubernetesUtils.getNamespace(worker().getFactoryConfig());
+            String nameSpaceName = worker().getJobNamespace();
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     group, version, nameSpaceName,
                     plural, hashName, null);
@@ -431,11 +429,11 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                                     channel[podIndex].shutdown();
                                 }
                                 if (e != null) {
-                                    log.error("Get source {}-{} status from grpc failed from namespace {}, error message: {}",
+                                    log.error("Get source {}-{} status from grpc failed from namespace {}: ",
                                             finalStatefulSetName,
                                             shardId,
                                             nameSpaceName,
-                                            e.getMessage());
+                                            e);
                                     sourceInstanceStatusData.setError(e.getMessage());
                                 } else if (fs != null) {
                                     SourcesUtil.convertFunctionStatusToInstanceStatusData(fs, sourceInstanceStatusData);
@@ -514,8 +512,8 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                 }
             }
         } catch (Exception e) {
-            log.error("Get source {} status failed from namespace {}, error message: {}",
-                    componentName, namespace, e.getMessage());
+            log.error("Get source {} status failed from namespace {}: ",
+                    componentName, namespace, e);
         }
 
         return sourceStatus;
@@ -544,7 +542,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     group,
                     version,
-                    KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                    worker().getJobNamespace(),
                     plural,
                     hashName,
                     null
@@ -617,14 +615,12 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                     if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
                             && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
                         String authSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "auth",
-                                v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName,
-                                worker().getWorkerConfig(), worker().getCoreV1Api(), worker().getFactoryConfig());
+                                v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName, worker());
                         v1alpha1Source.getSpec().getPulsar().setAuthSecret(authSecretName);
                     }
                     if (worker().getWorkerConfig().getTlsEnabled()) {
                         String tlsSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "tls",
-                                v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName,
-                                worker().getWorkerConfig(), worker().getCoreV1Api(), worker().getFactoryConfig());
+                                v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName, worker());
                         v1alpha1Source.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
                     if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())

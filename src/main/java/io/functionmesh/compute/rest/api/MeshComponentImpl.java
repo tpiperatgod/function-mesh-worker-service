@@ -58,7 +58,6 @@ import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
 import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.apache.pulsar.functions.proto.Function.FunctionDetails.ComponentType.FUNCTION;
 
 @Slf4j
 public abstract class MeshComponentImpl implements Component<MeshWorkerService> {
@@ -111,7 +110,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             Call deleteObjectCall = worker().getCustomObjectsApi().deleteNamespacedCustomObjectCall(
                     group,
                     version,
-                    KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                    worker().getJobNamespace(),
                     plural,
                     hashName,
                     null,
@@ -137,7 +136,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
                                         DigestUtils.sha256Hex(
                                                 KubernetesUtils.getSecretName(
                                                         clusterName, tenant, namespace, componentName))),
-                                KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                                worker().getJobNamespace(),
                                 null,
                                 null,
                                 30,
@@ -157,7 +156,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
                                         DigestUtils.sha256Hex(
                                                 KubernetesUtils.getSecretName(
                                                         clusterName, tenant, namespace, componentName))),
-                                KubernetesUtils.getNamespace(worker().getFactoryConfig()),
+                                worker().getJobNamespace(),
                                 null,
                                 null,
                                 30,
@@ -313,7 +312,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             Call call = worker().getCustomObjectsApi().listNamespacedCustomObjectCall(
                     group,
                     version,
-                    KubernetesUtils.getNamespace(worker().getFactoryConfig()), plural,
+                    worker().getJobNamespace(), plural,
                     "false",
                     null,
                     null,
