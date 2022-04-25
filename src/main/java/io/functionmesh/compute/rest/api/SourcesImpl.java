@@ -607,7 +607,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                                 v1alpha1Source.getSpec().getGolang() == null){
                             v1alpha1SourceSpecJava = new V1alpha1SourceSpecJava();
                         }
-                        if (v1alpha1SourceSpecJava != null) {
+                        if (v1alpha1SourceSpecJava != null  && StringUtils.isEmpty(v1alpha1SourceSpecJava.getExtraDependenciesDir())) {
                             v1alpha1SourceSpecJava.setExtraDependenciesDir(customConfig.getExtraDependenciesDir());
                             v1alpha1Source.getSpec().setJava(v1alpha1SourceSpecJava);
                         }

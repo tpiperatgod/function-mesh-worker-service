@@ -303,11 +303,11 @@ public class FunctionsUtil {
                 } else {
                     extraDependenciesDir = "/pulsar/" + worker.getFactoryConfig().getExtraFunctionDependenciesDir();
                 }
-            } else if (StringUtils.isNotEmpty(customConfig.getExtraFunctionDependenciesDir())) {
-                if (Paths.get(customConfig.getExtraFunctionDependenciesDir()).isAbsolute()) {
-                    extraDependenciesDir = customConfig.getExtraFunctionDependenciesDir();
+            } else if (StringUtils.isNotEmpty(customConfig.getExtraDependenciesDir())) {
+                if (Paths.get(customConfig.getExtraDependenciesDir()).isAbsolute()) {
+                    extraDependenciesDir = customConfig.getExtraDependenciesDir();
                 } else {
-                    extraDependenciesDir = "/pulsar/" + customConfig.getExtraFunctionDependenciesDir();
+                    extraDependenciesDir = "/pulsar/" + customConfig.getExtraDependenciesDir();
                 }
             } else {
                 extraDependenciesDir = "/pulsar/instances/deps";

@@ -600,7 +600,7 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                                 v1alpha1Function.getSpec().getGolang() == null){
                             v1alpha1FunctionSpecJava = new V1alpha1FunctionSpecJava();
                         }
-                        if (v1alpha1FunctionSpecJava != null) {
+                        if (v1alpha1FunctionSpecJava != null && StringUtils.isEmpty(v1alpha1FunctionSpecJava.getExtraDependenciesDir())) {
                             v1alpha1FunctionSpecJava.setExtraDependenciesDir(customConfig.getExtraDependenciesDir());
                             v1alpha1Function.getSpec().setJava(v1alpha1FunctionSpecJava);
                         }
