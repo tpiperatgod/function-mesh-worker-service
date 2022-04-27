@@ -163,7 +163,8 @@ public class SinksUtil {
             extractedSinkDetails.setSinkClassName(sinkConfig.getClassName());
         }
 
-        if (CommonUtil.getRunnerImageFromConfig("JAVA", worker) != null) {
+        if (CommonUtil.getRunnerImageFromConfig("JAVA", worker) != null
+                && StringUtils.isEmpty(v1alpha1SinkSpec.getImage())) {
             v1alpha1SinkSpec.setImage(CommonUtil.getRunnerImageFromConfig("JAVA", worker));
         }
 
