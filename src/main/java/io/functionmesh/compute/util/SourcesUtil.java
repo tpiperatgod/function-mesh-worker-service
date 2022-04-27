@@ -100,7 +100,7 @@ public class SourcesUtil {
         v1alpha1Source.setKind(kind);
         v1alpha1Source.setApiVersion(String.format("%s/%s", group, version));
         v1alpha1Source.setMetadata(CommonUtil.makeV1ObjectMeta(sourceConfig.getName(),
-                sourceConfig.getNamespace(),
+                worker.getJobNamespace(),
                 functionDetails.getNamespace(),
                 functionDetails.getTenant(),
                 clusterName,
@@ -108,6 +108,8 @@ public class SourcesUtil {
                 customLabelClaims));
 
         V1alpha1SourceSpec v1alpha1SourceSpec = new V1alpha1SourceSpec();
+        v1alpha1SourceSpec.setTenant(sourceConfig.getTenant());
+        v1alpha1SourceSpec.setNamespace(sourceConfig.getNamespace());
 
         if (StringUtils.isNotEmpty(customConfig.getImagePullPolicy())) {
             v1alpha1SourceSpec.setImagePullPolicy(customConfig.getImagePullPolicy());
