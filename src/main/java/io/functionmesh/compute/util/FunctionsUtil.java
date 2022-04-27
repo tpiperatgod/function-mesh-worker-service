@@ -322,10 +322,8 @@ public class FunctionsUtil {
                     v1alpha1FunctionSpecOutput.setTypeClassName(typeArgs[1].getName());
                 }
             }
-            if (customConfig.getFunctionRunnerImages() != null && !customConfig.getFunctionRunnerImages().isEmpty()
-                    && customConfig.getFunctionRunnerImages().containsKey("JAVA")
-                    && StringUtils.isNotEmpty(customConfig.getFunctionRunnerImages().get("JAVA"))) {
-                v1alpha1FunctionSpec.setImage(customConfig.getFunctionRunnerImages().get("JAVA"));
+            if (CommonUtil.getRunnerImageFromConfig("JAVA", worker) != null) {
+                v1alpha1FunctionSpec.setImage(CommonUtil.getRunnerImageFromConfig("JAVA", worker));
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getPy())) {
             V1alpha1FunctionSpecPython v1alpha1FunctionSpecPython = new V1alpha1FunctionSpecPython();
@@ -334,10 +332,8 @@ public class FunctionsUtil {
                 v1alpha1FunctionSpecPython.setPyLocation(functionPkgUrl);
             }
             v1alpha1FunctionSpec.setPython(v1alpha1FunctionSpecPython);
-            if (customConfig.getFunctionRunnerImages() != null && !customConfig.getFunctionRunnerImages().isEmpty()
-                    && customConfig.getFunctionRunnerImages().containsKey("PYTHON")
-                    && StringUtils.isNotEmpty(customConfig.getFunctionRunnerImages().get("PYTHON"))) {
-                v1alpha1FunctionSpec.setImage(customConfig.getFunctionRunnerImages().get("PYTHON"));
+            if (CommonUtil.getRunnerImageFromConfig("PYTHON", worker) != null) {
+                v1alpha1FunctionSpec.setImage(CommonUtil.getRunnerImageFromConfig("PYTHON", worker));
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getGo())) {
             V1alpha1FunctionSpecGolang v1alpha1FunctionSpecGolang = new V1alpha1FunctionSpecGolang();
@@ -346,10 +342,8 @@ public class FunctionsUtil {
                 v1alpha1FunctionSpecGolang.setGoLocation(functionPkgUrl);
             }
             v1alpha1FunctionSpec.setGolang(v1alpha1FunctionSpecGolang);
-            if (customConfig.getFunctionRunnerImages() != null && !customConfig.getFunctionRunnerImages().isEmpty()
-                    && customConfig.getFunctionRunnerImages().containsKey("GO")
-                    && StringUtils.isNotEmpty(customConfig.getFunctionRunnerImages().get("GO"))) {
-                v1alpha1FunctionSpec.setImage(customConfig.getFunctionRunnerImages().get("GO"));
+            if (CommonUtil.getRunnerImageFromConfig("GO", worker) != null) {
+                v1alpha1FunctionSpec.setImage(CommonUtil.getRunnerImageFromConfig("GO", worker));
             }
         }
 
