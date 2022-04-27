@@ -102,7 +102,7 @@ public class SinksUtil {
         v1alpha1Sink.setKind(kind);
         v1alpha1Sink.setApiVersion(String.format("%s/%s", group, version));
         v1alpha1Sink.setMetadata(CommonUtil.makeV1ObjectMeta(sinkConfig.getName(),
-                sinkConfig.getNamespace(),
+                worker.getJobNamespace(),
                 functionDetails.getNamespace(),
                 functionDetails.getTenant(),
                 clusterName,
@@ -110,6 +110,8 @@ public class SinksUtil {
                 customLabelClaims));
 
         V1alpha1SinkSpec v1alpha1SinkSpec = new V1alpha1SinkSpec();
+        v1alpha1SinkSpec.setTenant(sinkConfig.getTenant());
+        v1alpha1SinkSpec.setNamespace(sinkConfig.getNamespace());
 
         if (StringUtils.isNotEmpty(customConfig.getImagePullPolicy())) {
             v1alpha1SinkSpec.setImagePullPolicy(customConfig.getImagePullPolicy());

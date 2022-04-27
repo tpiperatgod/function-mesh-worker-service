@@ -102,7 +102,7 @@ public class FunctionsUtil {
         v1alpha1Function.setKind(kind);
         v1alpha1Function.setApiVersion(String.format("%s/%s", group, version));
         v1alpha1Function.setMetadata(CommonUtil.makeV1ObjectMeta(functionConfig.getName(),
-                functionConfig.getNamespace(),
+                worker.getJobNamespace(),
                 functionDetails.getNamespace(),
                 functionDetails.getTenant(),
                 clusterName,
@@ -110,6 +110,9 @@ public class FunctionsUtil {
                 customLabelClaims));
 
         V1alpha1FunctionSpec v1alpha1FunctionSpec = new V1alpha1FunctionSpec();
+
+        v1alpha1FunctionSpec.setTenant(functionConfig.getTenant());
+        v1alpha1FunctionSpec.setNamespace(functionConfig.getNamespace());
 
         if (StringUtils.isNotEmpty(customConfig.getImagePullPolicy())) {
             v1alpha1FunctionSpec.setImagePullPolicy(customConfig.getImagePullPolicy());
