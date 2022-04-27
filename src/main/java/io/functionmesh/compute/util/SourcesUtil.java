@@ -160,10 +160,9 @@ public class SourcesUtil {
             extractedSourceDetails.setSourceClassName(sourceConfig.getClassName());
         }
 
-        if (customConfig.getFunctionRunnerImages() != null && customConfig.getFunctionRunnerImages().isEmpty()
-                && customConfig.getFunctionRunnerImages().containsKey("JAVA")
-                && StringUtils.isNotEmpty(customConfig.getFunctionRunnerImages().get("JAVA"))) {
-            v1alpha1SourceSpec.setImage(customConfig.getFunctionRunnerImages().get("JAVA"));
+        if (CommonUtil.getRunnerImageFromConfig("JAVA", worker) != null
+                && StringUtils.isEmpty(v1alpha1SourceSpec.getImage())) {
+            v1alpha1SourceSpec.setImage(CommonUtil.getRunnerImageFromConfig("JAVA", worker));
         }
 
         V1alpha1SourceSpecOutput v1alpha1SourceSpecOutput = new V1alpha1SourceSpecOutput();

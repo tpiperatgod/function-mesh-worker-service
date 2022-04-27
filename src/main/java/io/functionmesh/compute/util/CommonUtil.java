@@ -281,4 +281,14 @@ public class CommonUtil {
                 TENANT_LABEL_CLAIM, tenant,
                 NAMESPACE_LABEL_CLAIM, namespace);
     }
+
+    public static String getRunnerImageFromConfig(String runtime, MeshWorkerService worker) {
+        MeshWorkerServiceCustomConfig customConfig = worker.getMeshWorkerServiceCustomConfig();
+        if (customConfig.getFunctionRunnerImages() != null && !customConfig.getFunctionRunnerImages().isEmpty()
+                && customConfig.getFunctionRunnerImages().containsKey(runtime)
+                && StringUtils.isNotEmpty(customConfig.getFunctionRunnerImages().get(runtime))) {
+            return customConfig.getFunctionRunnerImages().get(runtime);
+        }
+        return null;
+    }
 }
