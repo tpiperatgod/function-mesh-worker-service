@@ -165,10 +165,9 @@ public class SinksUtil {
             extractedSinkDetails.setSinkClassName(sinkConfig.getClassName());
         }
 
-        if (customConfig.getFunctionRunnerImages() != null && customConfig.getFunctionRunnerImages().isEmpty()
-                && customConfig.getFunctionRunnerImages().containsKey("JAVA")
-                && StringUtils.isNotEmpty(customConfig.getFunctionRunnerImages().get("JAVA"))) {
-            v1alpha1SinkSpec.setImage(customConfig.getFunctionRunnerImages().get("JAVA"));
+        if (CommonUtil.getRunnerImageFromConfig("JAVA", worker) != null
+                && StringUtils.isEmpty(v1alpha1SinkSpec.getImage())) {
+            v1alpha1SinkSpec.setImage(CommonUtil.getRunnerImageFromConfig("JAVA", worker));
         }
 
         V1alpha1SinkSpecInput v1alpha1SinkSpecInput = new V1alpha1SinkSpecInput();
