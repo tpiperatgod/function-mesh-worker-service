@@ -265,12 +265,18 @@ public class CommonUtil {
         return to;
     }
 
-    public static Map<String, String> getCustomLabelClaims(String clusterName, String tenant, String namespace, String compName) {
+    public static Map<String, String> getCustomLabelClaims(String clusterName, String tenant, String namespace, String compName, MeshWorkerService worker) {
         Map<String, String> customLabelClaims = Maps.newHashMap();
         customLabelClaims.put(CLUSTER_LABEL_CLAIM, clusterName);
         customLabelClaims.put(TENANT_LABEL_CLAIM, tenant);
         customLabelClaims.put(NAMESPACE_LABEL_CLAIM, namespace);
         customLabelClaims.put(COMPONENT_LABEL_CLAIM, compName);
+        if (worker.getFactoryConfig() != null && worker.getFactoryConfig().getCustomLabels() != null && !worker.getFactoryConfig().getCustomLabels().isEmpty()) {
+            customLabelClaims.putAll(worker.getFactoryConfig().getCustomLabels());
+        }
+        if (worker.getMeshWorkerServiceCustomConfig() != null && worker.getMeshWorkerServiceCustomConfig().getLabels() != null && !worker.getMeshWorkerServiceCustomConfig().getLabels().isEmpty()) {
+            customLabelClaims.putAll(worker.getMeshWorkerServiceCustomConfig().getLabels());
+        }
         return customLabelClaims;
     }
 

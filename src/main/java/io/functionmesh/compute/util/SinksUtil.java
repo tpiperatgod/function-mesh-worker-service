@@ -88,7 +88,7 @@ public class SinksUtil {
         String archive = sinkConfig.getArchive();
         SinkConfigUtils.ExtractedSinkDetails extractedSinkDetails =
                 new SinkConfigUtils.ExtractedSinkDetails("", customRuntimeOptions.getInputTypeClassName());
-        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sinkConfig.getTenant(), sinkConfig.getNamespace(), sinkConfig.getName());
+        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sinkConfig.getTenant(), sinkConfig.getNamespace(), sinkConfig.getName(), worker);
 
         Function.FunctionDetails functionDetails = null;
         try {

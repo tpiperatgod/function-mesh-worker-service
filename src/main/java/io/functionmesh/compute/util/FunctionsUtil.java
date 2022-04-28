@@ -89,7 +89,8 @@ public class FunctionsUtil {
         CustomRuntimeOptions customRuntimeOptions = CommonUtil.getCustomRuntimeOptions(functionConfig.getCustomRuntimeOptions());
         String clusterName = CommonUtil.getClusterName(cluster, customRuntimeOptions);
         String serviceAccountName = customRuntimeOptions.getServiceAccountName();
-        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, functionConfig.getTenant(), functionConfig.getNamespace(), functionConfig.getName());
+        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, functionConfig.getTenant(), functionConfig.getNamespace(), functionConfig.getName(), worker);
+
         Function.FunctionDetails functionDetails;
         try {
             functionDetails = FunctionConfigUtils.convert(functionConfig, null);

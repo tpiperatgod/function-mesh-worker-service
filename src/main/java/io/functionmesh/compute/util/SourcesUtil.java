@@ -86,7 +86,7 @@ public class SourcesUtil {
         String archive = sourceConfig.getArchive();
         SourceConfigUtils.ExtractedSourceDetails extractedSourceDetails =
                 new SourceConfigUtils.ExtractedSourceDetails("", customRuntimeOptions.getInputTypeClassName());
-        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sourceConfig.getTenant(), sourceConfig.getNamespace(), sourceConfig.getName());
+        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sourceConfig.getTenant(), sourceConfig.getNamespace(), sourceConfig.getName(), worker);
 
         Function.FunctionDetails functionDetails = null;
         try {
