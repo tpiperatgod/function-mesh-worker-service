@@ -326,7 +326,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             V1alpha1FunctionList list = executeCall(call, V1alpha1FunctionList.class);
             list.getItems().forEach(n -> result.add(n.getMetadata().getLabels().get(COMPONENT_LABEL_CLAIM)));
         } catch (Exception e) {
-            log.error("failed to fetch functions list from namespace {}, error message: {}", namespace, e.getMessage());
+            log.error("failed to fetch functions list from namespace {}", namespace, e);
         }
 
         return result;
@@ -478,7 +478,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
                 throw new RestException(javax.ws.rs.core.Response.Status.UNAUTHORIZED, "client is not authorize to perform operation");
             }
         } catch (PulsarAdminException e) {
-            log.error("{}/{}/{} Failed to authorize [{}]", tenant, namespace, componentName, e);
+            log.error("{}/{}/{} Failed to authorize", tenant, namespace, componentName, e);
             throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }

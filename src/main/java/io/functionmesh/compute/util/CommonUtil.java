@@ -199,7 +199,7 @@ public class CommonUtil {
         try {
             shardId = new Integer(podName.substring(podName.lastIndexOf("-")+1));
         } catch (Exception ex) {
-            log.error("getShardIdFromPodName failed with podName {}, exception: {}", podName, ex);
+            log.error("getShardIdFromPodName failed with podName {}", podName, ex);
         }
         return shardId;
     }
@@ -231,7 +231,7 @@ public class CommonUtil {
     public static String getFilenameFromPackageMetadata(String functionPkgUrl, PulsarAdmin admin)
             throws PulsarAdminException {
         PackageMetadata packageMetadata = admin.packages().getMetadata(functionPkgUrl);
-        if (packageMetadata != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
+        if (packageMetadata != null && packageMetadata.getProperties() != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
                 StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
             return packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
         }
