@@ -154,7 +154,7 @@ public class MeshWorkerService implements WorkerService {
             appsV1Api = new AppsV1Api(Config.defaultClient());
             customObjectsApi = new CustomObjectsApi(Config.defaultClient());
         } catch (java.io.IOException e) {
-            log.error("Initialization kubernetes client failed, exception: {}", e.getMessage());
+            log.error("Initialization kubernetes client failed", e);
             throw e;
         }
     }
