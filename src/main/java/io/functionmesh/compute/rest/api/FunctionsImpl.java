@@ -33,12 +33,15 @@ import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.util.PackageManagementServiceUtil;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.models.V1ContainerState;
 import io.kubernetes.client.openapi.models.V1ContainerStatus;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
+import java.util.ArrayList;
+import java.util.Collections;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import org.apache.commons.lang3.StringUtils;
@@ -46,6 +49,7 @@ import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
 import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.UpdateOptionsImpl;
+import org.apache.pulsar.common.policies.data.FunctionInstanceStatsImpl;
 import org.apache.pulsar.common.policies.data.FunctionStatus;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.Function;
@@ -299,6 +303,143 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
     }
 
     @Override
+    List<FunctionInstanceStatsImpl> getComponentInstancesStats(String tenant, String namespace, String componentName) {
+        validateFunctionEnabled();
+        List<FunctionInstanceStatsImpl> functionInstanceStatsList = new ArrayList<>();
+        try {
+            String nameSpaceName = worker().getJobNamespace();
+            String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
+            Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
+                    group, version, nameSpaceName,
+                    plural, hashName, null);
+            V1alpha1Function v1alpha1Function = executeCall(call, V1alpha1Function.class);
+            V1alpha1FunctionStatus v1alpha1FunctionStatus = v1alpha1Function.getStatus();
+            if (v1alpha1FunctionStatus == null) {
+                log.warn(
+                        "get stats {}/{}/{} function failed, no FunctionStatus exists",
+                        tenant,
+                        namespace,
+                        componentName);
+                return functionInstanceStatsList;
+            }
+            if (v1alpha1Function.getMetadata() == null) {
+                log.warn(
+                        "get stats {}/{}/{} function failed, no Metadata exists",
+                        tenant,
+                        namespace,
+                        componentName);
+                return functionInstanceStatsList;
+            }
+            final V1StatefulSet v1StatefulSet = getFunctionStatefulSet(v1alpha1Function);
+            if (v1StatefulSet == null) {
+                log.warn(
+                        "get stats {}/{}/{} function failed, no StatefulSet exists",
+                        tenant,
+                        namespace,
+                        componentName);
+                return functionInstanceStatsList;
+            }
+            if (v1StatefulSet.getMetadata() == null ||
+                    (v1StatefulSet.getMetadata() != null && StringUtils.isEmpty(v1StatefulSet.getMetadata().getName()))) {
+                log.warn(
+                        "get stats {}/{}/{} function failed, no statefulSetName exists",
+                        tenant,
+                        namespace,
+                        componentName);
+                return functionInstanceStatsList;
+            }
+            final String statefulSetName = v1StatefulSet.getMetadata().getName();
+            if (v1StatefulSet.getSpec() == null || (v1StatefulSet.getSpec() != null &&
+                    StringUtils.isEmpty(v1StatefulSet.getSpec().getServiceName()))) {
+                log.warn(
+                        "get stats {}/{}/{} function failed, no ServiceName exists",
+                        tenant,
+                        namespace,
+                        componentName);
+                return functionInstanceStatsList;
+            }
+            final String subdomain = v1StatefulSet.getSpec().getServiceName();
+            if (v1StatefulSet.getStatus() != null) {
+                Integer replicas = v1StatefulSet.getStatus().getReplicas();
+                if (replicas != null) {
+                    for (int i = 0; i < replicas; i++) {
+                        FunctionInstanceStatsImpl functionInstanceStats = new FunctionInstanceStatsImpl();
+                        functionInstanceStats.setInstanceId(i);
+                        functionInstanceStatsList.add(functionInstanceStats);
+                    }
+                }
+            } else {
+                log.warn(
+                        "no StatefulSet status exists when get status of function {}/{}/{}",
+                        tenant,
+                        namespace,
+                        componentName);
+                return functionInstanceStatsList;
+            }
+            V1PodList podList = getFunctionPods(tenant, namespace, componentName, v1alpha1FunctionStatus);
+            if (podList != null) {
+                List<V1Pod> runningPods = podList.getItems().stream().
+                        filter(KubernetesUtils::isPodRunning).collect(Collectors.toList());
+                if (!runningPods.isEmpty()) {
+                    int podsCount = runningPods.size();
+                    ManagedChannel[] channel = new ManagedChannel[podsCount];
+                    InstanceControlGrpc.InstanceControlFutureStub[] stub =
+                            new InstanceControlGrpc.InstanceControlFutureStub[podsCount];
+                    Set<CompletableFuture<InstanceCommunication.MetricsData>> completableFutureSet = new HashSet<>();
+                    runningPods.forEach(pod -> {
+                        String podName = KubernetesUtils.getPodName(pod);
+                        int shardId = CommonUtil.getShardIdFromPodName(podName);
+                        int podIndex = runningPods.indexOf(pod);
+                        String address = KubernetesUtils.getServiceUrl(podName, subdomain, nameSpaceName);
+                        if (shardId == -1) {
+                            log.warn("shardId invalid {}", podName);
+                            return;
+                        }
+                        final FunctionInstanceStatsImpl functionInstanceStats = functionInstanceStatsList.stream().filter(v -> v.getInstanceId() == shardId).findFirst().orElse(null);
+                        if (functionInstanceStats != null) {
+                            // get status from grpc
+                            if (channel[podIndex] == null && stub[podIndex] == null) {
+                                channel[podIndex] = ManagedChannelBuilder.forAddress(address, 9093)
+                                        .usePlaintext()
+                                        .build();
+                                stub[podIndex] = InstanceControlGrpc.newFutureStub(channel[podIndex]);
+                            }
+                            CompletableFuture<InstanceCommunication.MetricsData> future = CommonUtil.getFunctionMetricsAsync(stub[podIndex]);
+                            future.whenComplete((fs, e) -> {
+                                if (channel[podIndex] != null) {
+                                    log.debug("closing channel {}", podIndex);
+                                    channel[podIndex].shutdown();
+                                }
+                                if (e != null) {
+                                    log.warn("Get function {}-{} stats from grpc failed from namespace {}",
+                                            statefulSetName,
+                                            shardId,
+                                            nameSpaceName,
+                                            e);
+                                } else if (fs != null) {
+                                    CommonUtil.convertFunctionMetricsToFunctionInstanceStats(fs, functionInstanceStats);
+                                }
+                            });
+                            completableFutureSet.add(future);
+                        } else {
+                            log.warn("Get function {}-{} stats failed from namespace {}, cannot find status for shardId {}",
+                                    statefulSetName,
+                                    shardId,
+                                    nameSpaceName,
+                                    shardId);
+                        }
+                    });
+                    completableFutureSet.forEach(CompletableFuture::join);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Get function {} stats failed from namespace {}",
+                    componentName, namespace, e);
+        }
+        return functionInstanceStatsList;
+    }
+
+    @Override
     public FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData getFunctionInstanceStatus(final String tenant,
                                                                                                       final String namespace,
                                                                                                       final String componentName,
@@ -349,8 +490,7 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                 throw new RestException(Response.Status.NOT_FOUND, "no Metadata exists");
             }
             String functionLabelSelector = v1alpha1FunctionStatus.getSelector();
-            String jobName = CommonUtil.makeJobName(v1alpha1Function.getMetadata().getName(), CommonUtil.COMPONENT_FUNCTION);
-            V1StatefulSet v1StatefulSet = worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
+            V1StatefulSet v1StatefulSet = getFunctionStatefulSet(v1alpha1Function);
             String statefulSetName = "";
             String subdomain = "";
             if (v1StatefulSet == null) {
@@ -640,6 +780,33 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                 }
             }
         }
+    }
+
+    public V1StatefulSet getFunctionStatefulSet(V1alpha1Function v1alpha1Function) {
+        String nameSpaceName = worker().getJobNamespace();
+        String jobName = CommonUtil.makeJobName(v1alpha1Function.getMetadata().getName(), CommonUtil.COMPONENT_FUNCTION);
+        V1StatefulSet v1StatefulSet = null;
+        try {
+            v1StatefulSet = worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
+        } catch (ApiException e) {
+            log.error("get function statefulset failed, error: {}", e.getMessage());
+        }
+        return v1StatefulSet;
+    }
+
+    public V1PodList getFunctionPods(String tenant, String namespace, String componentName, V1alpha1FunctionStatus v1alpha1FunctionStatus) {
+        V1PodList podList = null;
+        try {
+            String nameSpaceName = worker().getJobNamespace();
+            String functionLabelSelector = v1alpha1FunctionStatus.getSelector();
+            podList = worker().getCoreV1Api().listNamespacedPod(
+                    nameSpaceName, null, null, null, null,
+                    functionLabelSelector, null, null, null, null,
+                    null);
+        } catch (Exception e) {
+            log.error("get function pods failed, {}/{}/{}", tenant, namespace, componentName, e);
+        }
+        return podList;
     }
 
 }

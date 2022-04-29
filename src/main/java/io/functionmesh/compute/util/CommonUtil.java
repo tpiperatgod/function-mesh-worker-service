@@ -28,11 +28,11 @@ import com.google.protobuf.Empty;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
-import io.functionmesh.compute.rest.api.FunctionsImpl;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1OwnerReference;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -41,6 +41,8 @@ import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
+import org.apache.pulsar.common.policies.data.FunctionInstanceStatsDataImpl;
+import org.apache.pulsar.common.policies.data.FunctionInstanceStatsImpl;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.InstanceCommunication;
 import org.apache.pulsar.functions.proto.InstanceControlGrpc;
@@ -229,6 +231,28 @@ public class CommonUtil {
         return retval;
     }
 
+    public static CompletableFuture<InstanceCommunication.MetricsData> getFunctionMetricsAsync(InstanceControlGrpc.InstanceControlFutureStub stub) {
+        CompletableFuture<InstanceCommunication.MetricsData> retval = new CompletableFuture<>();
+        if (stub == null) {
+            retval.completeExceptionally(new RuntimeException("Not alive"));
+            return retval;
+        }
+        ListenableFuture<InstanceCommunication.MetricsData> response = stub.withDeadlineAfter(GRPC_TIMEOUT_SECS, TimeUnit.SECONDS).getMetrics(Empty.newBuilder().build());
+        Futures.addCallback(response, new FutureCallback<InstanceCommunication.MetricsData>() {
+            @Override
+            public void onFailure(Throwable throwable) {
+                InstanceCommunication.MetricsData.Builder builder = InstanceCommunication.MetricsData.newBuilder();
+                retval.complete(builder.build());
+            }
+
+            @Override
+            public void onSuccess(InstanceCommunication.MetricsData t) {
+                retval.complete(t);
+            }
+        }, MoreExecutors.directExecutor());
+        return retval;
+    }
+
     public static String getFilenameFromPackageMetadata(String functionPkgUrl, PulsarAdmin admin)
             throws PulsarAdminException {
         PackageMetadata packageMetadata = admin.packages().getMetadata(functionPkgUrl);
@@ -316,5 +340,35 @@ public class CommonUtil {
             return customConfig.getFunctionRunnerImages().get(runtime);
         }
         return null;
+    }
+
+    public static void convertFunctionMetricsToFunctionInstanceStats(InstanceCommunication.MetricsData metricsData,
+                                                                     FunctionInstanceStatsImpl functionInstanceStats) {
+        if (functionInstanceStats == null || metricsData == null) {
+            return;
+        }
+        FunctionInstanceStatsDataImpl functionInstanceStatsData = new FunctionInstanceStatsDataImpl();
+
+        functionInstanceStatsData.setReceivedTotal(metricsData.getReceivedTotal());
+        functionInstanceStatsData.setProcessedSuccessfullyTotal(metricsData.getProcessedSuccessfullyTotal());
+        functionInstanceStatsData.setSystemExceptionsTotal(metricsData.getSystemExceptionsTotal());
+        functionInstanceStatsData.setUserExceptionsTotal(metricsData.getUserExceptionsTotal());
+        functionInstanceStatsData.setAvgProcessLatency(metricsData.getAvgProcessLatency() == 0.0 ? null : metricsData.getAvgProcessLatency());
+        functionInstanceStatsData.setLastInvocation(metricsData.getLastInvocation() == 0 ? null : metricsData.getLastInvocation());
+
+        functionInstanceStatsData.oneMin.setReceivedTotal(metricsData.getReceivedTotal1Min());
+        functionInstanceStatsData.oneMin.setProcessedSuccessfullyTotal(metricsData.getProcessedSuccessfullyTotal1Min());
+        functionInstanceStatsData.oneMin.setSystemExceptionsTotal(metricsData.getSystemExceptionsTotal1Min());
+        functionInstanceStatsData.oneMin.setUserExceptionsTotal(metricsData.getUserExceptionsTotal1Min());
+        functionInstanceStatsData.oneMin.setAvgProcessLatency(metricsData.getAvgProcessLatency1Min() == 0.0 ? null : metricsData.getAvgProcessLatency1Min());
+
+        // Filter out values that are NaN
+        Map<String, Double> statsDataMap = metricsData.getUserMetricsMap().entrySet().stream()
+                .filter(stringDoubleEntry -> !stringDoubleEntry.getValue().isNaN())
+                .collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue()));
+
+        functionInstanceStatsData.setUserMetrics(statsDataMap);
+
+        functionInstanceStats.setMetrics(functionInstanceStatsData);
     }
 }

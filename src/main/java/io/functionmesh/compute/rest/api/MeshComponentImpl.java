@@ -21,7 +21,6 @@ package io.functionmesh.compute.rest.api;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.util.CommonUtil;
-import io.functionmesh.compute.util.FunctionsUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.util.PackageManagementServiceUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -38,11 +37,13 @@ import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.io.ConnectorDefinition;
 import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.policies.data.FunctionInstanceStatsDataImpl;
+import org.apache.pulsar.common.policies.data.FunctionInstanceStatsImpl;
 import org.apache.pulsar.common.policies.data.FunctionStatsImpl;
 import org.apache.pulsar.common.policies.data.TenantInfo;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.Function;
 import org.apache.pulsar.functions.utils.ComponentTypeUtils;
+import org.apache.pulsar.functions.worker.WorkerService;
 import org.apache.pulsar.functions.worker.service.api.Component;
 
 import javax.ws.rs.core.StreamingOutput;
@@ -58,6 +59,7 @@ import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
 import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.apache.pulsar.functions.worker.rest.RestUtils.throwUnavailableException;
 
 @Slf4j
 public abstract class MeshComponentImpl implements Component<MeshWorkerService> {
@@ -271,9 +273,32 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
                                               final URI uri,
                                               final String clientRole,
                                               final AuthenticationDataSource clientAuthenticationDataHttps) {
-        FunctionStatsImpl functionStats = new FunctionStatsImpl();
+        if (!isWorkerServiceAvailable()) {
+            throwUnavailableException();
+        }
 
-        return functionStats;
+        this.validatePermission(tenant,
+                namespace,
+                clientRole,
+                clientAuthenticationDataHttps,
+                ComponentTypeUtils.toString(componentType));
+        this.validateTenantIsExist(tenant, namespace, componentName, clientRole);
+        this.validateGetInfoRequestParams(tenant, namespace, componentName, ComponentTypeUtils.toString(componentType));
+
+        FunctionStatsImpl functionStats = new FunctionStatsImpl();
+        try {
+            List<FunctionInstanceStatsImpl> instanceStatsList = getComponentInstancesStats(tenant, namespace, componentName);
+            for (FunctionInstanceStatsImpl instanceStats : instanceStatsList) {
+                if (instanceStats != null) {
+                    functionStats.addInstance(instanceStats);
+                }
+            }
+
+            return functionStats.calculateOverall();
+        } catch (Exception e) {
+            log.error("{}/{}/{} Got Exception Getting Stats", tenant, namespace, componentName, e);
+            throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
     @Override
@@ -526,5 +551,15 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             }
         }
     }
+
+    boolean isWorkerServiceAvailable() {
+        WorkerService workerService = meshWorkerServiceSupplier.get();
+        if (workerService == null) {
+            return false;
+        }
+        return workerService.isInitialized();
+    }
+
+    abstract List<FunctionInstanceStatsImpl> getComponentInstancesStats(String tenant, String namespace, String componentName);
 }
 
