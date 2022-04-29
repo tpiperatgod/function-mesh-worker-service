@@ -789,7 +789,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
 
     public V1StatefulSet getFunctionStatefulSet(V1alpha1Source v1alpha1Source) {
         String nameSpaceName = worker().getJobNamespace();
-        String jobName = CommonUtil.makeJobName(v1alpha1Source.getMetadata().getName(), CommonUtil.COMPONENT_SINK);
+        String jobName = CommonUtil.makeJobName(v1alpha1Source.getMetadata().getName(), CommonUtil.COMPONENT_SOURCE);
         V1StatefulSet v1StatefulSet = null;
         try {
             v1StatefulSet = worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
