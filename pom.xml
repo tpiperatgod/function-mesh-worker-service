@@ -39,6 +39,7 @@
         <jetty.version>9.4.35.v20201120</jetty.version>
         <nifi-nar-maven-plugin.version>1.2.0</nifi-nar-maven-plugin.version>
         <function-mesh.version>v0.1.11</function-mesh.version>
+        <grpc.version>1.42.1</grpc.version>
     </properties>
 
     <dependencies>
