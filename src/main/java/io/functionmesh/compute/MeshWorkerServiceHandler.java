@@ -137,7 +137,7 @@ public class MeshWorkerServiceHandler extends ProxyServlet {
 
             return new HttpClient(contextFactory);
         } catch (Exception e) {
-            log.error("Init http client failed for proxy" + e.getMessage());
+            log.error("Init http client failed for proxy", e);
         }
 
         // return an unauthenticated client, every request will fail.
@@ -185,7 +185,7 @@ public class MeshWorkerServiceHandler extends ProxyServlet {
             String cloudControllerAuthToken = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
             proxyRequest.header("Authorization", "Bearer " + cloudControllerAuthToken);
         } catch (java.io.IOException e) {
-            log.error("Init cloud controller ca cert failed, message: {}", e.getMessage());
+            log.error("Init cloud controller ca cert failed", e);
         }
     }
 }

@@ -152,7 +152,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                         worker().getBrokerAdmin(), PackageManagementServiceUtil.PACKAGE_TYPE_SOURCE, tenant,
                         namespace, sourceName, uploadedInputStream, fileDetail, tempDirectory);
             } catch (Exception e) {
-                log.error("register {}/{}/{} source failed, error message: {}", tenant, namespace, sourceName, e);
+                log.error("register {}/{}/{} source failed", tenant, namespace, sourceName, e);
                 throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
             }
         }
@@ -183,14 +183,14 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
             executeCall(call, V1alpha1Source.class);
         } catch (RestException restException) {
             log.error(
-                    "register {}/{}/{} source failed, error message: {}",
+                    "register {}/{}/{} source failed",
                     tenant,
                     namespace,
                     sourceConfig,
-                    restException.getMessage());
+                    restException);
             throw restException;
         } catch (Exception e) {
-            log.error("register {}/{}/{} source failed, error message: {}", tenant, namespace, sourceConfig, e);
+            log.error("register {}/{}/{} source failed", tenant, namespace, sourceConfig, e);
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -221,7 +221,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                         worker().getBrokerAdmin(), PackageManagementServiceUtil.PACKAGE_TYPE_SOURCE, tenant,
                         namespace, sourceName, uploadedInputStream, fileDetail, tempDirectory);
             } catch (Exception e) {
-                log.error("update {}/{}/{} source failed, error message: {}", tenant, namespace, sourceName, e);
+                log.error("update {}/{}/{} source failed", tenant, namespace, sourceName, e);
                 throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
             }
         }
@@ -268,7 +268,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
             );
             executeCall(replaceCall, Object.class);
         } catch (Exception e) {
-            log.error("update {}/{}/{} source failed, error message: {}", tenant, namespace, sourceConfig, e);
+            log.error("update {}/{}/{} source failed", tenant, namespace, sourceConfig, e);
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -551,7 +551,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
             V1alpha1Source v1alpha1Source = executeCall(call, V1alpha1Source.class);
             return SourcesUtil.createSourceConfigFromV1alpha1Source(tenant, namespace, componentName, v1alpha1Source);
         } catch (Exception e) {
-            log.error("Get source info {}/{}/{} {} failed, error message: {}", tenant, namespace, componentName, plural, e);
+            log.error("Get source info {}/{}/{} {} failed", tenant, namespace, componentName, plural, e);
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
