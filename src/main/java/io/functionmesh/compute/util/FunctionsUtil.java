@@ -285,7 +285,7 @@ public class FunctionsUtil {
                 throw new IllegalArgumentException("uploading package to mesh worker service is not supported yet.");
             }
         } catch (Exception e) {
-            log.error("Invalid register function request {}: {}", functionName, e);
+            log.error("Invalid register function request {}", functionName, e);
             throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
         }
         Class<?>[] typeArgs = null;

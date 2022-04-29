@@ -146,7 +146,7 @@ public class SinksImpl extends MeshComponentImpl
                         worker().getBrokerAdmin(), PackageManagementServiceUtil.PACKAGE_TYPE_SINK, tenant,
                         namespace, sinkName, uploadedInputStream, fileDetail, tempDirectory);
             } catch (Exception e) {
-                log.error("register {}/{}/{} sink failed, error message: {}", tenant, namespace, sinkName, e);
+                log.error("register {}/{}/{} sink failed", tenant, namespace, sinkName, e);
                 throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
             }
         }
@@ -181,15 +181,15 @@ public class SinksImpl extends MeshComponentImpl
            executeCall(call, V1alpha1Sink.class);
         } catch (RestException restException){
             log.error(
-                    "register {}/{}/{} sink failed, error message: {}",
+                    "register {}/{}/{} sink failed",
                     tenant,
                     namespace,
                     sinkConfig,
-                    restException.getMessage());
+                    restException);
             throw restException;
         } catch (Exception e) {
             log.error(
-                    "register {}/{}/{} sink failed, error message: {}",
+                    "register {}/{}/{} sink failed",
                     tenant,
                     namespace,
                     sinkConfig,
@@ -226,7 +226,7 @@ public class SinksImpl extends MeshComponentImpl
                         worker().getBrokerAdmin(), PackageManagementServiceUtil.PACKAGE_TYPE_FUNCTION, tenant,
                         namespace, sinkName, uploadedInputStream, fileDetail, tempDirectory);
             } catch (Exception e) {
-                log.error("update {}/{}/{} sink failed, error message: {}", tenant, namespace, sinkName, e);
+                log.error("update {}/{}/{} sink failed", tenant, namespace, sinkName, e);
                 throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
             }
         }
@@ -270,7 +270,7 @@ public class SinksImpl extends MeshComponentImpl
             executeCall(replaceCall, Object.class);
         } catch (Exception e) {
             log.error(
-                    "update {}/{}/{} sink failed, error message: {}",
+                    "update {}/{}/{} sink failed",
                     tenant,
                     namespace,
                     sinkConfig,
@@ -453,11 +453,11 @@ public class SinksImpl extends MeshComponentImpl
                                     channel[podIndex].shutdown();
                                 }
                                 if (e != null) {
-                                    log.error("Get sink {}-{} status from grpc failed from namespace {}, error message: {}",
+                                    log.error("Get sink {}-{} status from grpc failed from namespace {}",
                                             finalStatefulSetName,
                                             shardId,
                                             nameSpaceName,
-                                            e.getMessage());
+                                            e);
                                     sinkInstanceStatusData.setError(e.getMessage());
                                 } else if (fs != null) {
                                     SinksUtil.convertFunctionStatusToInstanceStatusData(fs, sinkInstanceStatusData);
@@ -537,10 +537,10 @@ public class SinksImpl extends MeshComponentImpl
             }
         } catch (Exception e) {
             log.error(
-                    "Get sink {} status failed from namespace {}, error message: {}",
+                    "Get sink {} status failed from namespace {}",
                     componentName,
                     namespace,
-                    e.getMessage());
+                    e);
         }
 
         return sinkStatus;
@@ -564,7 +564,7 @@ public class SinksImpl extends MeshComponentImpl
                     tenant, namespace, componentName, v1alpha1Sink);
         } catch (Exception e) {
             log.error(
-                    "get {}/{}/{} function info failed, error message: {}",
+                    "get {}/{}/{} function info failed",
                     tenant,
                     namespace,
                     componentName,

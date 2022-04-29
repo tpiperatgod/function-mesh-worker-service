@@ -259,7 +259,7 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
             );
             executeCall(replaceCall, V1alpha1Function.class);
         } catch (Exception e) {
-            log.error("update {}/{}/{} function failed, error message: {}", tenant, namespace, functionName, e);
+            log.error("update {}/{}/{} function failed", tenant, namespace, functionName, e);
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -293,7 +293,7 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
             return FunctionsUtil.createFunctionConfigFromV1alpha1Function(tenant, namespace, componentName,
                     v1alpha1Function);
         } catch (Exception e) {
-            log.error("get {}/{}/{} function failed, error message: {}", tenant, namespace, componentName, e);
+            log.error("get {}/{}/{} function failed", tenant, namespace, componentName, e);
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -466,11 +466,11 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                                     channel[podIndex].shutdown();
                                 }
                                 if (e != null) {
-                                    log.error("Get function {}-{} status from grpc failed from namespace {}, error message: {}",
+                                    log.error("Get function {}-{} status from grpc failed from namespace {}",
                                             finalStatefulSetName,
                                             shardId,
                                             nameSpaceName,
-                                            e.getMessage());
+                                            e);
                                     functionInstanceStatusData.setError(e.getMessage());
                                 } else if (fs != null) {
                                     FunctionsUtil.convertFunctionStatusToInstanceStatusData(fs, functionInstanceStatusData);
@@ -548,8 +548,8 @@ public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWo
                 }
             }
         } catch (Exception e) {
-            log.error("Get function {} status failed from namespace {}, error message: {}",
-                    componentName, namespace, e.getMessage());
+            log.error("Get function {} status failed from namespace {}",
+                    componentName, namespace, e);
         }
 
         return functionStatus;
