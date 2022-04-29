@@ -625,7 +625,7 @@ public class SinksImpl extends MeshComponentImpl
                                 v1alpha1Sink.getSpec().getGolang() == null){
                             v1alpha1SinkSpecJava = new V1alpha1SinkSpecJava();
                         }
-                        if (v1alpha1SinkSpecJava != null) {
+                        if (v1alpha1SinkSpecJava != null && StringUtils.isEmpty(v1alpha1SinkSpecJava.getExtraDependenciesDir())) {
                             v1alpha1SinkSpecJava.setExtraDependenciesDir(customConfig.getExtraDependenciesDir());
                             v1alpha1Sink.getSpec().setJava(v1alpha1SinkSpecJava);
                         }
