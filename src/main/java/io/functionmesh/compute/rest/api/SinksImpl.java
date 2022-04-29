@@ -18,7 +18,6 @@
  */
 package io.functionmesh.compute.rest.api;
 
-import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodInitContainers;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1Sink;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecJava;
@@ -65,7 +64,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;

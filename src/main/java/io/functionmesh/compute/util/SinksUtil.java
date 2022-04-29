@@ -88,7 +88,7 @@ public class SinksUtil {
         String archive = sinkConfig.getArchive();
         SinkConfigUtils.ExtractedSinkDetails extractedSinkDetails =
                 new SinkConfigUtils.ExtractedSinkDetails("", customRuntimeOptions.getInputTypeClassName());
-        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sinkConfig.getTenant(), sinkConfig.getNamespace(), sinkConfig.getName(), worker);
+        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sinkConfig.getTenant(), sinkConfig.getNamespace(), sinkConfig.getName(), worker, kind);
 
         Function.FunctionDetails functionDetails = null;
         try {
@@ -313,12 +313,8 @@ public class SinksUtil {
                 StringUtils.isNotEmpty(serviceAccountName)) {
             specPod.setServiceAccountName(serviceAccountName);
         }
-        Map<String, String> customLabels = new HashMap<>();
-        CommonUtil.mergeMap(customConfig.getLabels(), customLabels);
-        CommonUtil.mergeMap(customConfig.getSinkLabels(), customLabels);
-        CommonUtil.mergeMap(customLabelClaims, customLabels);
-        if (!CommonUtil.isMapEmpty(customLabels)) {
-            specPod.setLabels(customLabels);
+        if (!CommonUtil.isMapEmpty(customLabelClaims)) {
+            specPod.setLabels(customLabelClaims);
         }
         Map<String, String> customAnnotations = new HashMap<>();
         CommonUtil.mergeMap(customConfig.getAnnotations(), customAnnotations);
