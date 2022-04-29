@@ -664,7 +664,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
             V1alpha1SourceStatus v1alpha1SourceStatus = v1alpha1Source.getStatus();
             if (v1alpha1SourceStatus == null) {
                 log.warn(
-                        "get source {}/{}/{} stats failed, no SinkStatus exists",
+                        "get source {}/{}/{} stats failed, no SourceStatus exists",
                         tenant,
                         namespace,
                         componentName);
