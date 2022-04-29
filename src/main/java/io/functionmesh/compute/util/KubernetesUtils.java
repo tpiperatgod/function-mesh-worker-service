@@ -64,7 +64,7 @@ public class KubernetesUtils {
 			File file = new File(KUBERNETES_NAMESPACE_PATH);
 			namespace = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
 		} catch (java.io.IOException e) {
-			log.error("Get namespace from kubernetes path {}, message: {}", KUBERNETES_NAMESPACE_PATH, e.getMessage());
+			log.error("Get namespace from kubernetes path {}", KUBERNETES_NAMESPACE_PATH, e);
 		}
 		// Use the default namespace
 		if (namespace == null) {
