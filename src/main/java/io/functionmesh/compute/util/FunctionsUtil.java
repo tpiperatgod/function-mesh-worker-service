@@ -89,7 +89,7 @@ public class FunctionsUtil {
         CustomRuntimeOptions customRuntimeOptions = CommonUtil.getCustomRuntimeOptions(functionConfig.getCustomRuntimeOptions());
         String clusterName = CommonUtil.getClusterName(cluster, customRuntimeOptions);
         String serviceAccountName = customRuntimeOptions.getServiceAccountName();
-        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, functionConfig.getTenant(), functionConfig.getNamespace(), functionConfig.getName());
+        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, functionConfig.getTenant(), functionConfig.getNamespace(), functionConfig.getName(), worker, kind);
         Function.FunctionDetails functionDetails;
         try {
             functionDetails = FunctionConfigUtils.convert(functionConfig, null);
@@ -363,12 +363,8 @@ public class FunctionsUtil {
                 StringUtils.isNotEmpty(serviceAccountName)) {
             specPod.setServiceAccountName(serviceAccountName);
         }
-        Map<String, String> customLabels = new HashMap<>();
-        CommonUtil.mergeMap(customConfig.getLabels(), customLabels);
-        CommonUtil.mergeMap(customConfig.getFunctionLabels(), customLabels);
-        CommonUtil.mergeMap(customLabelClaims, customLabels);
-        if (!CommonUtil.isMapEmpty(customLabels)) {
-            specPod.setLabels(customLabels);
+        if (!CommonUtil.isMapEmpty(customLabelClaims)) {
+            specPod.setLabels(customLabelClaims);
         }
         Map<String, String> customAnnotations = new HashMap<>();
         CommonUtil.mergeMap(customConfig.getAnnotations(), customAnnotations);

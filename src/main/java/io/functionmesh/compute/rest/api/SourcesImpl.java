@@ -20,7 +20,6 @@ package io.functionmesh.compute.rest.api;
 
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
-import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodInitContainers;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecJava;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPod;

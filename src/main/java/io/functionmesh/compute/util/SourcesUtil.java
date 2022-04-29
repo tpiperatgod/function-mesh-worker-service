@@ -86,7 +86,7 @@ public class SourcesUtil {
         String archive = sourceConfig.getArchive();
         SourceConfigUtils.ExtractedSourceDetails extractedSourceDetails =
                 new SourceConfigUtils.ExtractedSourceDetails("", customRuntimeOptions.getInputTypeClassName());
-        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sourceConfig.getTenant(), sourceConfig.getNamespace(), sourceConfig.getName());
+        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sourceConfig.getTenant(), sourceConfig.getNamespace(), sourceConfig.getName(), worker, kind);
 
         Function.FunctionDetails functionDetails = null;
         try {
@@ -272,12 +272,8 @@ public class SourcesUtil {
                 StringUtils.isNotEmpty(serviceAccountName)) {
             specPod.setServiceAccountName(serviceAccountName);
         }
-        Map<String, String> customLabels = new HashMap<>();
-        CommonUtil.mergeMap(customConfig.getLabels(), customLabels);
-        CommonUtil.mergeMap(customConfig.getSourceLabels(), customLabels);
-        CommonUtil.mergeMap(customLabelClaims, customLabels);
-        if (!CommonUtil.isMapEmpty(customLabels)) {
-            specPod.setLabels(customLabels);
+        if (!CommonUtil.isMapEmpty(customLabelClaims)) {
+            specPod.setLabels(customLabelClaims);
         }
         Map<String, String> customAnnotations = new HashMap<>();
         CommonUtil.mergeMap(customConfig.getAnnotations(), customAnnotations);
