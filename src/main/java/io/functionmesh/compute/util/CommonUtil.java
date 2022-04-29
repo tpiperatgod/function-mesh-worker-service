@@ -28,6 +28,7 @@ import com.google.protobuf.Empty;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
+import io.functionmesh.compute.rest.api.FunctionsImpl;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1OwnerReference;
 import java.nio.file.Path;
@@ -265,12 +266,37 @@ public class CommonUtil {
         return to;
     }
 
-    public static Map<String, String> getCustomLabelClaims(String clusterName, String tenant, String namespace, String compName) {
+    public static Map<String, String> getCustomLabelClaims(String clusterName, String tenant, String namespace, String compName, MeshWorkerService worker, String kind) {
         Map<String, String> customLabelClaims = Maps.newHashMap();
         customLabelClaims.put(CLUSTER_LABEL_CLAIM, clusterName);
         customLabelClaims.put(TENANT_LABEL_CLAIM, tenant);
         customLabelClaims.put(NAMESPACE_LABEL_CLAIM, namespace);
         customLabelClaims.put(COMPONENT_LABEL_CLAIM, compName);
+        if (worker != null) {
+            if (worker.getFactoryConfig() != null && worker.getFactoryConfig().getCustomLabels() != null
+                    && !worker.getFactoryConfig().getCustomLabels().isEmpty()) {
+                customLabelClaims.putAll(worker.getFactoryConfig().getCustomLabels());
+            }
+            if (worker.getMeshWorkerServiceCustomConfig() != null) {
+                if (worker.getMeshWorkerServiceCustomConfig().getLabels() != null
+                        && !worker.getMeshWorkerServiceCustomConfig().getLabels().isEmpty()) {
+                    customLabelClaims.putAll(worker.getMeshWorkerServiceCustomConfig().getLabels());
+                }
+                if (kind.equals("Function") && worker.getMeshWorkerServiceCustomConfig().getFunctionLabels() != null
+                        && !worker.getMeshWorkerServiceCustomConfig().getFunctionLabels().isEmpty()) {
+                    customLabelClaims.putAll(worker.getMeshWorkerServiceCustomConfig().getFunctionLabels());
+                }
+                if (kind.equals("Sink") && worker.getMeshWorkerServiceCustomConfig().getSinkLabels() != null
+                        && !worker.getMeshWorkerServiceCustomConfig().getSinkLabels().isEmpty()) {
+                    customLabelClaims.putAll(worker.getMeshWorkerServiceCustomConfig().getSinkLabels());
+                }
+                if (kind.equals("Source") && worker.getMeshWorkerServiceCustomConfig().getSourceLabels() != null
+                        && !worker.getMeshWorkerServiceCustomConfig().getSourceLabels().isEmpty()) {
+                    customLabelClaims.putAll(worker.getMeshWorkerServiceCustomConfig().getSourceLabels());
+                }
+            }
+        }
+
         return customLabelClaims;
     }
 
