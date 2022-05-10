@@ -18,6 +18,7 @@
  */
 package io.functionmesh.compute;
 
+import io.functionmesh.compute.util.SecurityUtil;
 import javax.net.ssl.SSLContext;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -29,7 +30,6 @@ import java.security.cert.X509Certificate;
 import java.util.concurrent.Executor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
-import org.apache.pulsar.common.util.SecurityUtility;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.ProtocolHandlers;
 import org.eclipse.jetty.client.RedirectProtocolHandler;
@@ -123,10 +123,10 @@ public class MeshWorkerServiceHandler extends ProxyServlet {
     protected HttpClient newHttpClient() {
 
         try {
-            X509Certificate[] trustCertificates = SecurityUtility
+            X509Certificate[] trustCertificates = SecurityUtil
                     .loadCertificatesFromPemFile(KUBERNETES_CA_CRT_PATH);
 
-            SSLContext sslCtx = SecurityUtility.createSslContext(
+            SSLContext sslCtx = SecurityUtil.createSslContext(
                     false,
                     trustCertificates
             );
