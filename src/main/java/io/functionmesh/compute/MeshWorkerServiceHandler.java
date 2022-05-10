@@ -128,7 +128,8 @@ public class MeshWorkerServiceHandler extends ProxyServlet {
 
             SSLContext sslCtx = SecurityUtility.createSslContext(
                     false,
-                    trustCertificates
+                    trustCertificates,
+                    null
             );
 
 
