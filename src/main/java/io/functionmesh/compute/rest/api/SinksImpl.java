@@ -20,6 +20,7 @@ package io.functionmesh.compute.rest.api;
 
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1Sink;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkList;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecJava;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPod;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodInitContainers;
@@ -41,6 +42,7 @@ import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
+import io.kubernetes.client.util.generic.GenericKubernetesApi;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import org.apache.commons.lang3.StringUtils;
@@ -72,7 +74,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class SinksImpl extends MeshComponentImpl<V1alpha1Sink>
+public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
         implements Sinks<MeshWorkerService> {
     private String kind = "Sink";
 
@@ -82,6 +84,9 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink>
         super(meshWorkerServiceSupplier, Function.FunctionDetails.ComponentType.SINK);
         super.plural = this.plural;
         super.kind = this.kind;
+        this.resourceApi = new GenericKubernetesApi<>(
+                V1alpha1Sink.class, V1alpha1SinkList.class, group, version, plural,
+                meshWorkerServiceSupplier.get().getApiClient());
     }
 
     private void validateSinkEnabled() {

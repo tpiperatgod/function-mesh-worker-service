@@ -18,7 +18,6 @@
  */
 package io.functionmesh.compute;
 
-import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.rest.api.FunctionsImpl;
 import io.functionmesh.compute.rest.api.SinksImpl;
@@ -160,8 +159,6 @@ public class MeshWorkerService implements WorkerService {
             coreV1Api = new CoreV1Api(Config.defaultClient());
             appsV1Api = new AppsV1Api(Config.defaultClient());
             customObjectsApi = new CustomObjectsApi(Config.defaultClient());
-            MixedOperation<V1alpha1Function, Resource<V1alpha1Function>> functionResourceClient = apiClient.(
-            );
         } catch (java.io.IOException e) {
             log.error("Initialization kubernetes client failed", e);
             throw e;

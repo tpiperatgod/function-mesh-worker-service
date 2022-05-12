@@ -20,6 +20,7 @@ package io.functionmesh.compute.rest.api;
 
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecJava;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPod;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodInitContainers;
@@ -40,8 +41,8 @@ import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
+import io.kubernetes.client.util.generic.GenericKubernetesApi;
 import java.util.ArrayList;
-import java.util.Collections;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import org.apache.commons.lang3.StringUtils;
@@ -70,10 +71,19 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function> implements Functions<MeshWorkerService> {
+public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1FunctionList>
+        implements Functions<MeshWorkerService> {
+    private String kind = "Function";
+
+    private String plural = "functions";
 
     public FunctionsImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier) {
         super(meshWorkerServiceSupplier, Function.FunctionDetails.ComponentType.FUNCTION);
+        super.plural = this.plural;
+        super.kind = this.kind;
+        this.resourceApi = new GenericKubernetesApi<>(
+                V1alpha1Function.class, V1alpha1FunctionList.class, group, version, plural,
+                meshWorkerServiceSupplier.get().getApiClient());
     }
 
 
@@ -309,10 +319,16 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function> implement
         try {
             String nameSpaceName = worker().getJobNamespace();
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
-            Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    group, version, nameSpaceName,
-                    plural, hashName, null);
-            V1alpha1Function v1alpha1Function = executeCall(call, V1alpha1Function.class);
+
+            V1alpha1Function v1alpha1Function = extractResponse(getResourceApi().get(nameSpaceName, hashName));
+            if (v1alpha1Function == null) {
+                log.warn(
+                        "get stats {}/{}/{} function failed, no Function exists",
+                        tenant,
+                        namespace,
+                        componentName);
+                return functionInstanceStatsList;
+            }
             V1alpha1FunctionStatus v1alpha1FunctionStatus = v1alpha1Function.getStatus();
             if (v1alpha1FunctionStatus == null) {
                 log.warn(
@@ -385,50 +401,9 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function> implement
                     ManagedChannel[] channel = new ManagedChannel[podsCount];
                     InstanceControlGrpc.InstanceControlFutureStub[] stub =
                             new InstanceControlGrpc.InstanceControlFutureStub[podsCount];
-                    Set<CompletableFuture<InstanceCommunication.MetricsData>> completableFutureSet = new HashSet<>();
-                    runningPods.forEach(pod -> {
-                        String podName = KubernetesUtils.getPodName(pod);
-                        int shardId = CommonUtil.getShardIdFromPodName(podName);
-                        int podIndex = runningPods.indexOf(pod);
-                        String address = KubernetesUtils.getServiceUrl(podName, subdomain, nameSpaceName);
-                        if (shardId == -1) {
-                            log.warn("shardId invalid {}", podName);
-                            return;
-                        }
-                        final FunctionInstanceStatsImpl functionInstanceStats = functionInstanceStatsList.stream().filter(v -> v.getInstanceId() == shardId).findFirst().orElse(null);
-                        if (functionInstanceStats != null) {
-                            // get status from grpc
-                            if (channel[podIndex] == null && stub[podIndex] == null) {
-                                channel[podIndex] = ManagedChannelBuilder.forAddress(address, 9093)
-                                        .usePlaintext()
-                                        .build();
-                                stub[podIndex] = InstanceControlGrpc.newFutureStub(channel[podIndex]);
-                            }
-                            CompletableFuture<InstanceCommunication.MetricsData> future = CommonUtil.getFunctionMetricsAsync(stub[podIndex]);
-                            future.whenComplete((fs, e) -> {
-                                if (channel[podIndex] != null) {
-                                    log.debug("closing channel {}", podIndex);
-                                    channel[podIndex].shutdown();
-                                }
-                                if (e != null) {
-                                    log.warn("Get function {}-{} stats from grpc failed from namespace {}",
-                                            statefulSetName,
-                                            shardId,
-                                            nameSpaceName,
-                                            e);
-                                } else if (fs != null) {
-                                    CommonUtil.convertFunctionMetricsToFunctionInstanceStats(fs, functionInstanceStats);
-                                }
-                            });
-                            completableFutureSet.add(future);
-                        } else {
-                            log.warn("Get function {}-{} stats failed from namespace {}, cannot find status for shardId {}",
-                                    statefulSetName,
-                                    shardId,
-                                    nameSpaceName,
-                                    shardId);
-                        }
-                    });
+                    Set<CompletableFuture<InstanceCommunication.MetricsData>> completableFutureSet =
+                            fetchStatsFromGRPC(runningPods, subdomain, statefulSetName,
+                                    nameSpaceName, functionInstanceStatsList, channel, stub);
                     completableFutureSet.forEach(CompletableFuture::join);
                 }
             }
@@ -437,6 +412,61 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function> implement
                     componentName, namespace, e);
         }
         return functionInstanceStatsList;
+    }
+
+    public Set<CompletableFuture<InstanceCommunication.MetricsData>> fetchStatsFromGRPC(List<V1Pod> pods,
+                                                            String subdomain,
+                                                            String statefulSetName,
+                                                            String nameSpaceName,
+                                                            List<FunctionInstanceStatsImpl> functionInstanceStatsList,
+                                                            ManagedChannel[] channel,
+                                                            InstanceControlGrpc.InstanceControlFutureStub[] stub) {
+        Set<CompletableFuture<InstanceCommunication.MetricsData>> completableFutureSet = new HashSet<>();
+        pods.forEach(pod -> {
+            String podName = KubernetesUtils.getPodName(pod);
+            int shardId = CommonUtil.getShardIdFromPodName(podName);
+            int podIndex = pods.indexOf(pod);
+            String address = KubernetesUtils.getServiceUrl(podName, subdomain, nameSpaceName);
+            if (shardId == -1) {
+                log.warn("shardId invalid {}", podName);
+                return;
+            }
+            final FunctionInstanceStatsImpl functionInstanceStats =
+                    functionInstanceStatsList.stream().filter(v -> v.getInstanceId() == shardId).findFirst().orElse(null);
+            if (functionInstanceStats != null) {
+                // get status from grpc
+                if (channel[podIndex] == null && stub[podIndex] == null) {
+                    channel[podIndex] = ManagedChannelBuilder.forAddress(address, 9093)
+                            .usePlaintext()
+                            .build();
+                    stub[podIndex] = InstanceControlGrpc.newFutureStub(channel[podIndex]);
+                }
+                CompletableFuture<InstanceCommunication.MetricsData> future = CommonUtil.getFunctionMetricsAsync(stub[podIndex]);
+                future.whenComplete((fs, e) -> {
+                    if (channel[podIndex] != null) {
+                        log.debug("closing channel {}", podIndex);
+                        channel[podIndex].shutdown();
+                    }
+                    if (e != null) {
+                        log.warn("Get function {}-{} stats from grpc failed from namespace {}",
+                                statefulSetName,
+                                shardId,
+                                nameSpaceName,
+                                e);
+                    } else if (fs != null) {
+                        CommonUtil.convertFunctionMetricsToFunctionInstanceStats(fs, functionInstanceStats);
+                    }
+                });
+                completableFutureSet.add(future);
+            } else {
+                log.warn("Get function {}-{} stats failed from namespace {}, cannot find status for shardId {}",
+                        statefulSetName,
+                        shardId,
+                        nameSpaceName,
+                        shardId);
+            }
+        });
+        return completableFutureSet;
     }
 
     @Override

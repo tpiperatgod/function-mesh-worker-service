@@ -21,6 +21,7 @@ package io.functionmesh.compute.rest.api;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
+import io.functionmesh.compute.sources.models.V1alpha1SourceList;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecJava;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPod;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodInitContainers;
@@ -40,6 +41,7 @@ import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
+import io.kubernetes.client.util.generic.GenericKubernetesApi;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import org.apache.commons.lang3.StringUtils;
@@ -71,7 +73,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class SourcesImpl extends MeshComponentImpl<V1alpha1Source> implements Sources<MeshWorkerService> {
+public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1SourceList>
+        implements Sources<MeshWorkerService> {
     private final String kind = "Source";
 
     private final String plural = "sources";
@@ -80,6 +83,9 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source> implements So
         super(meshWorkerServiceSupplier, Function.FunctionDetails.ComponentType.SOURCE);
         super.plural = this.plural;
         super.kind = this.kind;
+        this.resourceApi = new GenericKubernetesApi<>(
+                V1alpha1Source.class, V1alpha1SourceList.class, group, version, plural,
+                meshWorkerServiceSupplier.get().getApiClient());
     }
 
     private void validateSourceEnabled() {

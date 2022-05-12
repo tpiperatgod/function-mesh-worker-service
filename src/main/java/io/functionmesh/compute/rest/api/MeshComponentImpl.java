@@ -18,11 +18,16 @@
  */
 package io.functionmesh.compute.rest.api;
 
+import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.util.PackageManagementServiceUtil;
+import io.kubernetes.client.util.generic.GenericKubernetesApi;
+import io.kubernetes.client.util.generic.KubernetesApiResponse;
+import lombok.Data;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import okhttp3.Response;
@@ -62,7 +67,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.pulsar.functions.worker.rest.RestUtils.throwUnavailableException;
 
 @Slf4j
-public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.KubernetesObject> implements Component<MeshWorkerService> {
+public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.KubernetesObject,
+        K extends io.kubernetes.client.common.KubernetesListObject> implements Component<MeshWorkerService> {
 
     protected final Supplier<MeshWorkerService> meshWorkerServiceSupplier;
     protected final Function.FunctionDetails.ComponentType componentType;
@@ -74,6 +80,9 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
     final String version = "v1alpha1";
 
     String kind = "Function";
+
+    @Getter
+    protected GenericKubernetesApi<T, K> resourceApi;
 
     MeshComponentImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier,
                       Function.FunctionDetails.ComponentType componentType) {
@@ -192,6 +201,20 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             String err = String.format(
                     "failed to perform the request: responseCode: %s, responseMessage: %s, responseBody: %s",
                     response.code(), response.message(), body);
+            throw new Exception(err);
+        }
+    }
+
+    public T extractResponse(KubernetesApiResponse<T> response) throws Exception {
+        if (response.isSuccess()) {
+            return response.getObject();
+        } else if (response.getHttpStatusCode() == 409) {
+            throw new RestException(javax.ws.rs.core.Response.Status.CONFLICT,
+                    "This resource already exists, please change the name");
+        } else {
+            String err = String.format(
+                    "failed to perform the request: responseCode: %s, responseMessage: %s",
+                    response.getHttpStatusCode(), response.getStatus().getMessage());
             throw new Exception(err);
         }
     }
