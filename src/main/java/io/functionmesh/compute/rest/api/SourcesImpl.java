@@ -71,7 +71,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorkerService> {
+public class SourcesImpl extends MeshComponentImpl<V1alpha1Source> implements Sources<MeshWorkerService> {
     private final String kind = "Source";
 
     private final String plural = "sources";

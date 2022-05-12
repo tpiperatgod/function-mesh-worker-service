@@ -70,7 +70,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class FunctionsImpl extends MeshComponentImpl implements Functions<MeshWorkerService> {
+public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function> implements Functions<MeshWorkerService> {
 
     public FunctionsImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier) {
         super(meshWorkerServiceSupplier, Function.FunctionDetails.ComponentType.FUNCTION);

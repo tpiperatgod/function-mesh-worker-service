@@ -62,7 +62,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.pulsar.functions.worker.rest.RestUtils.throwUnavailableException;
 
 @Slf4j
-public abstract class MeshComponentImpl implements Component<MeshWorkerService> {
+public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.KubernetesObject> implements Component<MeshWorkerService> {
 
     protected final Supplier<MeshWorkerService> meshWorkerServiceSupplier;
     protected final Function.FunctionDetails.ComponentType componentType;

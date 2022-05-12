@@ -72,7 +72,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class SinksImpl extends MeshComponentImpl
+public class SinksImpl extends MeshComponentImpl<V1alpha1Sink>
         implements Sinks<MeshWorkerService> {
     private String kind = "Sink";
 
