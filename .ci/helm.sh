@@ -328,11 +328,15 @@ function ci::verify_mesh_worker_service_pulsar_admin() {
   if [[ $RET != *"true"* ]]; then
    return 1
   fi
+  ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sinks stats --name data-generator-sink
+
   ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources status --name data-generator-source
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources status --name data-generator-source)
   if [[ $RET != *"true"* ]]; then
    return 1
   fi
+
+  ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources stats --name data-generator-source
   ${KUBECTL} get pods -n ${NAMESPACE}
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources delete --name data-generator-source)
   echo "${RET}"
