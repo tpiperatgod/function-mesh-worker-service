@@ -328,15 +328,12 @@ function ci::verify_mesh_worker_service_pulsar_admin() {
   if [[ $RET != *"true"* ]]; then
    return 1
   fi
-  ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sinks stats --name data-generator-sink
-
   ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources status --name data-generator-source
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources status --name data-generator-source)
   if [[ $RET != *"true"* ]]; then
    return 1
   fi
 
-  ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources stats --name data-generator-source
   ${KUBECTL} get pods -n ${NAMESPACE}
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin sources delete --name data-generator-source)
   echo "${RET}"
@@ -594,4 +591,42 @@ function ci::create_sink_by_upload() {
     RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin packages get-metadata sink://public/default/package-upload-sink@latest)
     echo "${RET}"
   fi
+}
+
+function ci::verify_function_stats_api() {
+  echo "create Java function"
+  RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions create --jar /pulsar/examples/api-examples.jar --name api-java-fn --className org.apache.pulsar.functions.api.examples.ExclamationFunction --inputs persistent://public/default/api-java-fn-input -o persistent://public/default/api-java-fn-output --cpu 0.1)
+    ${KUBECTL} logs -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0
+    sleep 15
+    echo "${RET}"
+    ${KUBECTL} logs -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0
+    sleep 15
+    ${KUBECTL} get pods -A
+    sleep 5
+    WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "api-java-fn" | wc -l)
+    while [[ ${WC} -lt 1 ]]; do
+      echo ${WC};
+      sleep 20
+      ${KUBECTL} get pods -n ${NAMESPACE}
+      RET=$(${KUBECTL} get pods -n ${NAMESPACE} -o name | grep api-java-fn)
+      ${KUBECTL} describe ${RET}
+      WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "api-java-fn" | wc -l)
+    done
+    for ((i=0;i<30;i++));
+    do
+       ci:verify_exclamation_function "persistent://public/default/api-java-fn-input" "persistent://public/default/api-java-fn-output" "test-message" "test-message!" 30
+    done
+
+    echo "java function test done"
+    echo "get function stats"
+    ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions stats --name api-java-fn
+    RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions stats --name api-java-fn | jq .receivedTotal)
+    echo "${RET}"
+    while [[ ${RET} -ne 30 ]]; do
+      sleep 1
+      RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions stats --name api-java-fn | jq .receivedTotal)
+      echo "${RET}"
+    done
+    RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions delete --name api-java-fn)
+    echo "${RET}"
 }
