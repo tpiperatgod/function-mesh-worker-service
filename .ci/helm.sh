@@ -266,7 +266,7 @@ function ci:verify_exclamation_function() {
   timesleep=$5
   ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-client produce -m ${inputmessage} -n 10 ${inputtopic}
   sleep $timesleep
-  MESSAGE=$(timeout 60 ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-client consume -n 1 -s "sub" --subscription-position Earliest ${outputtopic})
+  MESSAGE=$(timeout 120 ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-client consume -n 1 -s "sub" --subscription-position Earliest ${outputtopic})
   echo $MESSAGE
   if [[ "$MESSAGE" == *"$outputmessage"* ]]; then
     return 0
@@ -612,17 +612,15 @@ function ci::verify_function_stats_api() {
       ${KUBECTL} describe ${RET}
       WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "api-java-fn" | wc -l)
     done
-    for ((i=0;i<30;i++));
-    do
-       ci:verify_exclamation_function "persistent://public/default/api-java-fn-input" "persistent://public/default/api-java-fn-output" "test-message" "test-message!" 30
-    done
+    sleep 20
+    ci:verify_exclamation_function "persistent://public/default/api-java-fn-input" "persistent://public/default/api-java-fn-output" "test-message" "test-message!" 30
 
     echo "java function test done"
     echo "get function stats"
     ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions stats --name api-java-fn
     RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions stats --name api-java-fn | jq .receivedTotal)
     echo "${RET}"
-    while [[ ${RET} -ne 30 ]]; do
+    while [[ ${RET} -ne 10 ]]; do
       sleep 1
       RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions stats --name api-java-fn | jq .receivedTotal)
       echo "${RET}"
