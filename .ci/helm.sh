@@ -623,6 +623,7 @@ function ci::verify_function_stats_api() {
       sleep 1
       RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions stats --name api-java-fn | jq .receivedTotal)
       echo "${RET}"
+      ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions stats --name api-java-fn
     done
     RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions delete --name api-java-fn)
     echo "${RET}"
