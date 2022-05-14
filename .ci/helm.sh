@@ -612,14 +612,17 @@ function ci::verify_function_stats_api() {
       ${KUBECTL} describe ${RET}
       WC=$(${KUBECTL} get pods -n ${NAMESPACE} --field-selector=status.phase=Running | grep "api-java-fn" | wc -l)
     done
-    sleep 20
-    ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-client produce -m "test-message" -n 10 "persistent://public/default/api-java-fn-input"
+    sleep 120
+    echo "produce messages"
+    ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-client produce -m "test-message" -n 100 "persistent://public/default/api-java-fn-input"
+    sleep 120
+    ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin topics stats "persistent://public/default/api-java-fn-input"
     echo "java function test done"
     echo "get function stats"
     ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions stats --name api-java-fn
     RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions stats --name api-java-fn | jq .receivedTotal)
     echo "${RET}"
-    while [[ ${RET} -ne 10 ]]; do
+    while [[ ${RET} -lt 10 ]]; do
       sleep 1
       RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions stats --name api-java-fn | jq .receivedTotal)
       echo "${RET}"
