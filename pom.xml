@@ -38,7 +38,6 @@
         <powermock.version>1.7.4</powermock.version>
         <jetty.version>9.4.35.v20201120</jetty.version>
         <nifi-nar-maven-plugin.version>1.2.0</nifi-nar-maven-plugin.version>
-        <testng.version>7.3.0</testng.version>
         <function-mesh.version>v0.1.11</function-mesh.version>
     </properties>
 
@@ -92,17 +91,6 @@
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-client</artifactId>
             <version>${jetty.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.testng</groupId>
-            <artifactId>testng</artifactId>
-            <version>${testng.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.yaml</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
     </dependencies>
 

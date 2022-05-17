@@ -247,6 +247,12 @@ public class KubernetesUtils {
                 && v1StatefulSet.getMetadata().getOwnerReferences() != null
                 && owner != null && owner.getMetadata() != null) {
             List<V1OwnerReference> ownerReferences = v1StatefulSet.getMetadata().getOwnerReferences();
+            if (ownerReferences == null || ownerReferences.isEmpty()) {
+                // When the owner references are empty, it means the resource is created by the system
+                // And we skip the validation
+                log.warn("StatefulSet {} has no owner references", v1StatefulSet.getMetadata().getName());
+                return true;
+            }
             for (V1OwnerReference ownerReference : ownerReferences) {
                 if (ownerReference.getApiVersion().equalsIgnoreCase(owner.getApiVersion())
                         && ownerReference.getKind().equalsIgnoreCase(owner.getKind())
