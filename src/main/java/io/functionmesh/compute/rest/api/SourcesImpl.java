@@ -19,6 +19,7 @@
 package io.functionmesh.compute.rest.api;
 
 import static io.functionmesh.compute.util.KubernetesUtils.validateResourceOwner;
+import static io.functionmesh.compute.util.KubernetesUtils.validateStatefulSet;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
@@ -664,55 +665,22 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
         try {
             String nameSpaceName = worker().getJobNamespace();
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
-            Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    API_GROUP, API_VER, nameSpaceName,
-                    plural, hashName, null);
-            V1alpha1Source v1alpha1Source = executeCall(call, V1alpha1Source.class);
+            V1alpha1Source v1alpha1Source = extractResponse(getResourceApi().get(nameSpaceName, hashName));
+            try {
+                validateResourceObject(v1alpha1Source);
+            } catch (IllegalArgumentException e) {
+                log.warn("get stats {}/{}/{} source failed", tenant, namespace, componentName, e);
+                return functionInstanceStatsList;
+            }
             V1alpha1SourceStatus v1alpha1SourceStatus = v1alpha1Source.getStatus();
-            if (v1alpha1SourceStatus == null) {
-                log.warn(
-                        "get source {}/{}/{} stats failed, no SourceStatus exists",
-                        tenant,
-                        namespace,
-                        componentName);
-                return functionInstanceStatsList;
-            }
-            if (v1alpha1Source.getMetadata() == null) {
-                log.warn(
-                        "get source {}/{}/{} stats failed, no Metadata exists",
-                        tenant,
-                        namespace,
-                        componentName);
-                return functionInstanceStatsList;
-            }
             final V1StatefulSet v1StatefulSet = getFunctionStatefulSet(v1alpha1Source);
-            if (v1StatefulSet == null) {
-                log.warn(
-                        "get source {}/{}/{} stats failed, no StatefulSet exists",
-                        tenant,
-                        namespace,
-                        componentName);
-                return functionInstanceStatsList;
-            }
-            if (v1StatefulSet.getMetadata() == null ||
-                    (v1StatefulSet.getMetadata() != null && StringUtils.isEmpty(v1StatefulSet.getMetadata().getName()))) {
-                log.warn(
-                        "get source {}/{}/{} stats failed, no statefulSetName exists",
-                        tenant,
-                        namespace,
-                        componentName);
+            try {
+                validateStatefulSet(v1StatefulSet);
+            } catch (IllegalArgumentException e) {
+                log.warn("get stats {}/{}/{} source failed", tenant, namespace, componentName, e);
                 return functionInstanceStatsList;
             }
             final String statefulSetName = v1StatefulSet.getMetadata().getName();
-            if (v1StatefulSet.getSpec() == null || (v1StatefulSet.getSpec() != null &&
-                    StringUtils.isEmpty(v1StatefulSet.getSpec().getServiceName()))) {
-                log.warn(
-                        "get source {}/{}/{} stats failed, no ServiceName exists",
-                        tenant,
-                        namespace,
-                        componentName);
-                return functionInstanceStatsList;
-            }
             final String subdomain = v1StatefulSet.getSpec().getServiceName();
             if (v1StatefulSet.getStatus() != null) {
                 Integer replicas = v1StatefulSet.getStatus().getReplicas();
@@ -723,13 +691,6 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                         functionInstanceStatsList.add(functionInstanceStats);
                     }
                 }
-            } else {
-                log.warn(
-                        "no StatefulSet status exists when get status of stats {}/{}/{}",
-                        tenant,
-                        namespace,
-                        componentName);
-                return functionInstanceStatsList;
             }
             V1PodList podList = getFunctionPods(tenant, namespace, componentName, v1alpha1SourceStatus);
             if (podList != null) {
@@ -740,50 +701,9 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                     ManagedChannel[] channel = new ManagedChannel[podsCount];
                     InstanceControlGrpc.InstanceControlFutureStub[] stub =
                             new InstanceControlGrpc.InstanceControlFutureStub[podsCount];
-                    Set<CompletableFuture<InstanceCommunication.MetricsData>> completableFutureSet = new HashSet<>();
-                    runningPods.forEach(pod -> {
-                        String podName = KubernetesUtils.getPodName(pod);
-                        int shardId = CommonUtil.getShardIdFromPodName(podName);
-                        int podIndex = runningPods.indexOf(pod);
-                        String address = KubernetesUtils.getServiceUrl(podName, subdomain, nameSpaceName);
-                        if (shardId == -1) {
-                            log.warn("shardId invalid {}", podName);
-                            return;
-                        }
-                        final FunctionInstanceStatsImpl functionInstanceStats = functionInstanceStatsList.stream().filter(v -> v.getInstanceId() == shardId).findFirst().orElse(null);
-                        if (functionInstanceStats != null) {
-                            // get status from grpc
-                            if (channel[podIndex] == null && stub[podIndex] == null) {
-                                channel[podIndex] = ManagedChannelBuilder.forAddress(address, 9093)
-                                        .usePlaintext()
-                                        .build();
-                                stub[podIndex] = InstanceControlGrpc.newFutureStub(channel[podIndex]);
-                            }
-                            CompletableFuture<InstanceCommunication.MetricsData> future = CommonUtil.getFunctionMetricsAsync(stub[podIndex]);
-                            future.whenComplete((fs, e) -> {
-                                if (channel[podIndex] != null) {
-                                    log.debug("closing channel {}", podIndex);
-                                    channel[podIndex].shutdown();
-                                }
-                                if (e != null) {
-                                    log.warn("Get source {}-{} stats from grpc failed from namespace {}",
-                                            statefulSetName,
-                                            shardId,
-                                            nameSpaceName,
-                                            e);
-                                } else if (fs != null) {
-                                    CommonUtil.convertFunctionMetricsToFunctionInstanceStats(fs, functionInstanceStats);
-                                }
-                            });
-                            completableFutureSet.add(future);
-                        } else {
-                            log.warn("Get source {}-{} stats failed from namespace {}, cannot find status for shardId {}",
-                                    statefulSetName,
-                                    shardId,
-                                    nameSpaceName,
-                                    shardId);
-                        }
-                    });
+                    Set<CompletableFuture<InstanceCommunication.MetricsData>> completableFutureSet =
+                            fetchStatsFromGRPC(runningPods, subdomain, statefulSetName,
+                                    nameSpaceName, functionInstanceStatsList, channel, stub);
                     completableFutureSet.forEach(CompletableFuture::join);
                 }
             }
@@ -792,6 +712,22 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                     componentName, namespace, e);
         }
         return functionInstanceStatsList;
+    }
+
+    @Override
+    void validateResourceObject(V1alpha1Source obj) throws IllegalArgumentException {
+        if (obj == null) {
+            throw new IllegalArgumentException("Source Resource is null");
+        }
+        if (obj.getMetadata() == null) {
+            throw new IllegalArgumentException("Source Resource metadata is null");
+        }
+        if (obj.getSpec() == null) {
+            throw new IllegalArgumentException("Source Resource spec is null");
+        }
+        if (obj.getStatus() == null) {
+            throw new IllegalArgumentException("Source Resource status is null");
+        }
     }
 
     public V1StatefulSet getFunctionStatefulSet(V1alpha1Source v1alpha1Source) {

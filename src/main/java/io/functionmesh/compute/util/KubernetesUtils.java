@@ -251,4 +251,21 @@ public class KubernetesUtils {
 		return false;
 	}
 
+	public static void validateStatefulSet(V1StatefulSet v1StatefulSet) throws IllegalArgumentException {
+		if (v1StatefulSet == null) {
+			throw new IllegalArgumentException("StatefulSet is null");
+		}
+		if (v1StatefulSet.getMetadata() == null ||
+				(v1StatefulSet.getMetadata() != null && StringUtils.isEmpty(v1StatefulSet.getMetadata().getName()))) {
+			throw new IllegalArgumentException("StatefulSet name is null");
+		}
+		if (v1StatefulSet.getSpec() == null || (v1StatefulSet.getSpec() != null &&
+				StringUtils.isEmpty(v1StatefulSet.getSpec().getServiceName()))) {
+			throw new IllegalArgumentException("StatefulSet service name is null");
+		}
+		if (v1StatefulSet.getStatus() == null) {
+			throw new IllegalArgumentException("StatefulSet status is null");
+		}
+	}
+
 }
