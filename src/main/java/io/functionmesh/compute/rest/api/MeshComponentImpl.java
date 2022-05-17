@@ -77,11 +77,11 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
     final static String API_GROUP = "compute.functionmesh.io";
     protected final Supplier<MeshWorkerService> meshWorkerServiceSupplier;
     protected final Function.FunctionDetails.ComponentType componentType;
-    protected String API_VER = "v1alpha1";
+    protected String API_VERSION = "v1alpha1";
     protected String API_KIND = "Function";
+    protected String API_PLURAL = "functions";
     @Getter
     protected GenericKubernetesApi<T, K> resourceApi;
-    String API_PLURAL = "functions";
 
     MeshComponentImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier,
                       Function.FunctionDetails.ComponentType componentType) {
@@ -119,7 +119,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             String hashName = CommonUtil.createObjectName(clusterName, tenant, namespace, componentName);
             Call deleteObjectCall = worker().getCustomObjectsApi().deleteNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VER,
+                    API_VERSION,
                     worker().getJobNamespace(),
                     API_PLURAL,
                     hashName,
@@ -359,7 +359,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             labelSelector = getCustomLabelClaimsSelector(cluster, tenant, namespace);
             Call call = worker().getCustomObjectsApi().listNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VER,
+                    API_VERSION,
                     worker().getJobNamespace(), API_PLURAL,
                     "false",
                     null,

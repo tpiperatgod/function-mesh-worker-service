@@ -77,7 +77,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
     public FunctionsImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier) {
         super(meshWorkerServiceSupplier, Function.FunctionDetails.ComponentType.FUNCTION);
         this.resourceApi = new GenericKubernetesApi<>(
-                V1alpha1Function.class, V1alpha1FunctionList.class, API_GROUP, API_VER, API_PLURAL,
+                V1alpha1Function.class, V1alpha1FunctionList.class, API_GROUP, API_VERSION, API_PLURAL,
                 meshWorkerServiceSupplier.get().getApiClient());
     }
 
@@ -158,7 +158,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
         V1alpha1Function v1alpha1Function = FunctionsUtil.createV1alpha1FunctionFromFunctionConfig(
                 API_KIND,
                 API_GROUP,
-                API_VER,
+                API_VERSION,
                 functionName,
                 packageURL,
                 functionConfig,
@@ -172,7 +172,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                     clientAuthenticationDataHttps);
             Call call = worker().getCustomObjectsApi().createNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VER,
+                    API_VERSION,
                     worker().getJobNamespace(),
                     API_PLURAL,
                     v1alpha1Function,
@@ -234,7 +234,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
             V1alpha1Function v1alpha1Function = FunctionsUtil.createV1alpha1FunctionFromFunctionConfig(
                     API_KIND,
                     API_GROUP,
-                    API_VER,
+                    API_VERSION,
                     functionName,
                     packageURL,
                     functionConfig,
@@ -243,7 +243,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
             );
             Call getCall = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VER,
+                    API_VERSION,
                     worker().getJobNamespace(),
                     API_PLURAL,
                     v1alpha1Function.getMetadata().getName(),
@@ -263,7 +263,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                     clientAuthenticationDataHttps);
             Call replaceCall = worker().getCustomObjectsApi().replaceNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VER,
+                    API_VERSION,
                     worker().getJobNamespace(),
                     API_PLURAL,
                     v1alpha1Function.getMetadata().getName(),
@@ -298,7 +298,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
         try {
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VER,
+                    API_VERSION,
                     worker().getJobNamespace(),
                     API_PLURAL,
                     hashName,
@@ -417,7 +417,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
             String nameSpaceName = worker().getJobNamespace();
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    API_GROUP, API_VER, nameSpaceName,
+                    API_GROUP, API_VERSION, nameSpaceName,
                     API_PLURAL, hashName, null);
             V1alpha1Function v1alpha1Function = executeCall(call, V1alpha1Function.class);
             V1alpha1FunctionStatus v1alpha1FunctionStatus = v1alpha1Function.getStatus();

@@ -86,7 +86,7 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
         super.API_PLURAL = this.plural;
         super.API_KIND = this.kind;
         this.resourceApi = new GenericKubernetesApi<>(
-                V1alpha1Sink.class, V1alpha1SinkList.class, API_GROUP, API_VER, plural,
+                V1alpha1Sink.class, V1alpha1SinkList.class, API_GROUP, API_VERSION, API_PLURAL,
                 meshWorkerServiceSupplier.get().getApiClient());
     }
 
@@ -159,9 +159,9 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
         String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
         V1alpha1Sink v1alpha1Sink =
                 SinksUtil.createV1alpha1SkinFromSinkConfig(
-                        kind,
+                        API_KIND,
                         API_GROUP,
-                        API_VER,
+                        API_VERSION,
                         sinkName,
                         packageURL,
                         uploadedInputStream,
@@ -176,9 +176,9 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                     worker().getCustomObjectsApi()
                             .createNamespacedCustomObjectCall(
                                     API_GROUP,
-                                    API_VER,
+                                    API_VERSION,
                                     worker().getJobNamespace(),
-                                    plural,
+                                    API_PLURAL,
                                     v1alpha1Sink,
                                     null,
                                     null,
@@ -240,9 +240,9 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
         try {
             V1alpha1Sink v1alpha1Sink =
                     SinksUtil.createV1alpha1SkinFromSinkConfig(
-                            kind,
+                            API_KIND,
                             API_GROUP,
-                            API_VER,
+                            API_VERSION,
                             sinkName,
                             packageURL,
                             uploadedInputStream,
@@ -251,8 +251,8 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
             CustomObjectsApi customObjectsApi = worker().getCustomObjectsApi();
             Call getCall =
                     customObjectsApi.getNamespacedCustomObjectCall(
-                            API_GROUP, API_VER,
-                            worker().getJobNamespace(), plural,
+                            API_GROUP, API_VERSION,
+                            worker().getJobNamespace(), API_PLURAL,
                             v1alpha1Sink.getMetadata().getName(), null);
             V1alpha1Sink oldRes = executeCall(getCall, V1alpha1Sink.class);
             if (oldRes.getMetadata() == null || oldRes.getMetadata().getLabels() == null) {
@@ -266,9 +266,9 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
             this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientAuthenticationDataHttps);
             Call replaceCall = customObjectsApi.replaceNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VER,
+                    API_VERSION,
                     worker().getJobNamespace(),
-                    plural,
+                    API_PLURAL,
                     v1alpha1Sink.getMetadata().getName(),
                     v1alpha1Sink,
                     null,
@@ -322,8 +322,8 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
             Call call =
                     worker().getCustomObjectsApi()
                             .getNamespacedCustomObjectCall(
-                                    API_GROUP, API_VER, nameSpaceName,
-                                    plural, hashName, null);
+                                    API_GROUP, API_VERSION, nameSpaceName,
+                                    API_PLURAL, hashName, null);
             V1alpha1Sink v1alpha1Sink = executeCall(call, V1alpha1Sink.class);
             V1alpha1SinkStatus v1alpha1SinkStatus = v1alpha1Sink.getStatus();
             if (v1alpha1SinkStatus == null) {
@@ -566,14 +566,14 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
     public SinkConfig getSinkInfo(
             final String tenant, final String namespace, final String componentName) {
         validateSinkEnabled();
-        this.validateGetInfoRequestParams(tenant, namespace, componentName, kind);
+        this.validateGetInfoRequestParams(tenant, namespace, componentName, API_KIND);
         try {
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
             Call call =
                     worker().getCustomObjectsApi()
                             .getNamespacedCustomObjectCall(
-                                    API_GROUP, API_VER, worker().getJobNamespace(),
-                                    plural, hashName, null);
+                                    API_GROUP, API_VERSION, worker().getJobNamespace(),
+                                    API_PLURAL, hashName, null);
 
             V1alpha1Sink v1alpha1Sink = executeCall(call, V1alpha1Sink.class);
             return SinksUtil.createSinkConfigFromV1alpha1Sink(
@@ -731,12 +731,12 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                     if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
                             && !StringUtils.isEmpty(
                             worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
-                        String authSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "auth",
+                        String authSecretName = KubernetesUtils.upsertSecret(API_KIND.toLowerCase(), "auth",
                                 v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, worker());
                         v1alpha1Sink.getSpec().getPulsar().setAuthSecret(authSecretName);
                     }
                     if (worker().getWorkerConfig().getTlsEnabled()) {
-                        String tlsSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "tls",
+                        String tlsSecretName = KubernetesUtils.upsertSecret(API_KIND.toLowerCase(), "tls",
                                 v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, worker());
                         v1alpha1Sink.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
