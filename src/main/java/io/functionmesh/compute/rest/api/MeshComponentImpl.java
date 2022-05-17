@@ -18,8 +18,14 @@
  */
 package io.functionmesh.compute.rest.api;
 
-import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM;
+import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
+import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.apache.pulsar.functions.worker.rest.RestUtils.throwUnavailableException;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.util.PackageManagementServiceUtil;
@@ -28,9 +34,16 @@ import io.grpc.ManagedChannelBuilder;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.util.generic.GenericKubernetesApi;
 import io.kubernetes.client.util.generic.KubernetesApiResponse;
+import java.io.InputStream;
+import java.net.URI;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
+import javax.ws.rs.core.StreamingOutput;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
@@ -57,39 +70,18 @@ import org.apache.pulsar.functions.utils.ComponentTypeUtils;
 import org.apache.pulsar.functions.worker.WorkerService;
 import org.apache.pulsar.functions.worker.service.api.Component;
 
-import javax.ws.rs.core.StreamingOutput;
-import java.io.InputStream;
-import java.net.URI;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.function.Supplier;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM;
-import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
-import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.apache.pulsar.functions.worker.rest.RestUtils.throwUnavailableException;
-
 @Slf4j
 public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.KubernetesObject,
         K extends io.kubernetes.client.common.KubernetesListObject> implements Component<MeshWorkerService> {
 
+    final static String API_GROUP = "compute.functionmesh.io";
     protected final Supplier<MeshWorkerService> meshWorkerServiceSupplier;
     protected final Function.FunctionDetails.ComponentType componentType;
-
-    String API_PLURAL = "functions";
-
-    final static String API_GROUP = "compute.functionmesh.io";
-
     protected String API_VER = "v1alpha1";
-
     protected String API_KIND = "Function";
-
-
     @Getter
     protected GenericKubernetesApi<T, K> resourceApi;
+    String API_PLURAL = "functions";
 
     MeshComponentImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier,
                       Function.FunctionDetails.ComponentType componentType) {
@@ -141,8 +133,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             executeCall(deleteObjectCall, null);
 
             PackageManagementServiceUtil.deletePackageFromPackageService(
-                worker().getBrokerAdmin(), getPackageTypeFromComponentType(componentType),
-                tenant, namespace, componentName);
+                    worker().getBrokerAdmin(), getPackageTypeFromComponentType(componentType),
+                    tenant, namespace, componentName);
 
             if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
                     && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
@@ -317,7 +309,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
 
         FunctionStatsImpl functionStats = new FunctionStatsImpl();
         try {
-            List<FunctionInstanceStatsImpl> instanceStatsList = getComponentInstancesStats(tenant, namespace, componentName);
+            List<FunctionInstanceStatsImpl> instanceStatsList =
+                    getComponentInstancesStats(tenant, namespace, componentName);
             for (FunctionInstanceStatsImpl instanceStats : instanceStatsList) {
                 if (instanceStats != null) {
                     functionStats.addInstance(instanceStats);
@@ -478,7 +471,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             if (clientRole != null) {
                 try {
                     TenantInfo tenantInfo = worker().getBrokerAdmin().tenants().getTenantInfo(tenant);
-                    if (tenantInfo != null && worker().getAuthorizationService().isTenantAdmin(tenant, clientRole, tenantInfo, authenticationData).get()) {
+                    if (tenantInfo != null && worker().getAuthorizationService()
+                            .isTenantAdmin(tenant, clientRole, tenantInfo, authenticationData).get()) {
                         return true;
                     }
                 } catch (PulsarAdminException.NotFoundException | InterruptedException | ExecutionException e) {
@@ -502,20 +496,25 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             switch (componentType) {
                 case SINK:
                     return worker().getAuthorizationService().allowSinkOpsAsync(
-                            namespaceName, role, authenticationData).get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
+                                    namespaceName, role, authenticationData)
+                            .get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
                 case SOURCE:
                     return worker().getAuthorizationService().allowSourceOpsAsync(
-                            namespaceName, role, authenticationData).get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
+                                    namespaceName, role, authenticationData)
+                            .get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
                 case FUNCTION:
                 default:
                     return worker().getAuthorizationService().allowFunctionOpsAsync(
-                            namespaceName, role, authenticationData).get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
+                                    namespaceName, role, authenticationData)
+                            .get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
             }
         } catch (InterruptedException e) {
-            log.warn("Time-out {} sec while checking function authorization on {} ", worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), namespaceName);
+            log.warn("Time-out {} sec while checking function authorization on {} ",
+                    worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), namespaceName);
             throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         } catch (Exception e) {
-            log.warn("Admin-client with Role - {} failed to get function permissions for namespace - {}. {}", role, namespaceName,
+            log.warn("Admin-client with Role - {} failed to get function permissions for namespace - {}. {}", role,
+                    namespaceName,
                     e.getMessage(), e);
             throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
@@ -530,7 +529,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             if (!isAuthorizedRole(tenant, namespace, clientRole, clientAuthenticationDataHttps)) {
                 log.warn("{}/{}/{} Client [{}] is not authorized to get {}", tenant, namespace,
                         componentName, clientRole, ComponentTypeUtils.toString(componentType));
-                throw new RestException(javax.ws.rs.core.Response.Status.UNAUTHORIZED, "client is not authorize to perform operation");
+                throw new RestException(javax.ws.rs.core.Response.Status.UNAUTHORIZED,
+                        "client is not authorize to perform operation");
             }
         } catch (PulsarAdminException e) {
             log.error("{}/{}/{} Failed to authorize", tenant, namespace, componentName, e);
@@ -559,7 +559,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
         } catch (PulsarAdminException.NotAuthorizedException e) {
             log.error("{}/{}/{} Client [{}] is not authorized to operate {} on tenant", tenant, namespace,
                     name, clientRole, ComponentTypeUtils.toString(componentType));
-            throw new RestException(javax.ws.rs.core.Response.Status.UNAUTHORIZED, "client is not authorize to perform operation");
+            throw new RestException(javax.ws.rs.core.Response.Status.UNAUTHORIZED,
+                    "client is not authorize to perform operation");
         } catch (PulsarAdminException.NotFoundException e) {
             log.error("{}/{}/{} Tenant {} does not exist", tenant, namespace, name, tenant);
             throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, "Tenant does not exist");
@@ -573,11 +574,13 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
         if (componentResources != null) {
             if (minResource != null && (componentResources.getCpu() < minResource.getCpu()
                     || componentResources.getRam() < minResource.getRam())) {
-                throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, "Resource is less than minimum requirement");
+                throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST,
+                        "Resource is less than minimum requirement");
             }
             if (maxResource != null && (componentResources.getCpu() > maxResource.getCpu()
                     || componentResources.getRam() > maxResource.getRam())) {
-                throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, "Resource is larger than max requirement");
+                throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST,
+                        "Resource is larger than max requirement");
             }
         }
     }
@@ -590,7 +593,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
         return workerService.isInitialized();
     }
 
-    abstract List<FunctionInstanceStatsImpl> getComponentInstancesStats(String tenant, String namespace, String componentName);
+    abstract List<FunctionInstanceStatsImpl> getComponentInstancesStats(String tenant, String namespace,
+                                                                        String componentName);
 
     abstract void validateResourceObject(T obj) throws IllegalArgumentException;
 
@@ -612,7 +616,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                 return;
             }
             final FunctionInstanceStatsImpl functionInstanceStats =
-                    functionInstanceStatsList.stream().filter(v -> v.getInstanceId() == shardId).findFirst().orElse(null);
+                    functionInstanceStatsList.stream().filter(v -> v.getInstanceId() == shardId).findFirst()
+                            .orElse(null);
             if (functionInstanceStats != null) {
                 // get status from grpc
                 if (channel[podIndex] == null && stub[podIndex] == null) {
@@ -621,7 +626,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                             .build();
                     stub[podIndex] = InstanceControlGrpc.newFutureStub(channel[podIndex]);
                 }
-                CompletableFuture<InstanceCommunication.MetricsData> future = CommonUtil.getFunctionMetricsAsync(stub[podIndex]);
+                CompletableFuture<InstanceCommunication.MetricsData> future =
+                        CommonUtil.getFunctionMetricsAsync(stub[podIndex]);
                 future.whenComplete((fs, e) -> {
                     if (channel[podIndex] != null) {
                         log.debug("closing channel {}", podIndex);

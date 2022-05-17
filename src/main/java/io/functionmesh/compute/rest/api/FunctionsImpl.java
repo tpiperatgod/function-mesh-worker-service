@@ -36,16 +36,23 @@ import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.util.PackageManagementServiceUtil;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.models.V1ContainerState;
 import io.kubernetes.client.openapi.models.V1ContainerStatus;
-import io.kubernetes.client.openapi.models.V1OwnerReference;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
 import io.kubernetes.client.util.generic.GenericKubernetesApi;
+import java.io.InputStream;
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import org.apache.commons.lang3.StringUtils;
@@ -62,16 +69,6 @@ import org.apache.pulsar.functions.proto.InstanceControlGrpc;
 import org.apache.pulsar.functions.utils.ComponentTypeUtils;
 import org.apache.pulsar.functions.worker.service.api.Functions;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
-
-import javax.ws.rs.core.Response;
-import java.io.InputStream;
-import java.net.URI;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1FunctionList>
@@ -103,7 +100,8 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
         if (jarUploaded && customConfig != null && !customConfig.isUploadEnabled()) {
             throw new RestException(Response.Status.BAD_REQUEST, "Uploading Jar File is not enabled");
         }
-        this.validateResources(functionConfig.getResources(), worker().getWorkerConfig().getFunctionInstanceMinResources(),
+        this.validateResources(functionConfig.getResources(),
+                worker().getWorkerConfig().getFunctionInstanceMinResources(),
                 worker().getWorkerConfig().getFunctionInstanceMaxResources());
     }
 
@@ -135,7 +133,8 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                                  AuthenticationDataHttps clientAuthenticationDataHttps) {
         validateFunctionEnabled();
 
-        validateRegisterFunctionRequestParams(tenant, namespace, functionName, functionConfig, uploadedInputStream != null);
+        validateRegisterFunctionRequestParams(tenant, namespace, functionName, functionConfig,
+                uploadedInputStream != null);
         this.validatePermission(tenant,
                 namespace,
                 clientRole,
@@ -169,7 +168,8 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
         // override namespace by configuration file
         v1alpha1Function.getMetadata().setNamespace(worker().getJobNamespace());
         try {
-            this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function, clientAuthenticationDataHttps);
+            this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function,
+                    clientAuthenticationDataHttps);
             Call call = worker().getCustomObjectsApi().createNamespacedCustomObjectCall(
                     API_GROUP,
                     API_VER,
@@ -209,7 +209,8 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                                UpdateOptionsImpl updateOptions) {
         validateFunctionEnabled();
 
-        validateUpdateFunctionRequestParams(tenant, namespace, functionName, functionConfig, uploadedInputStream != null);
+        validateUpdateFunctionRequestParams(tenant, namespace, functionName, functionConfig,
+                uploadedInputStream != null);
         this.validatePermission(tenant,
                 namespace,
                 clientRole,
@@ -250,14 +251,16 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
             );
             V1alpha1Function oldFn = executeCall(getCall, V1alpha1Function.class);
             if (oldFn.getMetadata() == null || oldFn.getMetadata().getLabels() == null) {
-                log.error("update {}/{}/{} function failed, the function resource cannot be found", tenant, namespace, functionName);
+                log.error("update {}/{}/{} function failed, the function resource cannot be found", tenant, namespace,
+                        functionName);
                 throw new RestException(Response.Status.NOT_FOUND, "This function resource was not found");
             }
 
             v1alpha1Function.getMetadata().setNamespace(worker().getJobNamespace());
             v1alpha1Function.getMetadata().setResourceVersion(oldFn.getMetadata().getResourceVersion());
 
-            this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function, clientAuthenticationDataHttps);
+            this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function,
+                    clientAuthenticationDataHttps);
             Call replaceCall = worker().getCustomObjectsApi().replaceNamespacedCustomObjectCall(
                     API_GROUP,
                     API_VER,
@@ -384,13 +387,14 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
     }
 
     @Override
-    public FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData getFunctionInstanceStatus(final String tenant,
-                                                                                                      final String namespace,
-                                                                                                      final String componentName,
-                                                                                                      final String instanceId,
-                                                                                                      final URI uri,
-                                                                                                      final String clientRole,
-                                                                                                      final AuthenticationDataSource clientAuthenticationDataHttps) {
+    public FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData getFunctionInstanceStatus(
+            final String tenant,
+            final String namespace,
+            final String componentName,
+            final String instanceId,
+            final URI uri,
+            final String clientRole,
+            final AuthenticationDataSource clientAuthenticationDataHttps) {
 
         throw new RestException(Response.Status.BAD_REQUEST, "Unsupported Operation");
     }
@@ -472,8 +476,10 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                 if (replicas != null) {
                     functionStatus.setNumInstances(replicas);
                     for (int i = 0; i < replicas; i++) {
-                        FunctionStatus.FunctionInstanceStatus functionInstanceStatus = new FunctionStatus.FunctionInstanceStatus();
-                        FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData functionInstanceStatusData = new FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData();
+                        FunctionStatus.FunctionInstanceStatus functionInstanceStatus =
+                                new FunctionStatus.FunctionInstanceStatus();
+                        FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData functionInstanceStatusData =
+                                new FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData();
                         functionInstanceStatus.setInstanceId(i);
                         functionInstanceStatus.setStatus(functionInstanceStatusData);
                         functionStatus.addInstance(functionInstanceStatus);
@@ -524,14 +530,17 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                             }
                         }
                         if (functionInstanceStatus != null) {
-                            FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData functionInstanceStatusData = functionInstanceStatus.getStatus();
+                            FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData
+                                    functionInstanceStatusData = functionInstanceStatus.getStatus();
                             V1PodStatus podStatus = pod.getStatus();
-                            if (v1alpha1Function.getSpec() != null && StringUtils.isNotEmpty(v1alpha1Function.getSpec().getClusterName())) {
+                            if (v1alpha1Function.getSpec() != null && StringUtils.isNotEmpty(
+                                    v1alpha1Function.getSpec().getClusterName())) {
                                 functionInstanceStatusData.setWorkerId(v1alpha1Function.getSpec().getClusterName());
                             }
                             if (podStatus != null) {
                                 functionInstanceStatusData.setRunning(KubernetesUtils.isPodRunning(pod));
-                                if (podStatus.getContainerStatuses() != null && !podStatus.getContainerStatuses().isEmpty()) {
+                                if (podStatus.getContainerStatuses() != null && !podStatus.getContainerStatuses()
+                                        .isEmpty()) {
                                     V1ContainerStatus containerStatus = podStatus.getContainerStatuses().get(0);
                                     functionInstanceStatusData.setNumRestarts(containerStatus.getRestartCount());
                                 }
@@ -543,7 +552,8 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                                         .build();
                                 stub[podIndex] = InstanceControlGrpc.newFutureStub(channel[podIndex]);
                             }
-                            CompletableFuture<InstanceCommunication.FunctionStatus> future = CommonUtil.getFunctionStatusAsync(stub[podIndex]);
+                            CompletableFuture<InstanceCommunication.FunctionStatus> future =
+                                    CommonUtil.getFunctionStatusAsync(stub[podIndex]);
                             future.whenComplete((fs, e) -> {
                                 if (channel[podIndex] != null) {
                                     log.debug("closing channel {}", podIndex);
@@ -557,12 +567,15 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                                             e);
                                     functionInstanceStatusData.setError(e.getMessage());
                                 } else if (fs != null) {
-                                    FunctionsUtil.convertFunctionStatusToInstanceStatusData(fs, functionInstanceStatusData);
+                                    FunctionsUtil.convertFunctionStatusToInstanceStatusData(fs,
+                                            functionInstanceStatusData);
                                 }
                             });
                             completableFutureSet.add(future);
                         } else {
-                            log.error("Get function {}-{} status failed from namespace {}, cannot find status for shardId {}",
+                            log.error(
+                                    "Get function {}-{} status failed from namespace {}, cannot find status for "
+                                            + "shardId {}",
                                     finalStatefulSetName,
                                     shardId,
                                     nameSpaceName,
@@ -587,13 +600,14 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                             }
                         }
                         if (functionInstanceStatus != null) {
-                            FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData functionInstanceStatusData = functionInstanceStatus.getStatus();
+                            FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData
+                                    functionInstanceStatusData = functionInstanceStatus.getStatus();
                             V1PodStatus podStatus = pod.getStatus();
                             if (podStatus != null) {
                                 List<V1ContainerStatus> containerStatuses = podStatus.getContainerStatuses();
                                 if (containerStatuses != null && !containerStatuses.isEmpty()) {
                                     V1ContainerStatus containerStatus = null;
-                                    for (V1ContainerStatus s : containerStatuses){
+                                    for (V1ContainerStatus s : containerStatuses) {
                                         if (s.getImage().contains(v1alpha1Function.getSpec().getImage())) {
                                             containerStatus = s;
                                             break;
@@ -608,13 +622,16 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                                         } else {
                                             V1ContainerState lastState = containerStatus.getLastState();
                                             if (lastState != null && lastState.getTerminated() != null) {
-                                                functionInstanceStatusData.setError(lastState.getTerminated().getMessage());
+                                                functionInstanceStatusData.setError(
+                                                        lastState.getTerminated().getMessage());
                                             } else if (lastState != null && lastState.getWaiting() != null) {
-                                                functionInstanceStatusData.setError(lastState.getWaiting().getMessage());
+                                                functionInstanceStatusData.setError(
+                                                        lastState.getWaiting().getMessage());
                                             }
                                         }
                                         if (containerStatus.getRestartCount() != null) {
-                                            functionInstanceStatusData.setNumRestarts(containerStatus.getRestartCount());
+                                            functionInstanceStatusData.setNumRestarts(
+                                                    containerStatus.getRestartCount());
                                         }
                                     } else {
                                         functionInstanceStatusData.setError(podStatus.getPhase());
@@ -622,7 +639,9 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                                 }
                             }
                         } else {
-                            log.error("Get function {}-{} status failed from namespace {}, cannot find status for shardId {}",
+                            log.error(
+                                    "Get function {}-{} status failed from namespace {}, cannot find status for "
+                                            + "shardId {}",
                                     finalStatefulSetName,
                                     shardId,
                                     nameSpaceName,
@@ -666,7 +685,8 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                         v1alpha1Function.getSpec().setPod(podPolicy);
                     }
                     MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
-                    List<V1alpha1FunctionSpecPodVolumes> volumesList = customConfig.asV1alpha1FunctionSpecPodVolumesList();
+                    List<V1alpha1FunctionSpecPodVolumes> volumesList =
+                            customConfig.asV1alpha1FunctionSpecPodVolumesList();
                     if (volumesList != null && !volumesList.isEmpty()) {
                         podPolicy.setVolumes(volumesList);
                     }
@@ -681,16 +701,18 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                             v1alpha1FunctionSpecJava = v1alpha1Function.getSpec().getJava();
                         } else if (v1alpha1Function.getSpec() != null && v1alpha1Function.getSpec().getJava() == null &&
                                 v1alpha1Function.getSpec().getPython() == null &&
-                                v1alpha1Function.getSpec().getGolang() == null){
+                                v1alpha1Function.getSpec().getGolang() == null) {
                             v1alpha1FunctionSpecJava = new V1alpha1FunctionSpecJava();
                         }
-                        if (v1alpha1FunctionSpecJava != null && StringUtils.isEmpty(v1alpha1FunctionSpecJava.getExtraDependenciesDir())) {
+                        if (v1alpha1FunctionSpecJava != null && StringUtils.isEmpty(
+                                v1alpha1FunctionSpecJava.getExtraDependenciesDir())) {
                             v1alpha1FunctionSpecJava.setExtraDependenciesDir(customConfig.getExtraDependenciesDir());
                             v1alpha1Function.getSpec().setJava(v1alpha1FunctionSpecJava);
                         }
                     }
                     if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
-                            && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
+                            && !StringUtils.isEmpty(
+                            worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
                         String authSecretName = KubernetesUtils.upsertSecret(API_KIND.toLowerCase(), "auth",
                                 v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, worker());
                         v1alpha1Function.getSpec().getPulsar().setAuthSecret(authSecretName);
@@ -729,8 +751,10 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
     public V1StatefulSet getFunctionStatefulSet(V1alpha1Function v1alpha1Function) {
         try {
             String nameSpaceName = worker().getJobNamespace();
-            String jobName = CommonUtil.makeJobName(v1alpha1Function.getMetadata().getName(), CommonUtil.COMPONENT_FUNCTION);
-            V1StatefulSet v1StatefulSet = worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
+            String jobName =
+                    CommonUtil.makeJobName(v1alpha1Function.getMetadata().getName(), CommonUtil.COMPONENT_FUNCTION);
+            V1StatefulSet v1StatefulSet =
+                    worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
             if (validateResourceOwner(v1StatefulSet, v1alpha1Function)) {
                 return v1StatefulSet;
             } else {
@@ -743,7 +767,8 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
         return null;
     }
 
-    public V1PodList getFunctionPods(String tenant, String namespace, String componentName, V1alpha1FunctionStatus v1alpha1FunctionStatus) {
+    public V1PodList getFunctionPods(String tenant, String namespace, String componentName,
+                                     V1alpha1FunctionStatus v1alpha1FunctionStatus) {
         V1PodList podList = null;
         try {
             String nameSpaceName = worker().getJobNamespace();
