@@ -28,7 +28,6 @@ import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionStatus;
-import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.models.V1ContainerStatus;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
@@ -39,7 +38,6 @@ import io.kubernetes.client.openapi.models.V1StatefulSetSpec;
 import io.kubernetes.client.openapi.models.V1StatefulSetStatus;
 import io.kubernetes.client.util.generic.GenericKubernetesApi;
 import io.kubernetes.client.util.generic.KubernetesApiResponse;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -73,7 +71,7 @@ public class FunctionImplTestRe {
     private Namespaces mockedNamespaces;
     private TenantInfo mockedTenantInfo;
     private Namespace mockedNamespace;
-    private List<String> namespaceList = new LinkedList<>();
+    private final List<String> namespaceList = new LinkedList<>();
     private FunctionsImpl resource;
 
     @Mock
