@@ -18,6 +18,8 @@
  */
 package io.functionmesh.compute.util;
 
+import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FILE_NAME;
+import static io.functionmesh.compute.util.KubernetesUtils.GRPC_TIMEOUT_SECS;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -32,7 +34,12 @@ import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1OwnerReference;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -46,16 +53,7 @@ import org.apache.pulsar.common.policies.data.FunctionInstanceStatsImpl;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.InstanceCommunication;
 import org.apache.pulsar.functions.proto.InstanceControlGrpc;
-
-import javax.ws.rs.core.Response;
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import org.apache.pulsar.packages.management.core.common.PackageMetadata;
-
-import static io.functionmesh.compute.models.PackageMetadataProperties.PROPERTY_FILE_NAME;
-import static io.functionmesh.compute.util.KubernetesUtils.GRPC_TIMEOUT_SECS;
 
 @Slf4j
 public class CommonUtil {
@@ -67,11 +65,11 @@ public class CommonUtil {
     public static final String COMPONENT_HPA = "HorizontalPodAutoscaler";
     public static final String DEFAULT_FUNCTION_EXECUTABLE = "function-executable";
     public static final String DEFAULT_FUNCTION_DOWNLOAD_DIRECTORY = "/pulsar/";
-    private static final String CLUSTER_NAME_ENV = "clusterName";
     public static final String CLUSTER_LABEL_CLAIM = "pulsar-cluster";
     public static final String TENANT_LABEL_CLAIM = "pulsar-tenant";
     public static final String NAMESPACE_LABEL_CLAIM = "pulsar-namespace";
     public static final String COMPONENT_LABEL_CLAIM = "pulsar-component";
+    private static final String CLUSTER_NAME_ENV = "clusterName";
 
     public static String getClusterNameEnv() {
         return System.getenv(CLUSTER_NAME_ENV);
@@ -82,11 +80,13 @@ public class CommonUtil {
     }
 
     public static String getPulsarClusterConfigMapName(String cluster) {
-        return toValidResourceName(String.format("%s-function-mesh-config", cluster)); // Need to manage the configMap for each Pulsar Cluster
+        return toValidResourceName(String.format("%s-function-mesh-config",
+                cluster)); // Need to manage the configMap for each Pulsar Cluster
     }
 
     public static String getPulsarClusterAuthConfigMapName(String cluster) {
-        return toValidResourceName(String.format("%s-auth-config-map", cluster)); // Need to manage the configMap for each Pulsar Cluster
+        return toValidResourceName(
+                String.format("%s-auth-config-map", cluster)); // Need to manage the configMap for each Pulsar Cluster
     }
 
     private static String toValidResourceName(String ori) {
@@ -176,16 +176,17 @@ public class CommonUtil {
     public static String getClusterName(String cluster, CustomRuntimeOptions customRuntimeOptions) {
         if (cluster != null) {
             return cluster;
-        } else if (Strings.isNotEmpty(customRuntimeOptions.getClusterName())){
+        } else if (Strings.isNotEmpty(customRuntimeOptions.getClusterName())) {
             return customRuntimeOptions.getClusterName();
-        } else if (Strings.isNotEmpty(CommonUtil.getClusterNameEnv())){
+        } else if (Strings.isNotEmpty(CommonUtil.getClusterNameEnv())) {
             return CommonUtil.getClusterNameEnv();
         } else {
             throw new RestException(Response.Status.BAD_REQUEST, "clusterName is not provided.");
         }
     }
 
-    public static ExceptionInformation getExceptionInformation(InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry) {
+    public static ExceptionInformation getExceptionInformation(
+            InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry) {
         ExceptionInformation exceptionInformation
                 = new ExceptionInformation();
         exceptionInformation.setTimestampMs(exceptionEntry.getMsSinceEpoch());
@@ -200,24 +201,28 @@ public class CommonUtil {
     public static int getShardIdFromPodName(String podName) {
         int shardId = -1;
         try {
-            shardId = new Integer(podName.substring(podName.lastIndexOf("-")+1));
+            shardId = new Integer(podName.substring(podName.lastIndexOf("-") + 1));
         } catch (Exception ex) {
             log.error("getShardIdFromPodName failed with podName {}", podName, ex);
         }
         return shardId;
     }
 
-    public static CompletableFuture<InstanceCommunication.FunctionStatus> getFunctionStatusAsync(InstanceControlGrpc.InstanceControlFutureStub stub) {
+    public static CompletableFuture<InstanceCommunication.FunctionStatus> getFunctionStatusAsync(
+            InstanceControlGrpc.InstanceControlFutureStub stub) {
         CompletableFuture<InstanceCommunication.FunctionStatus> retval = new CompletableFuture<>();
         if (stub == null) {
             retval.completeExceptionally(new RuntimeException("Not alive"));
             return retval;
         }
-        ListenableFuture<InstanceCommunication.FunctionStatus> response = stub.withDeadlineAfter(GRPC_TIMEOUT_SECS, TimeUnit.SECONDS).getFunctionStatus(Empty.newBuilder().build());
+        ListenableFuture<InstanceCommunication.FunctionStatus> response =
+                stub.withDeadlineAfter(GRPC_TIMEOUT_SECS, TimeUnit.SECONDS)
+                        .getFunctionStatus(Empty.newBuilder().build());
         Futures.addCallback(response, new FutureCallback<InstanceCommunication.FunctionStatus>() {
             @Override
             public void onFailure(Throwable throwable) {
-                InstanceCommunication.FunctionStatus.Builder builder = InstanceCommunication.FunctionStatus.newBuilder();
+                InstanceCommunication.FunctionStatus.Builder builder =
+                        InstanceCommunication.FunctionStatus.newBuilder();
                 builder.setRunning(false);
                 builder.setFailureException(throwable.getMessage());
                 retval.complete(builder.build());
@@ -231,13 +236,15 @@ public class CommonUtil {
         return retval;
     }
 
-    public static CompletableFuture<InstanceCommunication.MetricsData> getFunctionMetricsAsync(InstanceControlGrpc.InstanceControlFutureStub stub) {
+    public static CompletableFuture<InstanceCommunication.MetricsData> getFunctionMetricsAsync(
+            InstanceControlGrpc.InstanceControlFutureStub stub) {
         CompletableFuture<InstanceCommunication.MetricsData> retval = new CompletableFuture<>();
         if (stub == null) {
             retval.completeExceptionally(new RuntimeException("Not alive"));
             return retval;
         }
-        ListenableFuture<InstanceCommunication.MetricsData> response = stub.withDeadlineAfter(GRPC_TIMEOUT_SECS, TimeUnit.SECONDS).getMetrics(Empty.newBuilder().build());
+        ListenableFuture<InstanceCommunication.MetricsData> response =
+                stub.withDeadlineAfter(GRPC_TIMEOUT_SECS, TimeUnit.SECONDS).getMetrics(Empty.newBuilder().build());
         Futures.addCallback(response, new FutureCallback<InstanceCommunication.MetricsData>() {
             @Override
             public void onFailure(Throwable throwable) {
@@ -256,7 +263,8 @@ public class CommonUtil {
     public static String getFilenameFromPackageMetadata(String functionPkgUrl, PulsarAdmin admin)
             throws PulsarAdminException {
         PackageMetadata packageMetadata = admin.packages().getMetadata(functionPkgUrl);
-        if (packageMetadata != null && packageMetadata.getProperties() != null && packageMetadata.getProperties().containsKey(PROPERTY_FILE_NAME) &&
+        if (packageMetadata != null && packageMetadata.getProperties() != null && packageMetadata.getProperties()
+                .containsKey(PROPERTY_FILE_NAME) &&
                 StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
             return packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
         }
@@ -290,7 +298,8 @@ public class CommonUtil {
         return to;
     }
 
-    public static Map<String, String> getCustomLabelClaims(String clusterName, String tenant, String namespace, String compName, MeshWorkerService worker, String kind) {
+    public static Map<String, String> getCustomLabelClaims(String clusterName, String tenant, String namespace,
+                                                           String compName, MeshWorkerService worker, String kind) {
         Map<String, String> customLabelClaims = Maps.newHashMap();
         customLabelClaims.put(CLUSTER_LABEL_CLAIM, clusterName);
         customLabelClaims.put(TENANT_LABEL_CLAIM, tenant);
@@ -353,14 +362,17 @@ public class CommonUtil {
         functionInstanceStatsData.setProcessedSuccessfullyTotal(metricsData.getProcessedSuccessfullyTotal());
         functionInstanceStatsData.setSystemExceptionsTotal(metricsData.getSystemExceptionsTotal());
         functionInstanceStatsData.setUserExceptionsTotal(metricsData.getUserExceptionsTotal());
-        functionInstanceStatsData.setAvgProcessLatency(metricsData.getAvgProcessLatency() == 0.0 ? null : metricsData.getAvgProcessLatency());
-        functionInstanceStatsData.setLastInvocation(metricsData.getLastInvocation() == 0 ? null : metricsData.getLastInvocation());
+        functionInstanceStatsData.setAvgProcessLatency(
+                metricsData.getAvgProcessLatency() == 0.0 ? null : metricsData.getAvgProcessLatency());
+        functionInstanceStatsData.setLastInvocation(
+                metricsData.getLastInvocation() == 0 ? null : metricsData.getLastInvocation());
 
         functionInstanceStatsData.oneMin.setReceivedTotal(metricsData.getReceivedTotal1Min());
         functionInstanceStatsData.oneMin.setProcessedSuccessfullyTotal(metricsData.getProcessedSuccessfullyTotal1Min());
         functionInstanceStatsData.oneMin.setSystemExceptionsTotal(metricsData.getSystemExceptionsTotal1Min());
         functionInstanceStatsData.oneMin.setUserExceptionsTotal(metricsData.getUserExceptionsTotal1Min());
-        functionInstanceStatsData.oneMin.setAvgProcessLatency(metricsData.getAvgProcessLatency1Min() == 0.0 ? null : metricsData.getAvgProcessLatency1Min());
+        functionInstanceStatsData.oneMin.setAvgProcessLatency(
+                metricsData.getAvgProcessLatency1Min() == 0.0 ? null : metricsData.getAvgProcessLatency1Min());
 
         // Filter out values that are NaN
         Map<String, Double> statsDataMap = metricsData.getUserMetricsMap().entrySet().stream()

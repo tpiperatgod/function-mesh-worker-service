@@ -19,6 +19,9 @@
 package io.functionmesh.compute;
 
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.io.IOException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.pulsar.broker.PulsarServerException;
@@ -36,26 +39,23 @@ import org.apache.pulsar.zookeeper.GlobalZooKeeperCache;
 import org.apache.pulsar.zookeeper.ZooKeeperClientFactory;
 import org.apache.pulsar.zookeeper.ZookeeperBkClientFactoryImpl;
 
-import java.io.IOException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-
 /**
  * This class for test.
  */
 @Slf4j
 public class MeshWorker {
 
-    private ZooKeeperClientFactory zkClientFactory = null;
-    private final OrderedExecutor orderedExecutor = OrderedExecutor.newBuilder().numThreads(8).name("zk-cache-ordered").build();
+    private final OrderedExecutor orderedExecutor =
+            OrderedExecutor.newBuilder().numThreads(8).name("zk-cache-ordered").build();
     private final ScheduledExecutorService cacheExecutor = Executors.newScheduledThreadPool(10,
             new DefaultThreadFactory("zk-cache-callback"));
-    private GlobalZooKeeperCache globalZkCache;
-    private PulsarResources pulsarResources;
-    private MetadataStoreExtended configMetadataStore;
     private final WorkerConfig workerConfig;
     private final WorkerService workerService;
     private final ErrorNotifier errorNotifier;
+    private ZooKeeperClientFactory zkClientFactory = null;
+    private GlobalZooKeeperCache globalZkCache;
+    private PulsarResources pulsarResources;
+    private MetadataStoreExtended configMetadataStore;
     private WorkerServer server;
 
 

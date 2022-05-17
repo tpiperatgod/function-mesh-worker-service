@@ -18,6 +18,12 @@
  */
 package io.functionmesh.compute.util;
 
+import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
+import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
+import static io.functionmesh.compute.util.CommonUtil.DEFAULT_FUNCTION_EXECUTABLE;
+import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
+import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
+import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
@@ -37,7 +43,17 @@ import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecSecretsMap;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.kubernetes.client.custom.Quantity;
-import java.util.stream.Collectors;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -49,9 +65,6 @@ import org.apache.pulsar.common.functions.ProducerConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.functions.Utils;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
-import org.apache.pulsar.common.policies.data.FunctionInstanceStats;
-import org.apache.pulsar.common.policies.data.FunctionInstanceStatsDataImpl;
-import org.apache.pulsar.common.policies.data.FunctionInstanceStatsImpl;
 import org.apache.pulsar.common.policies.data.FunctionStatus;
 import org.apache.pulsar.common.util.ClassLoaderUtils;
 import org.apache.pulsar.common.util.RestException;
@@ -59,25 +72,6 @@ import org.apache.pulsar.functions.proto.Function;
 import org.apache.pulsar.functions.proto.InstanceCommunication;
 import org.apache.pulsar.functions.utils.FunctionCommon;
 import org.apache.pulsar.functions.utils.FunctionConfigUtils;
-
-import javax.ws.rs.core.Response;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-
-import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
-import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
-import static io.functionmesh.compute.util.CommonUtil.DEFAULT_FUNCTION_EXECUTABLE;
-import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
-import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
-import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 
 @Slf4j
 public class FunctionsUtil {
@@ -90,16 +84,20 @@ public class FunctionsUtil {
             , String functionName, String functionPkgUrl, FunctionConfig functionConfig
             , String cluster, MeshWorkerService worker) {
         MeshWorkerServiceCustomConfig customConfig = worker.getMeshWorkerServiceCustomConfig();
-        CustomRuntimeOptions customRuntimeOptions = CommonUtil.getCustomRuntimeOptions(functionConfig.getCustomRuntimeOptions());
+        CustomRuntimeOptions customRuntimeOptions =
+                CommonUtil.getCustomRuntimeOptions(functionConfig.getCustomRuntimeOptions());
         String clusterName = CommonUtil.getClusterName(cluster, customRuntimeOptions);
         String serviceAccountName = customRuntimeOptions.getServiceAccountName();
-        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, functionConfig.getTenant(), functionConfig.getNamespace(), functionConfig.getName(), worker, kind);
+        Map<String, String> customLabelClaims =
+                getCustomLabelClaims(clusterName, functionConfig.getTenant(), functionConfig.getNamespace(),
+                        functionConfig.getName(), worker, kind);
         Function.FunctionDetails functionDetails;
         try {
             functionDetails = FunctionConfigUtils.convert(functionConfig, null);
         } catch (IllegalArgumentException ex) {
             log.error("cannot convert FunctionConfig to FunctionDetails", ex);
-            throw new RestException(Response.Status.BAD_REQUEST, "functionConfig cannot be parsed into functionDetails");
+            throw new RestException(Response.Status.BAD_REQUEST,
+                    "functionConfig cannot be parsed into functionDetails");
         }
 
         V1alpha1Function v1alpha1Function = new V1alpha1Function();
@@ -125,7 +123,8 @@ public class FunctionsUtil {
 
         V1alpha1FunctionSpecInput v1alpha1FunctionSpecInput = new V1alpha1FunctionSpecInput();
 
-        for (Map.Entry<String, Function.ConsumerSpec> inputSpecs : functionDetails.getSource().getInputSpecsMap().entrySet()) {
+        for (Map.Entry<String, Function.ConsumerSpec> inputSpecs : functionDetails.getSource().getInputSpecsMap()
+                .entrySet()) {
             V1alpha1FunctionSpecInputSourceSpecs inputSourceSpecsItem = new V1alpha1FunctionSpecInputSourceSpecs();
             if (Strings.isNotEmpty(inputSpecs.getValue().getSerdeClassName())) {
                 inputSourceSpecsItem.setSerdeClassname(inputSpecs.getValue().getSerdeClassName());
@@ -153,7 +152,8 @@ public class FunctionsUtil {
         }
 
         if ((v1alpha1FunctionSpecInput.getTopics() == null || v1alpha1FunctionSpecInput.getTopics().size() == 0) &&
-                (v1alpha1FunctionSpecInput.getSourceSpecs() == null || v1alpha1FunctionSpecInput.getSourceSpecs().size() == 0)
+                (v1alpha1FunctionSpecInput.getSourceSpecs() == null
+                        || v1alpha1FunctionSpecInput.getSourceSpecs().size() == 0)
         ) {
             log.warn("invalid FunctionSpecInput {}", v1alpha1FunctionSpecInput);
             throw new RestException(Response.Status.BAD_REQUEST, "invalid FunctionSpecInput");
@@ -221,7 +221,8 @@ public class FunctionsUtil {
         if (!StringUtils.isEmpty(functionDetails.getLogTopic())) {
             v1alpha1FunctionSpec.setLogTopic(functionDetails.getLogTopic());
         }
-        v1alpha1FunctionSpec.setForwardSourceMessageProperty(functionDetails.getSink().getForwardSourceMessageProperty());
+        v1alpha1FunctionSpec.setForwardSourceMessageProperty(
+                functionDetails.getSink().getForwardSourceMessageProperty());
         if (v1alpha1FunctionSpec.getForwardSourceMessageProperty() == null) {
             v1alpha1FunctionSpec.setForwardSourceMessageProperty(true);
         }
@@ -282,7 +283,8 @@ public class FunctionsUtil {
                     }
                 } else {
                     log.warn("get unsupported function package url {}", functionPkgUrl);
-                    throw new IllegalArgumentException("Function Package url is not valid. supported url (function/sink/source)");
+                    throw new IllegalArgumentException(
+                            "Function Package url is not valid. supported url (function/sink/source)");
                 }
             } else {
                 // TODO: support upload JAR to bk
@@ -294,17 +296,20 @@ public class FunctionsUtil {
         }
         Class<?>[] typeArgs = null;
         if (componentPackageFile != null) {
-            typeArgs = extractTypeArgs(functionConfig, componentPackageFile, worker.getWorkerConfig().isForwardSourceMessageProperty());
+            typeArgs = extractTypeArgs(functionConfig, componentPackageFile,
+                    worker.getWorkerConfig().isForwardSourceMessageProperty());
             componentPackageFile.delete();
         }
         if (StringUtils.isNotEmpty(functionConfig.getJar())) {
             V1alpha1FunctionSpecJava v1alpha1FunctionSpecJava = new V1alpha1FunctionSpecJava();
-            v1alpha1FunctionSpecJava.setJar(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
+            v1alpha1FunctionSpecJava.setJar(
+                    buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecJava.setJarLocation(functionPkgUrl);
             }
             String extraDependenciesDir = "";
-            if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
+            if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(
+                    worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
                 if (Paths.get(worker.getFactoryConfig().getExtraFunctionDependenciesDir()).isAbsolute()) {
                     extraDependenciesDir = worker.getFactoryConfig().getExtraFunctionDependenciesDir();
                 } else {
@@ -334,7 +339,8 @@ public class FunctionsUtil {
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getPy())) {
             V1alpha1FunctionSpecPython v1alpha1FunctionSpecPython = new V1alpha1FunctionSpecPython();
-            v1alpha1FunctionSpecPython.setPy(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
+            v1alpha1FunctionSpecPython.setPy(
+                    buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecPython.setPyLocation(functionPkgUrl);
             }
@@ -344,7 +350,8 @@ public class FunctionsUtil {
             }
         } else if (StringUtils.isNotEmpty(functionConfig.getGo())) {
             V1alpha1FunctionSpecGolang v1alpha1FunctionSpecGolang = new V1alpha1FunctionSpecGolang();
-            v1alpha1FunctionSpecGolang.setGo(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
+            v1alpha1FunctionSpecGolang.setGo(
+                    buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
             if (isPkgUrlProvided) {
                 v1alpha1FunctionSpecGolang.setGoLocation(functionPkgUrl);
             }
@@ -385,7 +392,7 @@ public class FunctionsUtil {
                 Map<String, String> kv = (Map<String, String>) entry.getValue();
                 if (kv == null || !kv.containsKey(PATH_KEY) || !kv.containsKey(KEY_KEY)) {
                     log.error("Invalid secrets from function config for function {}, "
-                            + "the secret must contains path and key {}: {}",
+                                    + "the secret must contains path and key {}: {}",
                             functionName, entry.getKey(), entry.getValue());
                     continue;
                 }
@@ -480,7 +487,9 @@ public class FunctionsUtil {
         }
 
         if (v1alpha1FunctionSpecInput.getSourceSpecs() != null) {
-            for (Map.Entry<String, V1alpha1FunctionSpecInputSourceSpecs> source : v1alpha1FunctionSpecInput.getSourceSpecs().entrySet()) {
+            for (Map.Entry<String, V1alpha1FunctionSpecInputSourceSpecs> source :
+                    v1alpha1FunctionSpecInput.getSourceSpecs()
+                    .entrySet()) {
                 String topic = source.getKey();
                 V1alpha1FunctionSpecInputSourceSpecs sourceSpecs = source.getValue();
                 ConsumerConfig consumerConfig = consumerConfigMap.getOrDefault(topic, new ConsumerConfig());
@@ -627,7 +636,8 @@ public class FunctionsUtil {
         functionInstanceStatusData.setNumUserExceptions(functionStatus.getNumUserExceptions());
 
         List<ExceptionInformation> userExceptionInformationList = new LinkedList<>();
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestUserExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestUserExceptionsList()) {
             ExceptionInformation exceptionInformation = getExceptionInformation(exceptionEntry);
             userExceptionInformationList.add(exceptionInformation);
         }
@@ -637,15 +647,18 @@ public class FunctionsUtil {
         functionInstanceStatusData.setNumSystemExceptions(functionStatus.getNumSystemExceptions()
                 + functionStatus.getNumSourceExceptions() + functionStatus.getNumSinkExceptions());
         List<ExceptionInformation> systemExceptionInformationList = new LinkedList<>();
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestSystemExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestSystemExceptionsList()) {
             ExceptionInformation exceptionInformation = getExceptionInformation(exceptionEntry);
             systemExceptionInformationList.add(exceptionInformation);
         }
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestSourceExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestSourceExceptionsList()) {
             ExceptionInformation exceptionInformation = getExceptionInformation(exceptionEntry);
             systemExceptionInformationList.add(exceptionInformation);
         }
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestSinkExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestSinkExceptionsList()) {
             ExceptionInformation exceptionInformation = getExceptionInformation(exceptionEntry);
             systemExceptionInformationList.add(exceptionInformation);
         }
@@ -655,7 +668,8 @@ public class FunctionsUtil {
         functionInstanceStatusData.setLastInvocationTime(functionStatus.getLastInvocationTime());
     }
 
-    private static File downloadPackageFile(MeshWorkerService worker, String packageName) throws IOException, PulsarAdminException {
+    private static File downloadPackageFile(MeshWorkerService worker, String packageName)
+            throws IOException, PulsarAdminException {
         Path tempDirectory;
         if (worker.getWorkerConfig().getDownloadDirectory() != null) {
             tempDirectory = Paths.get(worker.getWorkerConfig().getDownloadDirectory());
