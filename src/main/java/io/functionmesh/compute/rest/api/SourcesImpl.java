@@ -18,6 +18,7 @@
  */
 package io.functionmesh.compute.rest.api;
 
+import static io.functionmesh.compute.util.KubernetesUtils.validateResourceOwner;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
@@ -81,10 +82,10 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
 
     public SourcesImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier) {
         super(meshWorkerServiceSupplier, Function.FunctionDetails.ComponentType.SOURCE);
-        super.plural = this.plural;
-        super.kind = this.kind;
+        super.API_PLURAL = this.plural;
+        super.API_KIND = this.kind;
         this.resourceApi = new GenericKubernetesApi<>(
-                V1alpha1Source.class, V1alpha1SourceList.class, group, version, plural,
+                V1alpha1Source.class, V1alpha1SourceList.class, API_GROUP, API_VER, plural,
                 meshWorkerServiceSupplier.get().getApiClient());
     }
 
@@ -167,8 +168,8 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
         V1alpha1Source v1alpha1Source = SourcesUtil
                 .createV1alpha1SourceFromSourceConfig(
                         kind,
-                        group,
-                        version,
+                        API_GROUP,
+                        API_VER,
                         sourceName,
                         packageURL,
                         uploadedInputStream,
@@ -180,7 +181,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
         try {
             this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source, clientAuthenticationDataHttps);
             Call call = worker().getCustomObjectsApi().createNamespacedCustomObjectCall(
-                    group, version, worker().getJobNamespace(),
+                    API_GROUP, API_VER, worker().getJobNamespace(),
                     plural,
                     v1alpha1Source,
                     null,
@@ -237,8 +238,8 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
             V1alpha1Source v1alpha1Source = SourcesUtil
                     .createV1alpha1SourceFromSourceConfig(
                             kind,
-                            group,
-                            version,
+                            API_GROUP,
+                            API_VER,
                             sourceName,
                             packageURL,
                             uploadedInputStream,
@@ -246,8 +247,8 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                             this.meshWorkerServiceSupplier.get().getConnectorsManager(),
                             cluster, worker());
             Call getCall = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    group,
-                    version,
+                    API_GROUP,
+                    API_VER,
                     worker().getJobNamespace(),
                     plural,
                     v1alpha1Source.getMetadata().getName(),
@@ -263,8 +264,8 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
             v1alpha1Source.getMetadata().setResourceVersion(oldRes.getMetadata().getResourceVersion());
             this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source, clientAuthenticationDataHttps);
             Call replaceCall = worker().getCustomObjectsApi().replaceNamespacedCustomObjectCall(
-                    group,
-                    version,
+                    API_GROUP,
+                    API_VER,
                     worker().getJobNamespace(),
                     plural,
                     v1alpha1Source.getMetadata().getName(),
@@ -298,7 +299,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
             String nameSpaceName = worker().getJobNamespace();
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    group, version, nameSpaceName,
+                    API_GROUP, API_VER, nameSpaceName,
                     plural, hashName, null);
             V1alpha1Source v1alpha1Source = executeCall(call, V1alpha1Source.class);
             V1alpha1SourceStatus v1alpha1SourceStatus = v1alpha1Source.getStatus();
@@ -547,8 +548,8 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
         String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
         try {
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    group,
-                    version,
+                    API_GROUP,
+                    API_VER,
                     worker().getJobNamespace(),
                     plural,
                     hashName,
@@ -664,7 +665,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
             String nameSpaceName = worker().getJobNamespace();
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    group, version, nameSpaceName,
+                    API_GROUP, API_VER, nameSpaceName,
                     plural, hashName, null);
             V1alpha1Source v1alpha1Source = executeCall(call, V1alpha1Source.class);
             V1alpha1SourceStatus v1alpha1SourceStatus = v1alpha1Source.getStatus();
@@ -794,15 +795,20 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
     }
 
     public V1StatefulSet getFunctionStatefulSet(V1alpha1Source v1alpha1Source) {
-        String nameSpaceName = worker().getJobNamespace();
-        String jobName = CommonUtil.makeJobName(v1alpha1Source.getMetadata().getName(), CommonUtil.COMPONENT_SOURCE);
-        V1StatefulSet v1StatefulSet = null;
         try {
-            v1StatefulSet = worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
-        } catch (ApiException e) {
+            String nameSpaceName = worker().getJobNamespace();
+            String jobName = CommonUtil.makeJobName(v1alpha1Source.getMetadata().getName(), CommonUtil.COMPONENT_SOURCE);
+            V1StatefulSet v1StatefulSet = worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
+            if (validateResourceOwner(v1StatefulSet, v1alpha1Source)) {
+                return v1StatefulSet;
+            } else {
+                log.warn("get source statefulset failed, not owned by the resource");
+                return null;
+            }
+        } catch (Exception e) {
             log.error("get source statefulset failed, error: {}", e.getMessage());
         }
-        return v1StatefulSet;
+        return null;
     }
 
     public V1PodList getFunctionPods(String tenant, String namespace, String componentName, V1alpha1SourceStatus v1alpha1SourceStatus) {

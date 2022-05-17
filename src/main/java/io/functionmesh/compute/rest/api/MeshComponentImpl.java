@@ -18,7 +18,6 @@
  */
 package io.functionmesh.compute.rest.api;
 
-import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.util.CommonUtil;
@@ -26,7 +25,6 @@ import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.util.PackageManagementServiceUtil;
 import io.kubernetes.client.util.generic.GenericKubernetesApi;
 import io.kubernetes.client.util.generic.KubernetesApiResponse;
-import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
@@ -73,13 +71,14 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
     protected final Supplier<MeshWorkerService> meshWorkerServiceSupplier;
     protected final Function.FunctionDetails.ComponentType componentType;
 
-    String plural = "functions";
+    String API_PLURAL = "functions";
 
-    final String group = "compute.functionmesh.io";
+    final static String API_GROUP = "compute.functionmesh.io";
 
-    final String version = "v1alpha1";
+    protected String API_VER = "v1alpha1";
 
-    String kind = "Function";
+    protected String API_KIND = "Function";
+
 
     @Getter
     protected GenericKubernetesApi<T, K> resourceApi;
@@ -108,7 +107,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                                    final String componentName,
                                    final String clientRole,
                                    AuthenticationDataHttps clientAuthenticationDataHttps) {
-        this.validateGetInfoRequestParams(tenant, namespace, componentName, kind);
+        this.validateGetInfoRequestParams(tenant, namespace, componentName, API_KIND);
 
         this.validatePermission(tenant,
                 namespace,
@@ -119,10 +118,10 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             String clusterName = worker().getWorkerConfig().getPulsarFunctionsCluster();
             String hashName = CommonUtil.createObjectName(clusterName, tenant, namespace, componentName);
             Call deleteObjectCall = worker().getCustomObjectsApi().deleteNamespacedCustomObjectCall(
-                    group,
-                    version,
+                    API_GROUP,
+                    API_VER,
                     worker().getJobNamespace(),
-                    plural,
+                    API_PLURAL,
                     hashName,
                     null,
                     null,
@@ -142,7 +141,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                 Call deleteAuthSecretCall = worker().getCoreV1Api()
                         .deleteNamespacedSecretCall(
                                 KubernetesUtils.getUniqueSecretName(
-                                        kind.toLowerCase(),
+                                        API_KIND.toLowerCase(),
                                         "auth",
                                         DigestUtils.sha256Hex(
                                                 KubernetesUtils.getSecretName(
@@ -162,7 +161,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                 Call deleteTlsSecretCall = worker().getCoreV1Api()
                         .deleteNamespacedSecretCall(
                                 KubernetesUtils.getUniqueSecretName(
-                                        kind.toLowerCase(),
+                                        API_KIND.toLowerCase(),
                                         "tls",
                                         DigestUtils.sha256Hex(
                                                 KubernetesUtils.getSecretName(
@@ -179,12 +178,12 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                 executeCall(deleteTlsSecretCall, null);
             }
         } catch (Exception e) {
-            log.error("deregister {}/{}/{} {} failed", tenant, namespace, componentName, plural, e);
+            log.error("deregister {}/{}/{} {} failed", tenant, namespace, componentName, API_PLURAL, e);
             throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
-    public <T> T executeCall(Call call, Class<T> c) throws Exception {
+    public <t> t executeCall(Call call, Class<t> c) throws Exception {
         Response response;
         response = call.execute();
         if (response.isSuccessful() && response.body() != null) {
@@ -201,11 +200,11 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             String err = String.format(
                     "failed to perform the request: responseCode: %s, responseMessage: %s, responseBody: %s",
                     response.code(), response.message(), body);
-            throw new Exception(err);
+            throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, err);
         }
     }
 
-    public T extractResponse(KubernetesApiResponse<T> response) throws Exception {
+    public T extractResponse(KubernetesApiResponse<T> response) throws RestException {
         if (response.isSuccess()) {
             return response.getObject();
         } else if (response.getHttpStatusCode() == 409) {
@@ -215,7 +214,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             String err = String.format(
                     "failed to perform the request: responseCode: %s, responseMessage: %s",
                     response.getHttpStatusCode(), response.getStatus().getMessage());
-            throw new Exception(err);
+            throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, err);
         }
     }
 
@@ -358,9 +357,9 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
             labelSelector = getCustomLabelClaimsSelector(cluster, tenant, namespace);
             Call call = worker().getCustomObjectsApi().listNamespacedCustomObjectCall(
-                    group,
-                    version,
-                    worker().getJobNamespace(), plural,
+                    API_GROUP,
+                    API_VER,
+                    worker().getJobNamespace(), API_PLURAL,
                     "false",
                     null,
                     null,

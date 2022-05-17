@@ -20,14 +20,19 @@ package io.functionmesh.compute.util;
 
 import com.google.common.collect.Maps;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
+import io.kubernetes.client.common.KubernetesObject;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.V1ContainerStatus;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
+import io.kubernetes.client.openapi.models.V1OwnerReference;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1Secret;
+import io.kubernetes.client.openapi.models.V1StatefulSet;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -225,6 +230,25 @@ public class KubernetesUtils {
 			podName = pod.getMetadata().getName();
 		}
 		return podName;
+	}
+
+	public static boolean validateResourceOwner(V1StatefulSet v1StatefulSet, KubernetesObject owner) {
+		if (v1StatefulSet != null
+				&& v1StatefulSet.getMetadata() != null
+				&& v1StatefulSet.getMetadata().getOwnerReferences() != null
+				&& owner != null && owner.getMetadata() != null) {
+			List<V1OwnerReference> ownerReferences = v1StatefulSet.getMetadata().getOwnerReferences();
+			for (V1OwnerReference ownerReference : ownerReferences) {
+				if (ownerReference.getApiVersion().equalsIgnoreCase(owner.getApiVersion())
+						&& ownerReference.getKind().equalsIgnoreCase(owner.getKind())
+						&& ownerReference.getName().equalsIgnoreCase(owner.getMetadata().getName())
+						&& ownerReference.getUid().equalsIgnoreCase(owner.getMetadata().getUid())
+						&& ownerReference.getController() != null && ownerReference.getController()) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 }
