@@ -25,12 +25,6 @@ import io.functionmesh.compute.sinks.models.V1alpha1Sink;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpec;
 import io.functionmesh.compute.testdata.Generate;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.pulsar.common.io.SinkConfig;
 import org.apache.pulsar.common.nar.NarClassLoader;
@@ -44,6 +38,13 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({FunctionCommon.class, ConnectorUtils.class, FileUtils.class})
@@ -88,8 +89,7 @@ public class SinksUtilTest {
         SinkConfig sinkConfig = Generate.CreateSinkConfig(tenant, namespace, componentName);
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
         WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
@@ -137,8 +137,7 @@ public class SinksUtilTest {
         SinkConfig sinkConfig = Generate.CreateSinkConfig(tenant, namespace, componentName);
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
         WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
@@ -147,8 +146,7 @@ public class SinksUtilTest {
                         kind, group, version, componentName, null, uploadedInputStream, sinkConfig, null,
                         null, meshWorkerService);
 
-        SinkConfig newSinkConfig =
-                SinksUtil.createSinkConfigFromV1alpha1Sink(tenant, namespace, componentName, actualV1alpha1Sink);
+        SinkConfig newSinkConfig = SinksUtil.createSinkConfigFromV1alpha1Sink(tenant, namespace, componentName, actualV1alpha1Sink);
 
         Assert.assertEquals(sinkConfig.getName(), newSinkConfig.getName());
         Assert.assertEquals(sinkConfig.getNamespace(), newSinkConfig.getNamespace());
@@ -188,15 +186,13 @@ public class SinksUtilTest {
         PowerMockito.when(connectorDefinition.getVersion()).thenReturn("2.7.0-rc-pm-3");
         PowerMockito.when(connectorDefinition.getImageTag()).thenReturn("2.7.0-rc-pm-3");
         PowerMockito.when(connectorDefinition.getImageRepository()).thenReturn("streamnative/pulsar-io-elastic-search");
-        PowerMockito.when(connectorDefinition.getJar())
-                .thenReturn("connectors/pulsar-io-elastic-search-2.7.0-rc-pm-3.nar");
+        PowerMockito.when(connectorDefinition.getJar()).thenReturn("connectors/pulsar-io-elastic-search-2.7.0-rc-pm-3.nar");
         PowerMockito.when(connectorsManager.getConnectorDefinition("elastic-search")).thenReturn(connectorDefinition);
 
         SinkConfig sinkConfig = Generate.CreateSinkConfigBuiltin(tenant, namespace, componentName);
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
 
         V1alpha1Sink actualV1alpha1Sink =
                 SinksUtil.createV1alpha1SkinFromSinkConfig(

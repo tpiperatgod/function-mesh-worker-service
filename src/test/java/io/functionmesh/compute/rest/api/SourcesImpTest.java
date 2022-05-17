@@ -18,16 +18,13 @@
  */
 package io.functionmesh.compute.rest.api;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.anyString;
-import static org.powermock.api.mockito.PowerMockito.spy;
 import com.google.common.collect.Maps;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPod;
 import io.functionmesh.compute.util.CommonUtil;
+import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.util.SourcesUtil;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
@@ -42,16 +39,6 @@ import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
 import io.kubernetes.client.openapi.models.V1StatefulSetSpec;
 import io.kubernetes.client.openapi.models.V1StatefulSetStatus;
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
 import okhttp3.Call;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
@@ -78,6 +65,23 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.anyString;
+import static org.powermock.api.mockito.PowerMockito.spy;
+
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({
         Response.class,
@@ -99,37 +103,14 @@ public class SourcesImpTest {
                         + "    \"kind\": \"Source\",\n"
                         + "    \"metadata\": {\n"
                         + "        \"annotations\": {\n"
-                        + "            \"kubectl.kubernetes.io/last-applied-configuration\": "
-                        + "\"{\\\"apiVersion\\\":\\\"compute.functionmesh.io/v1alpha1\\\","
-                        + "\\\"kind\\\":\\\"Source\\\",\\\"metadata\\\":{\\\"annotations\\\":{},"
-                        + "\\\"name\\\":\\\"source-sample\\\",\\\"namespace\\\":\\\"default\\\"},"
-                        + "\\\"spec\\\":{\\\"className\\\":\\\"org.apache.pulsar.io.debezium.mongodb"
-                        + ".DebeziumMongoDbSource\\\",\\\"clusterName\\\":\\\"test-pulsar\\\","
-                        + "\\\"java\\\":{\\\"jar\\\":\\\"connectors/pulsar-io-debezium-mongodb-2.7.0-rc-pm-3.nar\\\","
-                        + "\\\"jarLocation\\\":\\\"\\\"},\\\"maxReplicas\\\":1,"
-                        + "\\\"output\\\":{\\\"producerConf\\\":{\\\"maxPendingMessages\\\":1000,"
-                        + "\\\"maxPendingMessagesAcrossPartitions\\\":50000,\\\"useThreadLocalProducers\\\":true},"
-                        + "\\\"topic\\\":\\\"persistent://public/default/destination\\\"},"
-                        + "\\\"pulsar\\\":{\\\"pulsarConfig\\\":\\\"test-source\\\"},\\\"replicas\\\":1,"
-                        + "\\\"resources\\\":{\\\"limits\\\":{\\\"cpu\\\":\\\"0.2\\\",\\\"memory\\\":\\\"1.1G\\\"},"
-                        + "\\\"requests\\\":{\\\"cpu\\\":\\\"0.1\\\",\\\"memory\\\":\\\"1G\\\"}},"
-                        + "\\\"sinkType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\","
-                        + "\\\"sourceConfig\\\":{\\\"database.whitelist\\\":\\\"inventory\\\",\\\"mongodb"
-                        + ".hosts\\\":\\\"rs0/mongo-dbz-0.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-1.mongo"
-                        + ".default.svc.cluster.local:27017,rs0/mongo-dbz-2.mongo.default.svc.cluster"
-                        + ".local:27017\\\",\\\"mongodb.name\\\":\\\"dbserver1\\\",\\\"mongodb"
-                        + ".password\\\":\\\"dbz\\\",\\\"mongodb.task.id\\\":\\\"1\\\",\\\"mongodb"
-                        + ".user\\\":\\\"debezium\\\",\\\"pulsar.service.url\\\":\\\"pulsar://test-pulsar-broker"
-                        + ".default.svc.cluster.local:6650\\\"},\\\"sourceType\\\":\\\"org.apache.pulsar.common"
-                        + ".schema.KeyValue\\\"}}\\n\"\n"
+                        + "            \"kubectl.kubernetes.io/last-applied-configuration\": \"{\\\"apiVersion\\\":\\\"compute.functionmesh.io/v1alpha1\\\",\\\"kind\\\":\\\"Source\\\",\\\"metadata\\\":{\\\"annotations\\\":{},\\\"name\\\":\\\"source-sample\\\",\\\"namespace\\\":\\\"default\\\"},\\\"spec\\\":{\\\"className\\\":\\\"org.apache.pulsar.io.debezium.mongodb.DebeziumMongoDbSource\\\",\\\"clusterName\\\":\\\"test-pulsar\\\",\\\"java\\\":{\\\"jar\\\":\\\"connectors/pulsar-io-debezium-mongodb-2.7.0-rc-pm-3.nar\\\",\\\"jarLocation\\\":\\\"\\\"},\\\"maxReplicas\\\":1,\\\"output\\\":{\\\"producerConf\\\":{\\\"maxPendingMessages\\\":1000,\\\"maxPendingMessagesAcrossPartitions\\\":50000,\\\"useThreadLocalProducers\\\":true},\\\"topic\\\":\\\"persistent://public/default/destination\\\"},\\\"pulsar\\\":{\\\"pulsarConfig\\\":\\\"test-source\\\"},\\\"replicas\\\":1,\\\"resources\\\":{\\\"limits\\\":{\\\"cpu\\\":\\\"0.2\\\",\\\"memory\\\":\\\"1.1G\\\"},\\\"requests\\\":{\\\"cpu\\\":\\\"0.1\\\",\\\"memory\\\":\\\"1G\\\"}},\\\"sinkType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\",\\\"sourceConfig\\\":{\\\"database.whitelist\\\":\\\"inventory\\\",\\\"mongodb.hosts\\\":\\\"rs0/mongo-dbz-0.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-1.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-2.mongo.default.svc.cluster.local:27017\\\",\\\"mongodb.name\\\":\\\"dbserver1\\\",\\\"mongodb.password\\\":\\\"dbz\\\",\\\"mongodb.task.id\\\":\\\"1\\\",\\\"mongodb.user\\\":\\\"debezium\\\",\\\"pulsar.service.url\\\":\\\"pulsar://test-pulsar-broker.default.svc.cluster.local:6650\\\"},\\\"sourceType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\"}}\\n\"\n"
                         + "        },\n"
                         + "        \"creationTimestamp\": \"2020-11-27T07:07:57Z\",\n"
                         + "        \"generation\": 1,\n"
                         + "        \"name\": \"source-sample\",\n"
                         + "        \"namespace\": \"default\",\n"
                         + "        \"resourceVersion\": \"881034\",\n"
-                        + "        \"selfLink\": \"/apis/compute.functionmesh"
-                        + ".io/v1alpha1/namespaces/default/sources/source-sample\",\n"
+                        + "        \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/sources/source-sample\",\n"
                         + "        \"uid\": \"8aed505e-38e4-4a8b-93f6-6f753dbf7ebc\"\n"
                         + "    },\n"
                         + "    \"spec\": {\n"
@@ -203,8 +184,7 @@ public class SourcesImpTest {
         PowerMockito.when(workerConfig.isAuthenticationEnabled()).thenReturn(false);
         PulsarAdmin pulsarAdmin = PowerMockito.mock(PulsarAdmin.class);
         PowerMockito.when(meshWorkerService.getBrokerAdmin()).thenReturn(pulsarAdmin);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
         Tenants tenants = PowerMockito.mock(Tenants.class);
         PowerMockito.when(pulsarAdmin.tenants()).thenReturn(tenants);
         Call call = PowerMockito.mock(Call.class);
@@ -281,18 +261,18 @@ public class SourcesImpTest {
         v1alpha1Source.getSpec().pod(pod);
         v1alpha1Source.getMetadata().setLabels(customLabels);
         PowerMockito.when(
-                        meshWorkerService
-                                .getCustomObjectsApi()
-                                .createNamespacedCustomObjectCall(
-                                        any(),
-                                        any(),
-                                        any(),
-                                        any(),
-                                        any(),
-                                        any(),
-                                        any(),
-                                        any(),
-                                        any()))
+                meshWorkerService
+                        .getCustomObjectsApi()
+                        .createNamespacedCustomObjectCall(
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any()))
                 .thenReturn(call);
         PowerMockito.when(call.execute()).thenReturn(response);
         PowerMockito.when(response.isSuccessful()).thenReturn(true);
@@ -302,12 +282,10 @@ public class SourcesImpTest {
         JSON json = new JSON();
         PowerMockito.when(apiClient.getJSON()).thenReturn(json);
 
-        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
-                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isSourceEnabled()).thenReturn(true);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(meshWorkerServiceCustomConfig);
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
 
         SourcesImpl sources = spy(new SourcesImpl(meshWorkerServiceSupplier));
         try {
@@ -350,37 +328,14 @@ public class SourcesImpTest {
                         + "    \"kind\": \"Source\",\n"
                         + "    \"metadata\": {\n"
                         + "        \"annotations\": {\n"
-                        + "            \"kubectl.kubernetes.io/last-applied-configuration\": "
-                        + "\"{\\\"apiVersion\\\":\\\"compute.functionmesh.io/v1alpha1\\\","
-                        + "\\\"kind\\\":\\\"Source\\\",\\\"metadata\\\":{\\\"annotations\\\":{},"
-                        + "\\\"name\\\":\\\"source-sample\\\",\\\"namespace\\\":\\\"default\\\"},"
-                        + "\\\"spec\\\":{\\\"className\\\":\\\"org.apache.pulsar.io.debezium.mongodb"
-                        + ".DebeziumMongoDbSource\\\",\\\"clusterName\\\":\\\"test-pulsar\\\","
-                        + "\\\"java\\\":{\\\"jar\\\":\\\"connectors/pulsar-io-debezium-mongodb-2.7.0-rc-pm-3.nar\\\","
-                        + "\\\"jarLocation\\\":\\\"\\\"},\\\"maxReplicas\\\":1,"
-                        + "\\\"output\\\":{\\\"producerConf\\\":{\\\"maxPendingMessages\\\":1000,"
-                        + "\\\"maxPendingMessagesAcrossPartitions\\\":50000,\\\"useThreadLocalProducers\\\":true},"
-                        + "\\\"topic\\\":\\\"persistent://public/default/destination\\\"},"
-                        + "\\\"pulsar\\\":{\\\"pulsarConfig\\\":\\\"test-source\\\"},\\\"replicas\\\":1,"
-                        + "\\\"resources\\\":{\\\"limits\\\":{\\\"cpu\\\":\\\"0.2\\\",\\\"memory\\\":\\\"1.1G\\\"},"
-                        + "\\\"requests\\\":{\\\"cpu\\\":\\\"0.1\\\",\\\"memory\\\":\\\"1G\\\"}},"
-                        + "\\\"sinkType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\","
-                        + "\\\"sourceConfig\\\":{\\\"database.whitelist\\\":\\\"inventory\\\",\\\"mongodb"
-                        + ".hosts\\\":\\\"rs0/mongo-dbz-0.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-1.mongo"
-                        + ".default.svc.cluster.local:27017,rs0/mongo-dbz-2.mongo.default.svc.cluster"
-                        + ".local:27017\\\",\\\"mongodb.name\\\":\\\"dbserver1\\\",\\\"mongodb"
-                        + ".password\\\":\\\"dbz\\\",\\\"mongodb.task.id\\\":\\\"1\\\",\\\"mongodb"
-                        + ".user\\\":\\\"debezium\\\",\\\"pulsar.service.url\\\":\\\"pulsar://test-pulsar-broker"
-                        + ".default.svc.cluster.local:6650\\\"},\\\"sourceType\\\":\\\"org.apache.pulsar.common"
-                        + ".schema.KeyValue\\\"}}\\n\"\n"
+                        + "            \"kubectl.kubernetes.io/last-applied-configuration\": \"{\\\"apiVersion\\\":\\\"compute.functionmesh.io/v1alpha1\\\",\\\"kind\\\":\\\"Source\\\",\\\"metadata\\\":{\\\"annotations\\\":{},\\\"name\\\":\\\"source-sample\\\",\\\"namespace\\\":\\\"default\\\"},\\\"spec\\\":{\\\"className\\\":\\\"org.apache.pulsar.io.debezium.mongodb.DebeziumMongoDbSource\\\",\\\"clusterName\\\":\\\"test-pulsar\\\",\\\"java\\\":{\\\"jar\\\":\\\"connectors/pulsar-io-debezium-mongodb-2.7.0-rc-pm-3.nar\\\",\\\"jarLocation\\\":\\\"\\\"},\\\"maxReplicas\\\":1,\\\"output\\\":{\\\"producerConf\\\":{\\\"maxPendingMessages\\\":1000,\\\"maxPendingMessagesAcrossPartitions\\\":50000,\\\"useThreadLocalProducers\\\":true},\\\"topic\\\":\\\"persistent://public/default/destination\\\"},\\\"pulsar\\\":{\\\"pulsarConfig\\\":\\\"test-source\\\"},\\\"replicas\\\":1,\\\"resources\\\":{\\\"limits\\\":{\\\"cpu\\\":\\\"0.2\\\",\\\"memory\\\":\\\"1.1G\\\"},\\\"requests\\\":{\\\"cpu\\\":\\\"0.1\\\",\\\"memory\\\":\\\"1G\\\"}},\\\"sinkType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\",\\\"sourceConfig\\\":{\\\"database.whitelist\\\":\\\"inventory\\\",\\\"mongodb.hosts\\\":\\\"rs0/mongo-dbz-0.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-1.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-2.mongo.default.svc.cluster.local:27017\\\",\\\"mongodb.name\\\":\\\"dbserver1\\\",\\\"mongodb.password\\\":\\\"dbz\\\",\\\"mongodb.task.id\\\":\\\"1\\\",\\\"mongodb.user\\\":\\\"debezium\\\",\\\"pulsar.service.url\\\":\\\"pulsar://test-pulsar-broker.default.svc.cluster.local:6650\\\"},\\\"sourceType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\"}}\\n\"\n"
                         + "        },\n"
                         + "        \"creationTimestamp\": \"2020-11-27T07:07:57Z\",\n"
                         + "        \"generation\": 1,\n"
                         + "        \"name\": \"source-mongodb-sample-d1dc115a\",\n"
                         + "        \"namespace\": \"default\",\n"
                         + "        \"resourceVersion\": \"881034\",\n"
-                        + "        \"selfLink\": \"/apis/compute.functionmesh"
-                        + ".io/v1alpha1/namespaces/default/sources/source-sample\",\n"
+                        + "        \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/sources/source-sample\",\n"
                         + "        \"uid\": \"8aed505e-38e4-4a8b-93f6-6f753dbf7ebc\"\n"
                         + "    },\n"
                         + "    \"spec\": {\n"
@@ -528,32 +483,30 @@ public class SourcesImpTest {
         JSON json = new JSON();
         PowerMockito.when(apiClient.getJSON()).thenReturn(json);
 
-        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
-                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isSourceEnabled()).thenReturn(true);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(meshWorkerServiceCustomConfig);
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
 
         PowerMockito.when(
-                        meshWorkerService
-                                .getCustomObjectsApi()
-                                .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
+                meshWorkerService
+                        .getCustomObjectsApi()
+                        .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
                 .thenReturn(getCall);
 
         PowerMockito.when(
-                        meshWorkerService
-                                .getCustomObjectsApi()
-                                .replaceNamespacedCustomObjectCall(
-                                        anyString(),
-                                        anyString(),
-                                        anyString(),
-                                        anyString(),
-                                        anyString(),
-                                        anyObject(),
-                                        anyObject(),
-                                        anyObject(),
-                                        anyObject()))
+                meshWorkerService
+                        .getCustomObjectsApi()
+                        .replaceNamespacedCustomObjectCall(
+                                anyString(),
+                                anyString(),
+                                anyString(),
+                                anyString(),
+                                anyString(),
+                                anyObject(),
+                                anyObject(),
+                                anyObject(),
+                                anyObject()))
                 .thenReturn(replaceCall);
 
         SourcesImpl sources = spy(new SourcesImpl(meshWorkerServiceSupplier));
@@ -584,37 +537,14 @@ public class SourcesImpTest {
                         + "    \"kind\": \"Source\",\n"
                         + "    \"metadata\": {\n"
                         + "        \"annotations\": {\n"
-                        + "            \"kubectl.kubernetes.io/last-applied-configuration\": "
-                        + "\"{\\\"apiVersion\\\":\\\"compute.functionmesh.io/v1alpha1\\\","
-                        + "\\\"kind\\\":\\\"Source\\\",\\\"metadata\\\":{\\\"annotations\\\":{},"
-                        + "\\\"name\\\":\\\"source-sample\\\",\\\"namespace\\\":\\\"default\\\"},"
-                        + "\\\"spec\\\":{\\\"className\\\":\\\"org.apache.pulsar.io.debezium.mongodb"
-                        + ".DebeziumMongoDbSource\\\",\\\"clusterName\\\":\\\"test-pulsar\\\","
-                        + "\\\"java\\\":{\\\"jar\\\":\\\"connectors/pulsar-io-debezium-mongodb-2.7.0-rc-pm-3.nar\\\","
-                        + "\\\"jarLocation\\\":\\\"\\\"},\\\"maxReplicas\\\":1,"
-                        + "\\\"output\\\":{\\\"producerConf\\\":{\\\"maxPendingMessages\\\":1000,"
-                        + "\\\"maxPendingMessagesAcrossPartitions\\\":50000,\\\"useThreadLocalProducers\\\":true},"
-                        + "\\\"topic\\\":\\\"persistent://public/default/destination\\\"},"
-                        + "\\\"pulsar\\\":{\\\"pulsarConfig\\\":\\\"test-source\\\"},\\\"replicas\\\":1,"
-                        + "\\\"resources\\\":{\\\"limits\\\":{\\\"cpu\\\":\\\"0.2\\\",\\\"memory\\\":\\\"1.1G\\\"},"
-                        + "\\\"requests\\\":{\\\"cpu\\\":\\\"0.1\\\",\\\"memory\\\":\\\"1G\\\"}},"
-                        + "\\\"sinkType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\","
-                        + "\\\"sourceConfig\\\":{\\\"database.whitelist\\\":\\\"inventory\\\",\\\"mongodb"
-                        + ".hosts\\\":\\\"rs0/mongo-dbz-0.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-1.mongo"
-                        + ".default.svc.cluster.local:27017,rs0/mongo-dbz-2.mongo.default.svc.cluster"
-                        + ".local:27017\\\",\\\"mongodb.name\\\":\\\"dbserver1\\\",\\\"mongodb"
-                        + ".password\\\":\\\"dbz\\\",\\\"mongodb.task.id\\\":\\\"1\\\",\\\"mongodb"
-                        + ".user\\\":\\\"debezium\\\",\\\"pulsar.service.url\\\":\\\"pulsar://test-pulsar-broker"
-                        + ".default.svc.cluster.local:6650\\\"},\\\"sourceType\\\":\\\"org.apache.pulsar.common"
-                        + ".schema.KeyValue\\\"}}\\n\"\n"
+                        + "            \"kubectl.kubernetes.io/last-applied-configuration\": \"{\\\"apiVersion\\\":\\\"compute.functionmesh.io/v1alpha1\\\",\\\"kind\\\":\\\"Source\\\",\\\"metadata\\\":{\\\"annotations\\\":{},\\\"name\\\":\\\"source-sample\\\",\\\"namespace\\\":\\\"default\\\"},\\\"spec\\\":{\\\"className\\\":\\\"org.apache.pulsar.io.debezium.mongodb.DebeziumMongoDbSource\\\",\\\"clusterName\\\":\\\"test-pulsar\\\",\\\"java\\\":{\\\"jar\\\":\\\"connectors/pulsar-io-debezium-mongodb-2.7.0-rc-pm-3.nar\\\",\\\"jarLocation\\\":\\\"\\\"},\\\"maxReplicas\\\":1,\\\"output\\\":{\\\"producerConf\\\":{\\\"maxPendingMessages\\\":1000,\\\"maxPendingMessagesAcrossPartitions\\\":50000,\\\"useThreadLocalProducers\\\":true},\\\"topic\\\":\\\"persistent://public/default/destination\\\"},\\\"pulsar\\\":{\\\"pulsarConfig\\\":\\\"test-source\\\"},\\\"replicas\\\":1,\\\"resources\\\":{\\\"limits\\\":{\\\"cpu\\\":\\\"0.2\\\",\\\"memory\\\":\\\"1.1G\\\"},\\\"requests\\\":{\\\"cpu\\\":\\\"0.1\\\",\\\"memory\\\":\\\"1G\\\"}},\\\"sinkType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\",\\\"sourceConfig\\\":{\\\"database.whitelist\\\":\\\"inventory\\\",\\\"mongodb.hosts\\\":\\\"rs0/mongo-dbz-0.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-1.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-2.mongo.default.svc.cluster.local:27017\\\",\\\"mongodb.name\\\":\\\"dbserver1\\\",\\\"mongodb.password\\\":\\\"dbz\\\",\\\"mongodb.task.id\\\":\\\"1\\\",\\\"mongodb.user\\\":\\\"debezium\\\",\\\"pulsar.service.url\\\":\\\"pulsar://test-pulsar-broker.default.svc.cluster.local:6650\\\"},\\\"sourceType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\"}}\\n\"\n"
                         + "        },\n"
                         + "        \"creationTimestamp\": \"2020-11-27T07:07:57Z\",\n"
                         + "        \"generation\": 1,\n"
                         + "        \"name\": \"source-sample\",\n"
                         + "        \"namespace\": \"default\",\n"
                         + "        \"resourceVersion\": \"881034\",\n"
-                        + "        \"selfLink\": \"/apis/compute.functionmesh"
-                        + ".io/v1alpha1/namespaces/default/sources/source-sample\",\n"
+                        + "        \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/sources/source-sample\",\n"
                         + "        \"uid\": \"8aed505e-38e4-4a8b-93f6-6f753dbf7ebc\"\n"
                         + "    },\n"
                         + "    \"spec\": {\n"
@@ -706,9 +636,9 @@ public class SourcesImpTest {
 
 
         PowerMockito.when(
-                        meshWorkerService
-                                .getCustomObjectsApi()
-                                .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
+                meshWorkerService
+                        .getCustomObjectsApi()
+                        .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
                 .thenReturn(call);
         PowerMockito.when(call.execute()).thenReturn(response);
         PowerMockito.when(response.isSuccessful()).thenReturn(true);
@@ -719,8 +649,7 @@ public class SourcesImpTest {
         PowerMockito.when(apiClient.getJSON()).thenReturn(json);
 
         V1StatefulSet v1StatefulSet = PowerMockito.mock(V1StatefulSet.class);
-        PowerMockito.when(appsV1Api.readNamespacedStatefulSet(any(), any(), any(), any(), any()))
-                .thenReturn(v1StatefulSet);
+        PowerMockito.when(appsV1Api.readNamespacedStatefulSet(any(), any(), any(), any(), any())).thenReturn(v1StatefulSet);
         V1ObjectMeta v1StatefulSetV1ObjectMeta = PowerMockito.mock(V1ObjectMeta.class);
         PowerMockito.when(v1StatefulSet.getMetadata()).thenReturn(v1StatefulSetV1ObjectMeta);
         V1StatefulSetSpec v1StatefulSetSpec = PowerMockito.mock(V1StatefulSetSpec.class);
@@ -748,8 +677,7 @@ public class SourcesImpTest {
         InstanceCommunication.FunctionStatus.Builder builder = InstanceCommunication.FunctionStatus.newBuilder();
         builder.setRunning(true);
         PowerMockito.mockStatic(InstanceControlGrpc.InstanceControlFutureStub.class);
-        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFunctionStatusAsync"))
-                .toReturn(CompletableFuture.completedFuture(builder.build()));
+        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFunctionStatusAsync")).toReturn(CompletableFuture.completedFuture(builder.build()));
 
         SourcesImpl sources = spy(new SourcesImpl(meshWorkerServiceSupplier));
         SourceStatus sourceStatus =
@@ -783,37 +711,14 @@ public class SourcesImpTest {
                         + "    \"kind\": \"Source\",\n"
                         + "    \"metadata\": {\n"
                         + "        \"annotations\": {\n"
-                        + "            \"kubectl.kubernetes.io/last-applied-configuration\": "
-                        + "\"{\\\"apiVersion\\\":\\\"compute.functionmesh.io/v1alpha1\\\","
-                        + "\\\"kind\\\":\\\"Source\\\",\\\"metadata\\\":{\\\"annotations\\\":{},"
-                        + "\\\"name\\\":\\\"source-sample\\\",\\\"namespace\\\":\\\"default\\\"},"
-                        + "\\\"spec\\\":{\\\"className\\\":\\\"org.apache.pulsar.io.debezium.mongodb"
-                        + ".DebeziumMongoDbSource\\\",\\\"clusterName\\\":\\\"test-pulsar\\\","
-                        + "\\\"java\\\":{\\\"jar\\\":\\\"connectors/pulsar-io-debezium-mongodb-2.7.0-rc-pm-3.nar\\\","
-                        + "\\\"jarLocation\\\":\\\"\\\"},\\\"maxReplicas\\\":1,"
-                        + "\\\"output\\\":{\\\"producerConf\\\":{\\\"maxPendingMessages\\\":1000,"
-                        + "\\\"maxPendingMessagesAcrossPartitions\\\":50000,\\\"useThreadLocalProducers\\\":true},"
-                        + "\\\"topic\\\":\\\"persistent://public/default/destination\\\"},"
-                        + "\\\"pulsar\\\":{\\\"pulsarConfig\\\":\\\"test-source\\\"},\\\"replicas\\\":1,"
-                        + "\\\"resources\\\":{\\\"limits\\\":{\\\"cpu\\\":\\\"0.2\\\",\\\"memory\\\":\\\"1.1G\\\"},"
-                        + "\\\"requests\\\":{\\\"cpu\\\":\\\"0.1\\\",\\\"memory\\\":\\\"1G\\\"}},"
-                        + "\\\"sinkType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\","
-                        + "\\\"sourceConfig\\\":{\\\"database.whitelist\\\":\\\"inventory\\\",\\\"mongodb"
-                        + ".hosts\\\":\\\"rs0/mongo-dbz-0.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-1.mongo"
-                        + ".default.svc.cluster.local:27017,rs0/mongo-dbz-2.mongo.default.svc.cluster"
-                        + ".local:27017\\\",\\\"mongodb.name\\\":\\\"dbserver1\\\",\\\"mongodb"
-                        + ".password\\\":\\\"dbz\\\",\\\"mongodb.task.id\\\":\\\"1\\\",\\\"mongodb"
-                        + ".user\\\":\\\"debezium\\\",\\\"pulsar.service.url\\\":\\\"pulsar://test-pulsar-broker"
-                        + ".default.svc.cluster.local:6650\\\"},\\\"sourceType\\\":\\\"org.apache.pulsar.common"
-                        + ".schema.KeyValue\\\"}}\\n\"\n"
+                        + "            \"kubectl.kubernetes.io/last-applied-configuration\": \"{\\\"apiVersion\\\":\\\"compute.functionmesh.io/v1alpha1\\\",\\\"kind\\\":\\\"Source\\\",\\\"metadata\\\":{\\\"annotations\\\":{},\\\"name\\\":\\\"source-sample\\\",\\\"namespace\\\":\\\"default\\\"},\\\"spec\\\":{\\\"className\\\":\\\"org.apache.pulsar.io.debezium.mongodb.DebeziumMongoDbSource\\\",\\\"clusterName\\\":\\\"test-pulsar\\\",\\\"java\\\":{\\\"jar\\\":\\\"connectors/pulsar-io-debezium-mongodb-2.7.0-rc-pm-3.nar\\\",\\\"jarLocation\\\":\\\"\\\"},\\\"maxReplicas\\\":1,\\\"output\\\":{\\\"producerConf\\\":{\\\"maxPendingMessages\\\":1000,\\\"maxPendingMessagesAcrossPartitions\\\":50000,\\\"useThreadLocalProducers\\\":true},\\\"topic\\\":\\\"persistent://public/default/destination\\\"},\\\"pulsar\\\":{\\\"pulsarConfig\\\":\\\"test-source\\\"},\\\"replicas\\\":1,\\\"resources\\\":{\\\"limits\\\":{\\\"cpu\\\":\\\"0.2\\\",\\\"memory\\\":\\\"1.1G\\\"},\\\"requests\\\":{\\\"cpu\\\":\\\"0.1\\\",\\\"memory\\\":\\\"1G\\\"}},\\\"sinkType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\",\\\"sourceConfig\\\":{\\\"database.whitelist\\\":\\\"inventory\\\",\\\"mongodb.hosts\\\":\\\"rs0/mongo-dbz-0.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-1.mongo.default.svc.cluster.local:27017,rs0/mongo-dbz-2.mongo.default.svc.cluster.local:27017\\\",\\\"mongodb.name\\\":\\\"dbserver1\\\",\\\"mongodb.password\\\":\\\"dbz\\\",\\\"mongodb.task.id\\\":\\\"1\\\",\\\"mongodb.user\\\":\\\"debezium\\\",\\\"pulsar.service.url\\\":\\\"pulsar://test-pulsar-broker.default.svc.cluster.local:6650\\\"},\\\"sourceType\\\":\\\"org.apache.pulsar.common.schema.KeyValue\\\"}}\\n\"\n"
                         + "        },\n"
                         + "        \"creationTimestamp\": \"2020-11-27T07:07:57Z\",\n"
                         + "        \"generation\": 1,\n"
                         + "        \"name\": \"source-sample\",\n"
                         + "        \"namespace\": \"default\",\n"
                         + "        \"resourceVersion\": \"881034\",\n"
-                        + "        \"selfLink\": \"/apis/compute.functionmesh"
-                        + ".io/v1alpha1/namespaces/default/sources/source-sample\",\n"
+                        + "        \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/sources/source-sample\",\n"
                         + "        \"uid\": \"8aed505e-38e4-4a8b-93f6-6f753dbf7ebc\"\n"
                         + "    },\n"
                         + "    \"spec\": {\n"
@@ -896,9 +801,9 @@ public class SourcesImpTest {
         String componentName = "source-mongodb-sample";
 
         PowerMockito.when(
-                        meshWorkerService
-                                .getCustomObjectsApi()
-                                .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
+                meshWorkerService
+                        .getCustomObjectsApi()
+                        .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
                 .thenReturn(call);
         PowerMockito.when(call.execute()).thenReturn(response);
         PowerMockito.when(response.isSuccessful()).thenReturn(true);
@@ -950,8 +855,7 @@ public class SourcesImpTest {
         Assert.assertEquals(expectedSourceConfig.getArchive(), actualSourceConfig.getArchive());
         Assert.assertEquals(expectedSourceConfig.getResources(), actualSourceConfig.getResources());
         Assert.assertEquals(expectedSourceConfig.getClassName(), actualSourceConfig.getClassName());
-        Assert.assertEquals(expectedSourceConfig.getCustomRuntimeOptions(),
-                actualSourceConfig.getCustomRuntimeOptions());
+        Assert.assertEquals(expectedSourceConfig.getCustomRuntimeOptions(), actualSourceConfig.getCustomRuntimeOptions());
         Assert.assertEquals(expectedSourceConfig.getTopicName(), actualSourceConfig.getTopicName());
         Assert.assertEquals(expectedSourceConfig.getParallelism(), actualSourceConfig.getParallelism());
         Assert.assertEquals(expectedSourceConfig.getRuntimeFlags(), actualSourceConfig.getRuntimeFlags());

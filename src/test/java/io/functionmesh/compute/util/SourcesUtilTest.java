@@ -25,12 +25,7 @@ import io.functionmesh.compute.sources.models.V1alpha1Source;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpec;
 import io.functionmesh.compute.testdata.Generate;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.pulsar.common.io.SourceConfig;
 import org.apache.pulsar.common.nar.NarClassLoader;
@@ -45,6 +40,13 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
+
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({FunctionCommon.class, ConnectorUtils.class, FileUtils.class})
 @PowerMockIgnore({"javax.management.*"})
@@ -55,8 +57,7 @@ public class SourcesUtilTest {
     private final String version = "v1alpha1";
 
     @Test
-    public void testCreateV1alpha1SourceFromSourceConfig()
-            throws ClassNotFoundException, IOException, URISyntaxException {
+    public void testCreateV1alpha1SourceFromSourceConfig() throws ClassNotFoundException, IOException, URISyntaxException {
         String tenant = "public";
         String namespace = "default";
         String componentName = "source-mongodb-sample";
@@ -91,8 +92,7 @@ public class SourcesUtilTest {
         WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
         V1alpha1Source v1alpha1Source = SourcesUtil.createV1alpha1SourceFromSourceConfig(kind, group, version,
                 componentName, null, uploadedInputStream, sourceConfig, null,
                 null, meshWorkerService);
@@ -110,8 +110,7 @@ public class SourcesUtilTest {
     }
 
     @Test
-    public void testCreateSourceConfigFromV1alpha1Source()
-            throws ClassNotFoundException, IOException, URISyntaxException {
+    public void testCreateSourceConfigFromV1alpha1Source() throws ClassNotFoundException, IOException, URISyntaxException {
         String tenant = "public";
         String namespace = "default";
         String componentName = "source-mongodb-sample";
@@ -135,8 +134,7 @@ public class SourcesUtilTest {
 
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
         WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
@@ -161,8 +159,7 @@ public class SourcesUtilTest {
     }
 
     @Test
-    public void testCreateV1alpha1SourceFromSinkConfigWithBuiltin()
-            throws IOException, URISyntaxException, ClassNotFoundException {
+    public void testCreateV1alpha1SourceFromSinkConfigWithBuiltin() throws IOException, URISyntaxException, ClassNotFoundException {
         String tenant = "public";
         String namespace = "default";
         String componentName = "source-mongodb-sample";
@@ -181,8 +178,7 @@ public class SourcesUtilTest {
         PowerMockito.when(connectorDefinition.getId()).thenReturn("debezium-mongodb");
         PowerMockito.when(connectorDefinition.getVersion()).thenReturn("2.7.0");
         PowerMockito.when(connectorDefinition.getImageTag()).thenReturn("2.7.0");
-        PowerMockito.when(connectorDefinition.getImageRepository())
-                .thenReturn("streamnative/pulsar-io-debezium-mongodb");
+        PowerMockito.when(connectorDefinition.getImageRepository()).thenReturn("streamnative/pulsar-io-debezium-mongodb");
         PowerMockito.when(connectorDefinition.getJar()).thenReturn("connectors/pulsar-io-debezium-mongodb-2.7.0.nar");
         PowerMockito.when(connectorsManager.getConnectorDefinition("debezium-mongodb"))
                 .thenReturn(connectorDefinition);
@@ -191,8 +187,7 @@ public class SourcesUtilTest {
 
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
 
         V1alpha1Source v1alpha1Source =
                 SourcesUtil.createV1alpha1SourceFromSourceConfig(

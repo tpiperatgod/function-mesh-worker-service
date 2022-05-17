@@ -22,13 +22,16 @@ import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
 import com.google.gson.Gson;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import io.functionmesh.compute.util.FunctionsUtil;
+import org.apache.pulsar.common.functions.ConsumerConfig;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.io.SinkConfig;
 import org.apache.pulsar.common.io.SourceConfig;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Generate {
     public static String TEST_CLUSTER_NAME = "test-pulsar";
@@ -58,8 +61,7 @@ public class Generate {
         return functionConfig;
     }
 
-    public static FunctionConfig CreateJavaFunctionWithPackageURLConfig(String tenant, String namespace,
-                                                                        String functionName) {
+    public static FunctionConfig CreateJavaFunctionWithPackageURLConfig(String tenant, String namespace, String functionName) {
         FunctionConfig functionConfig = new FunctionConfig();
         functionConfig.setName(functionName);
         functionConfig.setTenant(tenant);

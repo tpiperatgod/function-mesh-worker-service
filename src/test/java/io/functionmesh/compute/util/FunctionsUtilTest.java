@@ -26,8 +26,10 @@ import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpec;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.testdata.Generate;
-import io.kubernetes.client.openapi.apis.CustomObjectsApi;
+
 import java.util.Collections;
+
+import io.kubernetes.client.openapi.apis.CustomObjectsApi;
 import java.util.HashMap;
 import java.util.Map;
 import okhttp3.Response;
@@ -88,16 +90,13 @@ public class FunctionsUtilTest {
         PowerMockito.stub(PowerMockito.method(FunctionsUtil.class, "downloadPackageFile")).toReturn(null);
         PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata")).toReturn(null);
 
-        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
-                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isFunctionEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isAllowUserDefinedServiceAccountName()).thenReturn(false);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(meshWorkerServiceCustomConfig);
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
 
-        FunctionConfig functionConfig =
-                Generate.CreateJavaFunctionWithPackageURLConfig(tenant, namespace, functionName);
+        FunctionConfig functionConfig = Generate.CreateJavaFunctionWithPackageURLConfig(tenant, namespace, functionName);
 
         V1alpha1Function v1alpha1Function = FunctionsUtil.createV1alpha1FunctionFromFunctionConfig(kind, group, version,
                 functionName, functionConfig.getJar(), functionConfig, null, meshWorkerService);
@@ -149,19 +148,15 @@ public class FunctionsUtilTest {
         PulsarAdmin pulsarAdmin = PowerMockito.mock(PulsarAdmin.class);
         PowerMockito.when(meshWorkerService.getBrokerAdmin()).thenReturn(pulsarAdmin);
         PowerMockito.stub(PowerMockito.method(FunctionsUtil.class, "downloadPackageFile")).toReturn(null);
-        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata"))
-                .toReturn("word-count.jar");
+        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata")).toReturn("word-count.jar");
 
-        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
-                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isFunctionEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isAllowUserDefinedServiceAccountName()).thenReturn(false);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(meshWorkerServiceCustomConfig);
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
 
-        FunctionConfig functionConfig =
-                Generate.CreateJavaFunctionWithPackageURLConfig(tenant, namespace, functionName);
+        FunctionConfig functionConfig = Generate.CreateJavaFunctionWithPackageURLConfig(tenant, namespace, functionName);
 
         V1alpha1Function v1alpha1Function = FunctionsUtil.createV1alpha1FunctionFromFunctionConfig(kind, group, version,
                 functionName, functionConfig.getJar(), functionConfig, null, meshWorkerService);
@@ -187,8 +182,7 @@ public class FunctionsUtilTest {
         Assert.assertEquals(functionConfig.getUserConfig(), newFunctionConfig.getUserConfig());
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode oldSecretsJson = objectMapper.readTree(objectMapper.writeValueAsString(functionConfig.getSecrets()));
-        JsonNode newSecretsJson =
-                objectMapper.readTree(objectMapper.writeValueAsString(newFunctionConfig.getSecrets()));
+        JsonNode newSecretsJson = objectMapper.readTree(objectMapper.writeValueAsString(newFunctionConfig.getSecrets()));
         Assert.assertEquals(oldSecretsJson, newSecretsJson);
     }
 }

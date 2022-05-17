@@ -18,18 +18,14 @@
  */
 package io.functionmesh.compute.rest.api;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.anyString;
-import static org.powermock.api.mockito.PowerMockito.spy;
 import com.google.common.collect.Maps;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
-import io.functionmesh.compute.sinks.models.V1alpha1Sink;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPod;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.util.SinksUtil;
+import io.functionmesh.compute.sinks.models.V1alpha1Sink;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.JSON;
@@ -43,16 +39,6 @@ import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
 import io.kubernetes.client.openapi.models.V1StatefulSetSpec;
 import io.kubernetes.client.openapi.models.V1StatefulSetStatus;
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
 import okhttp3.Call;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
@@ -77,6 +63,23 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.anyString;
+import static org.powermock.api.mockito.PowerMockito.spy;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({
@@ -105,31 +108,14 @@ public class SinksImpTest {
                         + "  \"kind\": \"Sink\",\n"
                         + "  \"metadata\": {\n"
                         + "    \"annotations\": {\n"
-                        + "      \"kubectl.kubernetes.io/last-applied-configuration\": "
-                        + "\"{\\\"apiVersion\\\":\\\"compute.functionmesh.io/v1alpha1\\\",\\\"kind\\\":\\\"Sink\\\","
-                        + "\\\"metadata\\\":{\\\"annotations\\\":{},\\\"name\\\":\\\"sink-sample\\\","
-                        + "\\\"namespace\\\":\\\"default\\\"},\\\"spec\\\":{\\\"autoAck\\\":true,"
-                        + "\\\"className\\\":\\\"org.apache.pulsar.io.elasticsearch.ElasticSearchSink\\\","
-                        + "\\\"clusterName\\\":\\\"test-pulsar\\\","
-                        + "\\\"input\\\":{\\\"topics\\\":[\\\"persistent://public/default/input\\\"]},"
-                        + "\\\"java\\\":{\\\"jar\\\":\\\"connectors/pulsar-io-elastic-search-2.7.0-rc-pm-3.nar\\\","
-                        + "\\\"jarLocation\\\":\\\"\\\"},\\\"maxReplicas\\\":1,"
-                        + "\\\"pulsar\\\":{\\\"pulsarConfig\\\":\\\"test-sink\\\"},\\\"replicas\\\":1,"
-                        + "\\\"resources\\\":{\\\"limits\\\":{\\\"cpu\\\":\\\"0.2\\\",\\\"memory\\\":\\\"1.1G\\\"},"
-                        + "\\\"requests\\\":{\\\"cpu\\\":\\\"0.1\\\",\\\"memory\\\":\\\"1G\\\"}},"
-                        + "\\\"sinkConfig\\\":{\\\"elasticSearchUrl\\\":\\\"http://quickstart-es-http.default.svc"
-                        + ".cluster.local:9200\\\",\\\"indexName\\\":\\\"my_index\\\","
-                        + "\\\"password\\\":\\\"wJ757TmoXEd941kXm07Z2GW3\\\",\\\"typeName\\\":\\\"doc\\\","
-                        + "\\\"username\\\":\\\"elastic\\\"},\\\"sinkType\\\":\\\"[B\\\","
-                        + "\\\"sourceType\\\":\\\"[B\\\"}}\\n\"\n"
+                        + "      \"kubectl.kubernetes.io/last-applied-configuration\": \"{\\\"apiVersion\\\":\\\"compute.functionmesh.io/v1alpha1\\\",\\\"kind\\\":\\\"Sink\\\",\\\"metadata\\\":{\\\"annotations\\\":{},\\\"name\\\":\\\"sink-sample\\\",\\\"namespace\\\":\\\"default\\\"},\\\"spec\\\":{\\\"autoAck\\\":true,\\\"className\\\":\\\"org.apache.pulsar.io.elasticsearch.ElasticSearchSink\\\",\\\"clusterName\\\":\\\"test-pulsar\\\",\\\"input\\\":{\\\"topics\\\":[\\\"persistent://public/default/input\\\"]},\\\"java\\\":{\\\"jar\\\":\\\"connectors/pulsar-io-elastic-search-2.7.0-rc-pm-3.nar\\\",\\\"jarLocation\\\":\\\"\\\"},\\\"maxReplicas\\\":1,\\\"pulsar\\\":{\\\"pulsarConfig\\\":\\\"test-sink\\\"},\\\"replicas\\\":1,\\\"resources\\\":{\\\"limits\\\":{\\\"cpu\\\":\\\"0.2\\\",\\\"memory\\\":\\\"1.1G\\\"},\\\"requests\\\":{\\\"cpu\\\":\\\"0.1\\\",\\\"memory\\\":\\\"1G\\\"}},\\\"sinkConfig\\\":{\\\"elasticSearchUrl\\\":\\\"http://quickstart-es-http.default.svc.cluster.local:9200\\\",\\\"indexName\\\":\\\"my_index\\\",\\\"password\\\":\\\"wJ757TmoXEd941kXm07Z2GW3\\\",\\\"typeName\\\":\\\"doc\\\",\\\"username\\\":\\\"elastic\\\"},\\\"sinkType\\\":\\\"[B\\\",\\\"sourceType\\\":\\\"[B\\\"}}\\n\"\n"
                         + "    },\n"
                         + "    \"creationTimestamp\": \"2020-11-27T07:32:51Z\",\n"
                         + "    \"generation\": 1,\n"
                         + "    \"name\": \"sink-sample\",\n"
                         + "    \"namespace\": \"default\",\n"
                         + "    \"resourceVersion\": \"888546\",\n"
-                        + "    \"selfLink\": \"/apis/compute.functionmesh"
-                        + ".io/v1alpha1/namespaces/default/sinks/sink-sample\",\n"
+                        + "    \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/sinks/sink-sample\",\n"
                         + "    \"uid\": \"4cd65795-18d4-46ee-a514-abee5048f1a1\"\n"
                         + "  },\n"
                         + "  \"spec\": {\n"
@@ -205,8 +191,7 @@ public class SinksImpTest {
         PowerMockito.when(workerConfig.isAuthenticationEnabled()).thenReturn(false);
         PulsarAdmin pulsarAdmin = PowerMockito.mock(PulsarAdmin.class);
         PowerMockito.when(meshWorkerService.getBrokerAdmin()).thenReturn(pulsarAdmin);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(new MeshWorkerServiceCustomConfig());
         Tenants tenants = PowerMockito.mock(Tenants.class);
         PowerMockito.when(pulsarAdmin.tenants()).thenReturn(tenants);
         Call call = PowerMockito.mock(Call.class);
@@ -258,12 +243,10 @@ public class SinksImpTest {
 
         PowerMockito.when(tenants.getTenantInfo(tenant)).thenReturn(null);
 
-        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
-                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isSinkEnabled()).thenReturn(true);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(meshWorkerServiceCustomConfig);
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
 
         V1alpha1Sink v1alpha1Sink =
                 SinksUtil.createV1alpha1SkinFromSinkConfig(
@@ -280,7 +263,7 @@ public class SinksImpTest {
         v1alpha1Sink.getSpec().pod(pod);
         v1alpha1Sink.getMetadata().setLabels(customLabels);
         PowerMockito.when(
-                        meshWorkerService
+                meshWorkerService
                                 .getCustomObjectsApi()
                                 .createNamespacedCustomObjectCall(
                                         any(),
@@ -347,8 +330,7 @@ public class SinksImpTest {
                         + "    \"name\": \"sink-es-sample\",\n"
                         + "    \"namespace\": \"default\",\n"
                         + "    \"resourceVersion\": \"888546\",\n"
-                        + "    \"selfLink\": \"/apis/compute.functionmesh"
-                        + ".io/v1alpha1/namespaces/default/sinks/sink-sample\",\n"
+                        + "    \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/sinks/sink-sample\",\n"
                         + "    \"uid\": \"4cd65795-18d4-46ee-a514-abee5048f1a1\"\n"
                         + "  },\n"
                         + "  \"spec\": {\n"
@@ -461,12 +443,10 @@ public class SinksImpTest {
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
         PowerMockito.when(workerConfig.isAuthorizationEnabled()).thenReturn(false);
         PowerMockito.when(workerConfig.isAuthenticationEnabled()).thenReturn(false);
-        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
-                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isSinkEnabled()).thenReturn(true);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(meshWorkerServiceCustomConfig);
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
 
         PulsarAdmin pulsarAdmin = PowerMockito.mock(PulsarAdmin.class);
         PowerMockito.when(meshWorkerService.getBrokerAdmin()).thenReturn(pulsarAdmin);
@@ -488,12 +468,12 @@ public class SinksImpTest {
         PowerMockito.when(apiClient.getJSON()).thenReturn(json);
 
         PowerMockito.when(
-                        customObjectsApi.getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
+                customObjectsApi.getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
                 .thenReturn(getCall);
 
         Call replaceCall = PowerMockito.mock(Call.class);
         PowerMockito.when(
-                        customObjectsApi
+                customObjectsApi
                                 .replaceNamespacedCustomObjectCall(
                                         anyString(),
                                         anyString(),
@@ -543,8 +523,7 @@ public class SinksImpTest {
                         + "    \"name\": \"sink-sample\",\n"
                         + "    \"namespace\": \"default\",\n"
                         + "    \"resourceVersion\": \"888546\",\n"
-                        + "    \"selfLink\": \"/apis/compute.functionmesh"
-                        + ".io/v1alpha1/namespaces/default/sinks/sink-sample\",\n"
+                        + "    \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/sinks/sink-sample\",\n"
                         + "    \"uid\": \"4cd65795-18d4-46ee-a514-abee5048f1a1\"\n"
                         + "  },\n"
                         + "  \"spec\": {\n"
@@ -636,9 +615,9 @@ public class SinksImpTest {
         String jobName = CommonUtil.makeJobName(componentName, CommonUtil.COMPONENT_SINK);
 
         PowerMockito.when(
-                        meshWorkerService
-                                .getCustomObjectsApi()
-                                .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
+                meshWorkerService
+                        .getCustomObjectsApi()
+                        .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
                 .thenReturn(call);
         PowerMockito.when(call.execute()).thenReturn(response);
         PowerMockito.when(response.isSuccessful()).thenReturn(true);
@@ -649,8 +628,7 @@ public class SinksImpTest {
         PowerMockito.when(apiClient.getJSON()).thenReturn(json);
 
         V1StatefulSet v1StatefulSet = PowerMockito.mock(V1StatefulSet.class);
-        PowerMockito.when(appsV1Api.readNamespacedStatefulSet(any(), any(), any(), any(), any()))
-                .thenReturn(v1StatefulSet);
+        PowerMockito.when(appsV1Api.readNamespacedStatefulSet(any(), any(), any(), any(), any())).thenReturn(v1StatefulSet);
 
         V1ObjectMeta v1StatefulSetV1ObjectMeta = PowerMockito.mock(V1ObjectMeta.class);
         PowerMockito.when(v1StatefulSet.getMetadata()).thenReturn(v1StatefulSetV1ObjectMeta);
@@ -671,7 +649,7 @@ public class SinksImpTest {
         PowerMockito.when(list.getItems()).thenReturn(podList);
         V1ObjectMeta podV1ObjectMeta = PowerMockito.mock(V1ObjectMeta.class);
         PowerMockito.when(pod.getMetadata()).thenReturn(podV1ObjectMeta);
-        PowerMockito.when(podV1ObjectMeta.getName()).thenReturn(hashName + "-sink-0");
+        PowerMockito.when(podV1ObjectMeta.getName()).thenReturn(hashName+"-sink-0");
         V1PodStatus podStatus = PowerMockito.mock(V1PodStatus.class);
         PowerMockito.when(pod.getStatus()).thenReturn(podStatus);
         PowerMockito.when(podStatus.getPhase()).thenReturn("Running");
@@ -679,8 +657,7 @@ public class SinksImpTest {
         InstanceCommunication.FunctionStatus.Builder builder = InstanceCommunication.FunctionStatus.newBuilder();
         builder.setRunning(true);
         PowerMockito.mockStatic(InstanceControlGrpc.InstanceControlFutureStub.class);
-        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFunctionStatusAsync"))
-                .toReturn(CompletableFuture.completedFuture(builder.build()));
+        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFunctionStatusAsync")).toReturn(CompletableFuture.completedFuture(builder.build()));
 
         SinksImpl sinks = spy(new SinksImpl(meshWorkerServiceSupplier));
         SinkStatus sinkStatus =
@@ -716,8 +693,7 @@ public class SinksImpTest {
                         + "    \"name\": \"sink-sample\",\n"
                         + "    \"namespace\": \"default\",\n"
                         + "    \"resourceVersion\": \"888546\",\n"
-                        + "    \"selfLink\": \"/apis/compute.functionmesh"
-                        + ".io/v1alpha1/namespaces/default/sinks/sink-sample\",\n"
+                        + "    \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/sinks/sink-sample\",\n"
                         + "    \"uid\": \"4cd65795-18d4-46ee-a514-abee5048f1a1\"\n"
                         + "  },\n"
                         + "  \"spec\": {\n"
@@ -800,9 +776,9 @@ public class SinksImpTest {
         String componentName = "sink-sample";
 
         PowerMockito.when(
-                        meshWorkerService
-                                .getCustomObjectsApi()
-                                .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
+                meshWorkerService
+                        .getCustomObjectsApi()
+                        .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any()))
                 .thenReturn(call);
         PowerMockito.when(call.execute()).thenReturn(response);
         PowerMockito.when(response.isSuccessful()).thenReturn(true);
