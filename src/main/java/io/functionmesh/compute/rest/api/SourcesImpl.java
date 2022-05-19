@@ -153,7 +153,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                 ComponentTypeUtils.toString(componentType));
         this.validateTenantIsExist(tenant, namespace, sourceName, clientRole);
         String packageURL = sourcePkgUrl;
-        if (uploadedInputStream != null) {
+        if (uploadedInputStream != null && worker().getMeshWorkerServiceCustomConfig().isUploadEnabled()) {
             try {
                 String tempDirectory = System.getProperty("java.io.tmpdir");
                 packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(
@@ -223,7 +223,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                 ComponentTypeUtils.toString(componentType));
         this.validateTenantIsExist(tenant, namespace, sourceName, clientRole);
         String packageURL = sourcePkgUrl;
-        if (uploadedInputStream != null) {
+        if (uploadedInputStream != null && worker().getMeshWorkerServiceCustomConfig().isUploadEnabled()) {
             try {
                 String tempDirectory = System.getProperty("java.io.tmpdir");
                 packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(

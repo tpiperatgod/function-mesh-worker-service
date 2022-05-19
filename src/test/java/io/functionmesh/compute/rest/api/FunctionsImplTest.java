@@ -656,10 +656,13 @@ public class FunctionsImplTest {
         CustomObjectsApi customObjectsApi = PowerMockito.mock(CustomObjectsApi.class);
         PowerMockito.when(meshWorkerService.getCustomObjectsApi()).thenReturn(customObjectsApi);
         WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
         PowerMockito.when(workerConfig.isAuthorizationEnabled()).thenReturn(false);
         PowerMockito.when(workerConfig.isAuthenticationEnabled()).thenReturn(false);
         PowerMockito.when(workerConfig.getPulsarFunctionsCluster()).thenReturn("test-pulsar");
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
+        PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         Call call = PowerMockito.mock(Call.class);
         Response response = PowerMockito.mock(Response.class);
         ResponseBody responseBody = PowerMockito.mock(RealResponseBody.class);
