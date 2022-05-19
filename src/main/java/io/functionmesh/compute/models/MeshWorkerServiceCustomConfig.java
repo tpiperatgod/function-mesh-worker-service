@@ -36,13 +36,12 @@ import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumes;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import io.kubernetes.client.openapi.models.V1Volume;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
+import java.util.List;
+import java.util.Map;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.apache.pulsar.common.configuration.FieldContext;
 import org.apache.pulsar.common.util.ObjectMapperFactory;
-
-import java.util.List;
-import java.util.Map;
 
 @Data
 @Accessors(chain = true)
@@ -103,12 +102,14 @@ public class MeshWorkerServiceCustomConfig {
     protected String imagePullPolicy;
 
     @FieldContext(
-            doc = "the runner image to run function instance. By default it is streamnative/pulsar-functions-java-runner."
+            doc = "the runner image to run function instance. By default it is "
+                    + "streamnative/pulsar-functions-java-runner."
     )
     protected Map<String, String> functionRunnerImages;
 
     @FieldContext(
-            doc = "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec."
+            doc = "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for "
+                    + "pulling any of the images used by this PodSpec."
     )
     protected List<V1LocalObjectReference> imagePullSecrets;
 
@@ -118,7 +119,8 @@ public class MeshWorkerServiceCustomConfig {
     protected Map<String, String> labels;
 
     @FieldContext(
-            doc = "FunctionLabels specifies the labels to attach to function's pod, will override the labels if specified."
+            doc = "FunctionLabels specifies the labels to attach to function's pod, will override the labels if "
+                    + "specified."
     )
     protected Map<String, String> functionLabels;
 
@@ -138,45 +140,53 @@ public class MeshWorkerServiceCustomConfig {
     protected Map<String, String> annotations;
 
     @FieldContext(
-            doc = "FunctionAnnotations specifies the annotations to attach to function's pod, will override the annotations if specified."
+            doc = "FunctionAnnotations specifies the annotations to attach to function's pod, will override the "
+                    + "annotations if specified."
     )
     protected Map<String, String> functionAnnotations;
 
     @FieldContext(
-            doc = "SinkAnnotations specifies the annotations to attach to sink's pod, will override the annotations if specified."
+            doc = "SinkAnnotations specifies the annotations to attach to sink's pod, will override the annotations "
+                    + "if specified."
     )
     protected Map<String, String> sinkAnnotations;
 
     @FieldContext(
-            doc = "SourceAnnotations specifies the annotations to attach to source's pod, will override the annotations if specified."
+            doc = "SourceAnnotations specifies the annotations to attach to source's pod, will override the "
+                    + "annotations if specified."
     )
     protected Map<String, String> sourceAnnotations;
 
     @FieldContext(
-            doc = "PodInitContainers specifies the initContainers to attach to function's pod, will override the initContainers if specified."
+            doc = "PodInitContainers specifies the initContainers to attach to function's pod, will override the "
+                    + "initContainers if specified."
     )
     protected List<V1alpha1FunctionSpecPodInitContainers> functionInitContainers;
 
     @FieldContext(
-            doc = "SourceInitContainers specifies the initContainers to attach to source's pod, will override the initContainers if specified."
+            doc = "SourceInitContainers specifies the initContainers to attach to source's pod, will override the "
+                    + "initContainers if specified."
     )
     protected List<V1alpha1SourceSpecPodInitContainers> sourceInitContainers;
 
 
     @FieldContext(
-            doc = "SinkInitContainers specifies the initContainers to attach to sink's pod, will override the initContainers if specified."
+            doc = "SinkInitContainers specifies the initContainers to attach to sink's pod, will override the "
+                    + "initContainers if specified."
     )
     protected List<V1alpha1SinkSpecPodInitContainers> sinkInitContainers;
 
     @FieldContext(
-            doc = "The Kubernetes namespace to run the function instances. It is `default`, if this setting is left to be empty"
+            doc = "The Kubernetes namespace to run the function instances. It is `default`, if this setting is left "
+                    + "to be empty"
     )
     protected String jobNamespace;
 
     public List<V1alpha1SinkSpecPodVolumes> asV1alpha1SinkSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SinkSpecPodVolumes>> typeRef
-                = new TypeReference<List<V1alpha1SinkSpecPodVolumes>>() {};
+                = new TypeReference<List<V1alpha1SinkSpecPodVolumes>>() {
+        };
         String j = objectMapper.writeValueAsString(volumes);
         return objectMapper.readValue(j, typeRef);
     }
@@ -184,7 +194,8 @@ public class MeshWorkerServiceCustomConfig {
     public List<V1alpha1SourceSpecPodVolumes> asV1alpha1SourceSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SourceSpecPodVolumes>> typeRef
-                = new TypeReference<List<V1alpha1SourceSpecPodVolumes>>() {};
+                = new TypeReference<List<V1alpha1SourceSpecPodVolumes>>() {
+        };
         String j = objectMapper.writeValueAsString(volumes);
         return objectMapper.readValue(j, typeRef);
     }
@@ -192,79 +203,98 @@ public class MeshWorkerServiceCustomConfig {
     public List<V1alpha1FunctionSpecPodVolumes> asV1alpha1FunctionSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1FunctionSpecPodVolumes>> typeRef
-                = new TypeReference<List<V1alpha1FunctionSpecPodVolumes>>() {};
+                = new TypeReference<List<V1alpha1FunctionSpecPodVolumes>>() {
+        };
         String j = objectMapper.writeValueAsString(volumes);
         return objectMapper.readValue(j, typeRef);
     }
 
-    public List<V1alpha1SinkSpecPodVolumeMounts> asV1alpha1SinkSpecPodVolumeMountsList() throws JsonProcessingException {
+    public List<V1alpha1SinkSpecPodVolumeMounts> asV1alpha1SinkSpecPodVolumeMountsList()
+            throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SinkSpecPodVolumeMounts>> typeRef
-                = new TypeReference<List<V1alpha1SinkSpecPodVolumeMounts>>() {};
+                = new TypeReference<List<V1alpha1SinkSpecPodVolumeMounts>>() {
+        };
         String j = objectMapper.writeValueAsString(volumeMounts);
         return objectMapper.readValue(j, typeRef);
     }
 
-    public List<V1alpha1SourceSpecPodVolumeMounts> asV1alpha1SourceSpecPodVolumeMountsList() throws JsonProcessingException {
+    public List<V1alpha1SourceSpecPodVolumeMounts> asV1alpha1SourceSpecPodVolumeMountsList()
+            throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SourceSpecPodVolumeMounts>> typeRef
-                = new TypeReference<List<V1alpha1SourceSpecPodVolumeMounts>>() {};
+                = new TypeReference<List<V1alpha1SourceSpecPodVolumeMounts>>() {
+        };
         String j = objectMapper.writeValueAsString(volumeMounts);
         return objectMapper.readValue(j, typeRef);
     }
 
-    public List<V1alpha1FunctionSpecPodVolumeMounts> asV1alpha1FunctionSpecPodVolumeMounts() throws JsonProcessingException {
+    public List<V1alpha1FunctionSpecPodVolumeMounts> asV1alpha1FunctionSpecPodVolumeMounts()
+            throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1FunctionSpecPodVolumeMounts>> typeRef
-                = new TypeReference<List<V1alpha1FunctionSpecPodVolumeMounts>>() {};
+                = new TypeReference<List<V1alpha1FunctionSpecPodVolumeMounts>>() {
+        };
         String j = objectMapper.writeValueAsString(volumeMounts);
         return objectMapper.readValue(j, typeRef);
     }
 
-    public List<V1alpha1FunctionSpecPodImagePullSecrets> asV1alpha1FunctionSpecPodImagePullSecrets() throws JsonProcessingException {
+    public List<V1alpha1FunctionSpecPodImagePullSecrets> asV1alpha1FunctionSpecPodImagePullSecrets()
+            throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1FunctionSpecPodImagePullSecrets>> typeRef
-                = new TypeReference<List<V1alpha1FunctionSpecPodImagePullSecrets>>() {};
+                = new TypeReference<List<V1alpha1FunctionSpecPodImagePullSecrets>>() {
+        };
         String j = objectMapper.writeValueAsString(imagePullSecrets);
         return objectMapper.readValue(j, typeRef);
     }
 
-    public List<V1alpha1SinkSpecPodImagePullSecrets> asV1alpha1SinkSpecPodImagePullSecrets() throws JsonProcessingException {
+    public List<V1alpha1SinkSpecPodImagePullSecrets> asV1alpha1SinkSpecPodImagePullSecrets()
+            throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SinkSpecPodImagePullSecrets>> typeRef
-                = new TypeReference<List<V1alpha1SinkSpecPodImagePullSecrets>>() {};
+                = new TypeReference<List<V1alpha1SinkSpecPodImagePullSecrets>>() {
+        };
         String j = objectMapper.writeValueAsString(imagePullSecrets);
         return objectMapper.readValue(j, typeRef);
     }
 
-    public List<V1alpha1SourceSpecPodImagePullSecrets> asV1alpha1SourceSpecPodImagePullSecrets() throws JsonProcessingException {
+    public List<V1alpha1SourceSpecPodImagePullSecrets> asV1alpha1SourceSpecPodImagePullSecrets()
+            throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SourceSpecPodImagePullSecrets>> typeRef
-                = new TypeReference<List<V1alpha1SourceSpecPodImagePullSecrets>>() {};
+                = new TypeReference<List<V1alpha1SourceSpecPodImagePullSecrets>>() {
+        };
         String j = objectMapper.writeValueAsString(imagePullSecrets);
         return objectMapper.readValue(j, typeRef);
     }
 
-    public List<V1alpha1FunctionSpecPodInitContainers> asV1alpha1FunctionSpecPodInitContainers() throws JsonProcessingException {
+    public List<V1alpha1FunctionSpecPodInitContainers> asV1alpha1FunctionSpecPodInitContainers()
+            throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1FunctionSpecPodInitContainers>> typeRef
-                = new TypeReference<List<V1alpha1FunctionSpecPodInitContainers>>() {};
+                = new TypeReference<List<V1alpha1FunctionSpecPodInitContainers>>() {
+        };
         String j = objectMapper.writeValueAsString(functionInitContainers);
         return objectMapper.readValue(j, typeRef);
     }
 
-    public List<V1alpha1SourceSpecPodInitContainers> asV1alpha1SourceSpecPodInitContainers() throws JsonProcessingException {
+    public List<V1alpha1SourceSpecPodInitContainers> asV1alpha1SourceSpecPodInitContainers()
+            throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SourceSpecPodInitContainers>> typeRef
-                = new TypeReference<List<V1alpha1SourceSpecPodInitContainers>>() {};
+                = new TypeReference<List<V1alpha1SourceSpecPodInitContainers>>() {
+        };
         String j = objectMapper.writeValueAsString(sourceInitContainers);
         return objectMapper.readValue(j, typeRef);
     }
 
-    public List<V1alpha1SinkSpecPodInitContainers> asV1alpha1SinkSpecPodInitContainers() throws JsonProcessingException {
+    public List<V1alpha1SinkSpecPodInitContainers> asV1alpha1SinkSpecPodInitContainers()
+            throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SinkSpecPodInitContainers>> typeRef
-                = new TypeReference<List<V1alpha1SinkSpecPodInitContainers>>() {};
+                = new TypeReference<List<V1alpha1SinkSpecPodInitContainers>>() {
+        };
         String j = objectMapper.writeValueAsString(functionInitContainers);
         return objectMapper.readValue(j, typeRef);
     }

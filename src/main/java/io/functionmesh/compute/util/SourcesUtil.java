@@ -18,6 +18,11 @@
  */
 package io.functionmesh.compute.util;
 
+import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
+import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
+import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
+import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
+import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
@@ -35,7 +40,13 @@ import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPulsar;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecSecretsMap;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.custom.Quantity;
+import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
@@ -49,19 +60,6 @@ import org.apache.pulsar.functions.proto.Function;
 import org.apache.pulsar.functions.proto.InstanceCommunication;
 import org.apache.pulsar.functions.utils.SourceConfigUtils;
 
-import javax.ws.rs.core.Response;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-
-import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
-import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
-import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
-import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
-import static org.apache.pulsar.common.functions.Utils.BUILTIN;
-
 @Slf4j
 public class SourcesUtil {
     public final static String cpuKey = "cpu";
@@ -74,7 +72,8 @@ public class SourcesUtil {
                                                                       MeshConnectorsManager connectorsManager,
                                                                       String cluster, MeshWorkerService worker) {
         MeshWorkerServiceCustomConfig customConfig = worker.getMeshWorkerServiceCustomConfig();
-        CustomRuntimeOptions customRuntimeOptions = CommonUtil.getCustomRuntimeOptions(sourceConfig.getCustomRuntimeOptions());
+        CustomRuntimeOptions customRuntimeOptions =
+                CommonUtil.getCustomRuntimeOptions(sourceConfig.getCustomRuntimeOptions());
         String clusterName = CommonUtil.getClusterName(cluster, customRuntimeOptions);
         String serviceAccountName = customRuntimeOptions.getServiceAccountName();
 
@@ -86,14 +85,17 @@ public class SourcesUtil {
         String archive = sourceConfig.getArchive();
         SourceConfigUtils.ExtractedSourceDetails extractedSourceDetails =
                 new SourceConfigUtils.ExtractedSourceDetails("", customRuntimeOptions.getInputTypeClassName());
-        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sourceConfig.getTenant(), sourceConfig.getNamespace(), sourceConfig.getName(), worker, kind);
+        Map<String, String> customLabelClaims =
+                getCustomLabelClaims(clusterName, sourceConfig.getTenant(), sourceConfig.getNamespace(),
+                        sourceConfig.getName(), worker, kind);
 
         Function.FunctionDetails functionDetails = null;
         try {
             functionDetails = SourceConfigUtils.convert(sourceConfig, extractedSourceDetails);
         } catch (IllegalArgumentException ex) {
             log.error("cannot convert SourceConfig to FunctionDetails", ex);
-            throw new RestException(Response.Status.BAD_REQUEST, "functionConfig cannot be parsed into functionDetails");
+            throw new RestException(Response.Status.BAD_REQUEST,
+                    "functionConfig cannot be parsed into functionDetails");
         }
 
         V1alpha1Source v1alpha1Source = new V1alpha1Source();
@@ -118,7 +120,8 @@ public class SourcesUtil {
 
         V1alpha1SourceSpecJava v1alpha1SourceSpecJava = new V1alpha1SourceSpecJava();
         String extraDependenciesDir = "";
-        if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
+        if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(
+                worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
             if (Paths.get(worker.getFactoryConfig().getExtraFunctionDependenciesDir()).isAbsolute()) {
                 extraDependenciesDir = worker.getFactoryConfig().getExtraFunctionDependenciesDir();
             } else {
@@ -148,11 +151,13 @@ public class SourcesUtil {
                 v1alpha1SourceSpec.setJava(v1alpha1SourceSpecJava);
             } else {
                 log.warn("cannot find built-in connector {}", connectorType);
-                throw new RestException(Response.Status.BAD_REQUEST, String.format("connectorType %s is not supported yet", connectorType));
+                throw new RestException(Response.Status.BAD_REQUEST,
+                        String.format("connectorType %s is not supported yet", connectorType));
             }
         } else {
 
-            v1alpha1SourceSpecJava.setJar(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), sourceConfig.getArchive()));
+            v1alpha1SourceSpecJava.setJar(
+                    buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), sourceConfig.getArchive()));
             if (StringUtils.isNotEmpty(sourcePkgUrl)) {
                 v1alpha1SourceSpecJava.setJarLocation(location);
             }
@@ -216,11 +221,13 @@ public class SourcesUtil {
                     // use default schema type if user not provided
                     if (StringUtils.isNotEmpty(functionMeshConnectorDefinition.getDefaultSchemaType())
                             && StringUtils.isEmpty(v1alpha1SourceSpecOutput.getSinkSchemaType())) {
-                        v1alpha1SourceSpecOutput.setSinkSchemaType(functionMeshConnectorDefinition.getDefaultSchemaType());
+                        v1alpha1SourceSpecOutput.setSinkSchemaType(
+                                functionMeshConnectorDefinition.getDefaultSchemaType());
                     }
                     if (StringUtils.isNotEmpty(functionMeshConnectorDefinition.getDefaultSerdeClassName())
                             && StringUtils.isEmpty(v1alpha1SourceSpecOutput.getSinkSerdeClassName())) {
-                        v1alpha1SourceSpecOutput.setSinkSerdeClassName(functionMeshConnectorDefinition.getDefaultSerdeClassName());
+                        v1alpha1SourceSpecOutput.setSinkSerdeClassName(
+                                functionMeshConnectorDefinition.getDefaultSerdeClassName());
                     }
                 }
             }
@@ -233,8 +240,10 @@ public class SourcesUtil {
             v1alpha1SourceSpec.setMaxReplicas(customRuntimeOptions.getMaxReplicas());
         }
 
-        double cpu = sourceConfig.getResources() != null && sourceConfig.getResources().getCpu() != 0 ? sourceConfig.getResources().getCpu() : 1;
-        long ramRequest = sourceConfig.getResources() != null && sourceConfig.getResources().getRam() != 0 ? sourceConfig.getResources().getRam() : 1073741824;
+        double cpu = sourceConfig.getResources() != null && sourceConfig.getResources().getCpu() != 0 ?
+                sourceConfig.getResources().getCpu() : 1;
+        long ramRequest = sourceConfig.getResources() != null && sourceConfig.getResources().getRam() != 0 ?
+                sourceConfig.getResources().getRam() : 1073741824;
 
         Map<String, Object> limits = new HashMap<>();
         Map<String, Object> requests = new HashMap<>();
@@ -409,7 +418,8 @@ public class SourcesUtil {
         return sourceConfig;
     }
 
-    private static V1alpha1SourceSpecOutputProducerConfCryptoConfig convertFromCryptoSpec(Function.CryptoSpec cryptoSpec) {
+    private static V1alpha1SourceSpecOutputProducerConfCryptoConfig convertFromCryptoSpec(
+            Function.CryptoSpec cryptoSpec) {
         // TODO: convertFromCryptoSpec
         return null;
     }
@@ -425,7 +435,8 @@ public class SourcesUtil {
         instanceStatusData.setNumSourceExceptions(functionStatus.getNumSourceExceptions());
 
         List<ExceptionInformation> sourceExceptionInformationList = new LinkedList<>();
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestSourceExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestSourceExceptionsList()) {
             ExceptionInformation exceptionInformation
                     = new ExceptionInformation();
             exceptionInformation.setTimestampMs(exceptionEntry.getMsSinceEpoch());
@@ -438,7 +449,8 @@ public class SourcesUtil {
         instanceStatusData.setNumSystemExceptions(functionStatus.getNumSystemExceptions()
                 + functionStatus.getNumUserExceptions() + functionStatus.getNumSinkExceptions());
         List<ExceptionInformation> systemExceptionInformationList = new LinkedList<>();
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestUserExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestUserExceptionsList()) {
             ExceptionInformation exceptionInformation
                     = new ExceptionInformation();
             exceptionInformation.setTimestampMs(exceptionEntry.getMsSinceEpoch());
@@ -446,7 +458,8 @@ public class SourcesUtil {
             systemExceptionInformationList.add(exceptionInformation);
         }
 
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestSystemExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestSystemExceptionsList()) {
             ExceptionInformation exceptionInformation
                     = new ExceptionInformation();
             exceptionInformation.setTimestampMs(exceptionEntry.getMsSinceEpoch());
@@ -454,7 +467,8 @@ public class SourcesUtil {
             systemExceptionInformationList.add(exceptionInformation);
         }
 
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestSinkExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestSinkExceptionsList()) {
             ExceptionInformation exceptionInformation
                     = new ExceptionInformation();
             exceptionInformation.setTimestampMs(exceptionEntry.getMsSinceEpoch());

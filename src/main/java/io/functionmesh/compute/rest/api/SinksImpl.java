@@ -18,19 +18,22 @@
  */
 package io.functionmesh.compute.rest.api;
 
+import static io.functionmesh.compute.util.KubernetesUtils.validateResourceOwner;
+import static io.functionmesh.compute.util.KubernetesUtils.validateStatefulSet;
+import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1Sink;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkList;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecJava;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPod;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodInitContainers;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumeMounts;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumes;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkStatus;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.util.PackageManagementServiceUtil;
 import io.functionmesh.compute.util.SinksUtil;
-import io.functionmesh.compute.MeshWorkerService;
-import io.functionmesh.compute.sinks.models.V1alpha1SinkStatus;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
@@ -40,6 +43,17 @@ import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
+import io.kubernetes.client.util.generic.GenericKubernetesApi;
+import java.io.InputStream;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import org.apache.commons.lang3.StringUtils;
@@ -50,6 +64,7 @@ import org.apache.pulsar.common.functions.UpdateOptionsImpl;
 import org.apache.pulsar.common.io.ConfigFieldDefinition;
 import org.apache.pulsar.common.io.ConnectorDefinition;
 import org.apache.pulsar.common.io.SinkConfig;
+import org.apache.pulsar.common.policies.data.FunctionInstanceStatsImpl;
 import org.apache.pulsar.common.policies.data.SinkStatus;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.Function;
@@ -58,28 +73,21 @@ import org.apache.pulsar.functions.proto.InstanceControlGrpc;
 import org.apache.pulsar.functions.utils.ComponentTypeUtils;
 import org.apache.pulsar.functions.worker.service.api.Sinks;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
-import javax.ws.rs.core.Response;
-import java.io.InputStream;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 @Slf4j
-public class SinksImpl extends MeshComponentImpl
+public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
         implements Sinks<MeshWorkerService> {
-    private String kind = "Sink";
+    private final String kind = "Sink";
 
-    private String plural = "sinks";
+    private final String plural = "sinks";
 
     public SinksImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier) {
         super(meshWorkerServiceSupplier, Function.FunctionDetails.ComponentType.SINK);
-        super.plural = this.plural;
-        super.kind = this.kind;
+        super.API_PLURAL = this.plural;
+        super.API_KIND = this.kind;
+        this.resourceApi = new GenericKubernetesApi<>(
+                V1alpha1Sink.class, V1alpha1SinkList.class, API_GROUP, API_VERSION, API_PLURAL,
+                meshWorkerServiceSupplier.get().getApiClient());
     }
 
     private void validateSinkEnabled() {
@@ -104,7 +112,7 @@ public class SinksImpl extends MeshComponentImpl
             throw new RestException(Response.Status.BAD_REQUEST, "Sink config is not provided");
         }
         MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
-        if (jarUploaded &&  customConfig != null && !customConfig.isUploadEnabled()) {
+        if (jarUploaded && customConfig != null && !customConfig.isUploadEnabled()) {
             throw new RestException(Response.Status.BAD_REQUEST, "Uploading Jar File is not enabled");
         }
         Resources sinkResources = sinkConfig.getResources();
@@ -151,9 +159,9 @@ public class SinksImpl extends MeshComponentImpl
         String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
         V1alpha1Sink v1alpha1Sink =
                 SinksUtil.createV1alpha1SkinFromSinkConfig(
-                        kind,
-                        group,
-                        version,
+                        API_KIND,
+                        API_GROUP,
+                        API_VERSION,
                         sinkName,
                         packageURL,
                         uploadedInputStream,
@@ -167,17 +175,17 @@ public class SinksImpl extends MeshComponentImpl
             Call call =
                     worker().getCustomObjectsApi()
                             .createNamespacedCustomObjectCall(
-                                    group,
-                                    version,
+                                    API_GROUP,
+                                    API_VERSION,
                                     worker().getJobNamespace(),
-                                    plural,
+                                    API_PLURAL,
                                     v1alpha1Sink,
                                     null,
                                     null,
                                     null,
                                     null);
-           executeCall(call, V1alpha1Sink.class);
-        } catch (RestException restException){
+            executeCall(call, V1alpha1Sink.class);
+        } catch (RestException restException) {
             log.error(
                     "register {}/{}/{} sink failed",
                     tenant,
@@ -232,9 +240,9 @@ public class SinksImpl extends MeshComponentImpl
         try {
             V1alpha1Sink v1alpha1Sink =
                     SinksUtil.createV1alpha1SkinFromSinkConfig(
-                            kind,
-                            group,
-                            version,
+                            API_KIND,
+                            API_GROUP,
+                            API_VERSION,
                             sinkName,
                             packageURL,
                             uploadedInputStream,
@@ -243,12 +251,13 @@ public class SinksImpl extends MeshComponentImpl
             CustomObjectsApi customObjectsApi = worker().getCustomObjectsApi();
             Call getCall =
                     customObjectsApi.getNamespacedCustomObjectCall(
-                                    group, version,
-                                    worker().getJobNamespace(), plural,
-                                    v1alpha1Sink.getMetadata().getName(), null);
+                            API_GROUP, API_VERSION,
+                            worker().getJobNamespace(), API_PLURAL,
+                            v1alpha1Sink.getMetadata().getName(), null);
             V1alpha1Sink oldRes = executeCall(getCall, V1alpha1Sink.class);
             if (oldRes.getMetadata() == null || oldRes.getMetadata().getLabels() == null) {
-                log.error("update {}/{}/{} sink failed, the sink resource cannot be found", tenant, namespace, sinkName);
+                log.error("update {}/{}/{} sink failed, the sink resource cannot be found", tenant, namespace,
+                        sinkName);
                 throw new RestException(Response.Status.NOT_FOUND, "This sink resource was not found");
             }
             v1alpha1Sink.getMetadata().setNamespace(worker().getJobNamespace());
@@ -256,15 +265,15 @@ public class SinksImpl extends MeshComponentImpl
 
             this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientAuthenticationDataHttps);
             Call replaceCall = customObjectsApi.replaceNamespacedCustomObjectCall(
-                group,
-                version,
-                worker().getJobNamespace(),
-                plural,
-                v1alpha1Sink.getMetadata().getName(),
-                v1alpha1Sink,
-                null,
-                null,
-                null);
+                    API_GROUP,
+                    API_VERSION,
+                    worker().getJobNamespace(),
+                    API_PLURAL,
+                    v1alpha1Sink.getMetadata().getName(),
+                    v1alpha1Sink,
+                    null,
+                    null,
+                    null);
             executeCall(replaceCall, Object.class);
         } catch (Exception e) {
             log.error(
@@ -313,8 +322,8 @@ public class SinksImpl extends MeshComponentImpl
             Call call =
                     worker().getCustomObjectsApi()
                             .getNamespacedCustomObjectCall(
-                                    group, version, nameSpaceName,
-                                    plural, hashName, null);
+                                    API_GROUP, API_VERSION, nameSpaceName,
+                                    API_PLURAL, hashName, null);
             V1alpha1Sink v1alpha1Sink = executeCall(call, V1alpha1Sink.class);
             V1alpha1SinkStatus v1alpha1SinkStatus = v1alpha1Sink.getStatus();
             if (v1alpha1SinkStatus == null) {
@@ -335,7 +344,8 @@ public class SinksImpl extends MeshComponentImpl
             }
             String sinkLabelSelector = v1alpha1SinkStatus.getSelector();
             String jobName = CommonUtil.makeJobName(v1alpha1Sink.getMetadata().getName(), CommonUtil.COMPONENT_SINK);
-            V1StatefulSet v1StatefulSet = worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
+            V1StatefulSet v1StatefulSet =
+                    worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
             String statefulSetName = "";
             String subdomain = "";
             if (v1StatefulSet == null) {
@@ -372,9 +382,10 @@ public class SinksImpl extends MeshComponentImpl
                 Integer replicas = v1StatefulSet.getStatus().getReplicas();
                 if (replicas != null) {
                     sinkStatus.setNumInstances(replicas);
-                    for(int i=0; i<replicas; i++) {
+                    for (int i = 0; i < replicas; i++) {
                         SinkStatus.SinkInstanceStatus sinkInstanceStatus = new SinkStatus.SinkInstanceStatus();
-                        SinkStatus.SinkInstanceStatus.SinkInstanceStatusData sinkInstanceStatusData = new SinkStatus.SinkInstanceStatus.SinkInstanceStatusData();
+                        SinkStatus.SinkInstanceStatus.SinkInstanceStatusData sinkInstanceStatusData =
+                                new SinkStatus.SinkInstanceStatus.SinkInstanceStatusData();
                         sinkInstanceStatus.setInstanceId(i);
                         sinkInstanceStatus.setStatus(sinkInstanceStatusData);
                         sinkStatus.addInstance(sinkInstanceStatus);
@@ -395,7 +406,7 @@ public class SinksImpl extends MeshComponentImpl
                     nameSpaceName, null, null, null, null,
                     sinkLabelSelector, null, null, null, null,
                     null);
-            if (podList != null ) {
+            if (podList != null) {
                 List<V1Pod> runningPods = podList.getItems().stream().
                         filter(KubernetesUtils::isPodRunning).collect(Collectors.toList());
                 List<V1Pod> pendingPods = podList.getItems().stream().
@@ -425,14 +436,17 @@ public class SinksImpl extends MeshComponentImpl
                             }
                         }
                         if (sinkInstanceStatus != null) {
-                            SinkStatus.SinkInstanceStatus.SinkInstanceStatusData sinkInstanceStatusData = sinkInstanceStatus.getStatus();
+                            SinkStatus.SinkInstanceStatus.SinkInstanceStatusData sinkInstanceStatusData =
+                                    sinkInstanceStatus.getStatus();
                             V1PodStatus podStatus = pod.getStatus();
-                            if (v1alpha1Sink.getSpec() != null && StringUtils.isNotEmpty(v1alpha1Sink.getSpec().getClusterName())) {
+                            if (v1alpha1Sink.getSpec() != null && StringUtils.isNotEmpty(
+                                    v1alpha1Sink.getSpec().getClusterName())) {
                                 sinkInstanceStatusData.setWorkerId(v1alpha1Sink.getSpec().getClusterName());
                             }
                             if (podStatus != null) {
                                 sinkInstanceStatusData.setRunning(KubernetesUtils.isPodRunning(pod));
-                                if (podStatus.getContainerStatuses() != null && !podStatus.getContainerStatuses().isEmpty()) {
+                                if (podStatus.getContainerStatuses() != null && !podStatus.getContainerStatuses()
+                                        .isEmpty()) {
                                     V1ContainerStatus containerStatus = podStatus.getContainerStatuses().get(0);
                                     sinkInstanceStatusData.setNumRestarts(containerStatus.getRestartCount());
                                 }
@@ -444,9 +458,10 @@ public class SinksImpl extends MeshComponentImpl
                                         .build();
                                 stub[podIndex] = InstanceControlGrpc.newFutureStub(channel[podIndex]);
                             }
-                            CompletableFuture<InstanceCommunication.FunctionStatus> future = CommonUtil.getFunctionStatusAsync(stub[podIndex]);
+                            CompletableFuture<InstanceCommunication.FunctionStatus> future =
+                                    CommonUtil.getFunctionStatusAsync(stub[podIndex]);
                             future.whenComplete((fs, e) -> {
-                                if (channel[podIndex]!= null) {
+                                if (channel[podIndex] != null) {
                                     log.debug("closing channel {}", podIndex);
                                     channel[podIndex].shutdown();
                                 }
@@ -463,7 +478,8 @@ public class SinksImpl extends MeshComponentImpl
                             });
                             completableFutureSet.add(future);
                         } else {
-                            log.error("Get sink {}-{} status failed from namespace {}, cannot find status for shardId {}",
+                            log.error(
+                                    "Get sink {}-{} status failed from namespace {}, cannot find status for shardId {}",
                                     finalStatefulSetName,
                                     shardId,
                                     nameSpaceName,
@@ -489,13 +505,14 @@ public class SinksImpl extends MeshComponentImpl
                             }
                         }
                         if (sinkInstanceStatus != null) {
-                            SinkStatus.SinkInstanceStatus.SinkInstanceStatusData sinkInstanceStatusData = sinkInstanceStatus.getStatus();
+                            SinkStatus.SinkInstanceStatus.SinkInstanceStatusData sinkInstanceStatusData =
+                                    sinkInstanceStatus.getStatus();
                             V1PodStatus podStatus = pod.getStatus();
                             if (podStatus != null) {
                                 List<V1ContainerStatus> containerStatuses = podStatus.getContainerStatuses();
                                 if (containerStatuses != null && !containerStatuses.isEmpty()) {
                                     V1ContainerStatus containerStatus = null;
-                                    for (V1ContainerStatus s : containerStatuses){
+                                    for (V1ContainerStatus s : containerStatuses) {
                                         if (s.getImage().contains(v1alpha1Sink.getSpec().getImage())) {
                                             containerStatus = s;
                                             break;
@@ -523,12 +540,13 @@ public class SinksImpl extends MeshComponentImpl
                                     }
                                 }
                             }
-                        }  else {
-                            log.error("Get sink {}-{} status failed from namespace {}, cannot find status for shardId {}",
-                                finalStatefulSetName,
-                                shardId,
-                                nameSpaceName,
-                                shardId);
+                        } else {
+                            log.error(
+                                    "Get sink {}-{} status failed from namespace {}, cannot find status for shardId {}",
+                                    finalStatefulSetName,
+                                    shardId,
+                                    nameSpaceName,
+                                    shardId);
                         }
                     });
                 }
@@ -548,14 +566,14 @@ public class SinksImpl extends MeshComponentImpl
     public SinkConfig getSinkInfo(
             final String tenant, final String namespace, final String componentName) {
         validateSinkEnabled();
-        this.validateGetInfoRequestParams(tenant, namespace, componentName, kind);
+        this.validateGetInfoRequestParams(tenant, namespace, componentName, API_KIND);
         try {
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
             Call call =
                     worker().getCustomObjectsApi()
                             .getNamespacedCustomObjectCall(
-                                    group, version, worker().getJobNamespace(),
-                                    plural, hashName, null);
+                                    API_GROUP, API_VERSION, worker().getJobNamespace(),
+                                    API_PLURAL, hashName, null);
 
             V1alpha1Sink v1alpha1Sink = executeCall(call, V1alpha1Sink.class);
             return SinksUtil.createSinkConfigFromV1alpha1Sink(
@@ -578,6 +596,78 @@ public class SinksImpl extends MeshComponentImpl
                                       final AuthenticationDataSource clientAuthenticationDataHttps) {
         validateSinkEnabled();
         return super.listFunctions(tenant, namespace, clientRole, clientAuthenticationDataHttps);
+    }
+
+    @Override
+    List<FunctionInstanceStatsImpl> getComponentInstancesStats(String tenant, String namespace, String componentName) {
+        validateSinkEnabled();
+        List<FunctionInstanceStatsImpl> functionInstanceStatsList = new ArrayList<>();
+        try {
+            String nameSpaceName = worker().getJobNamespace();
+            String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
+            V1alpha1Sink v1alpha1Sink = extractResponse(getResourceApi().get(nameSpaceName, hashName));
+            try {
+                validateResourceObject(v1alpha1Sink);
+            } catch (IllegalArgumentException e) {
+                log.warn("get stats {}/{}/{} sink failed", tenant, namespace, componentName, e);
+                return functionInstanceStatsList;
+            }
+            V1alpha1SinkStatus v1alpha1SinkStatus = v1alpha1Sink.getStatus();
+            final V1StatefulSet v1StatefulSet = getFunctionStatefulSet(v1alpha1Sink);
+            try {
+                validateStatefulSet(v1StatefulSet);
+            } catch (IllegalArgumentException e) {
+                log.warn("get stats {}/{}/{} sink failed", tenant, namespace, componentName, e);
+                return functionInstanceStatsList;
+            }
+            final String statefulSetName = v1StatefulSet.getMetadata().getName();
+            final String subdomain = v1StatefulSet.getSpec().getServiceName();
+            if (v1StatefulSet.getStatus() != null) {
+                Integer replicas = v1StatefulSet.getStatus().getReplicas();
+                if (replicas != null) {
+                    for (int i = 0; i < replicas; i++) {
+                        FunctionInstanceStatsImpl functionInstanceStats = new FunctionInstanceStatsImpl();
+                        functionInstanceStats.setInstanceId(i);
+                        functionInstanceStatsList.add(functionInstanceStats);
+                    }
+                }
+            }
+            V1PodList podList = getFunctionPods(tenant, namespace, componentName, v1alpha1SinkStatus);
+            if (podList != null) {
+                List<V1Pod> runningPods = podList.getItems().stream().
+                        filter(KubernetesUtils::isPodRunning).collect(Collectors.toList());
+                if (!runningPods.isEmpty()) {
+                    int podsCount = runningPods.size();
+                    ManagedChannel[] channel = new ManagedChannel[podsCount];
+                    InstanceControlGrpc.InstanceControlFutureStub[] stub =
+                            new InstanceControlGrpc.InstanceControlFutureStub[podsCount];
+                    Set<CompletableFuture<InstanceCommunication.MetricsData>> completableFutureSet =
+                            fetchStatsFromGRPC(runningPods, subdomain, statefulSetName,
+                                    nameSpaceName, functionInstanceStatsList, channel, stub);
+                    completableFutureSet.forEach(CompletableFuture::join);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Get sink {} stats failed from namespace {}",
+                    componentName, namespace, e);
+        }
+        return functionInstanceStatsList;
+    }
+
+    @Override
+    void validateResourceObject(V1alpha1Sink obj) throws IllegalArgumentException {
+        if (obj == null) {
+            throw new IllegalArgumentException("Sink Resource is null");
+        }
+        if (obj.getMetadata() == null) {
+            throw new IllegalArgumentException("Sink Resource metadata is null");
+        }
+        if (obj.getSpec() == null) {
+            throw new IllegalArgumentException("Sink Resource spec is null");
+        }
+        if (obj.getStatus() == null) {
+            throw new IllegalArgumentException("Sink Resource status is null");
+        }
     }
 
     @Override
@@ -620,10 +710,11 @@ public class SinksImpl extends MeshComponentImpl
                             v1alpha1SinkSpecJava = v1alpha1Sink.getSpec().getJava();
                         } else if (v1alpha1Sink.getSpec() != null && v1alpha1Sink.getSpec().getJava() == null &&
                                 v1alpha1Sink.getSpec().getPython() == null &&
-                                v1alpha1Sink.getSpec().getGolang() == null){
+                                v1alpha1Sink.getSpec().getGolang() == null) {
                             v1alpha1SinkSpecJava = new V1alpha1SinkSpecJava();
                         }
-                        if (v1alpha1SinkSpecJava != null && StringUtils.isEmpty(v1alpha1SinkSpecJava.getExtraDependenciesDir())) {
+                        if (v1alpha1SinkSpecJava != null && StringUtils.isEmpty(
+                                v1alpha1SinkSpecJava.getExtraDependenciesDir())) {
                             v1alpha1SinkSpecJava.setExtraDependenciesDir(customConfig.getExtraDependenciesDir());
                             v1alpha1Sink.getSpec().setJava(v1alpha1SinkSpecJava);
                         }
@@ -638,13 +729,14 @@ public class SinksImpl extends MeshComponentImpl
                         v1alpha1Sink.getSpec().setVolumeMounts(volumeMountsList);
                     }
                     if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
-                            && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
-                        String authSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "auth",
+                            && !StringUtils.isEmpty(
+                            worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
+                        String authSecretName = KubernetesUtils.upsertSecret(API_KIND.toLowerCase(), "auth",
                                 v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, worker());
                         v1alpha1Sink.getSpec().getPulsar().setAuthSecret(authSecretName);
                     }
                     if (worker().getWorkerConfig().getTlsEnabled()) {
-                        String tlsSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "tls",
+                        String tlsSecretName = KubernetesUtils.upsertSecret(API_KIND.toLowerCase(), "tls",
                                 v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, worker());
                         v1alpha1Sink.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
@@ -668,9 +760,43 @@ public class SinksImpl extends MeshComponentImpl
 
                     throw new RestException(Response.Status.INTERNAL_SERVER_ERROR,
                             String.format("Error create or update auth or tls secret for %s %s:- %s",
-                            ComponentTypeUtils.toString(componentType), sinkName, e.getMessage()));
+                                    ComponentTypeUtils.toString(componentType), sinkName, e.getMessage()));
                 }
             }
         }
+    }
+
+    public V1StatefulSet getFunctionStatefulSet(V1alpha1Sink v1alpha1Sink) {
+        try {
+            String nameSpaceName = worker().getJobNamespace();
+            String jobName = CommonUtil.makeJobName(v1alpha1Sink.getMetadata().getName(), CommonUtil.COMPONENT_SINK);
+            V1StatefulSet v1StatefulSet =
+                    worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
+            if (validateResourceOwner(v1StatefulSet, v1alpha1Sink)) {
+                return v1StatefulSet;
+            } else {
+                log.warn("get sink statefulset failed, not owned by the resource");
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("get sink statefulset failed, error: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    public V1PodList getFunctionPods(String tenant, String namespace, String componentName,
+                                     V1alpha1SinkStatus v1alpha1SinkStatus) {
+        V1PodList podList = null;
+        try {
+            String nameSpaceName = worker().getJobNamespace();
+            String functionLabelSelector = v1alpha1SinkStatus.getSelector();
+            podList = worker().getCoreV1Api().listNamespacedPod(
+                    nameSpaceName, null, null, null, null,
+                    functionLabelSelector, null, null, null, null,
+                    null);
+        } catch (Exception e) {
+            log.error("get sink pods failed, {}/{}/{}", tenant, namespace, componentName, e);
+        }
+        return podList;
     }
 }

@@ -113,7 +113,8 @@ public class PackageManagementServiceUtil {
                     packageMetadata.getContact().equals(MESH_WORKER_SERVICE_PACKAGE_CONTACT)) {
                 admin.packages().delete(packageName);
             }
-        } catch (PulsarAdminException.NotFoundException ignore) {}
+        } catch (PulsarAdminException.NotFoundException ignore) {
+        }
     }
 
     public static String getPackageTypeFromComponentType(Function.FunctionDetails.ComponentType componentType) {

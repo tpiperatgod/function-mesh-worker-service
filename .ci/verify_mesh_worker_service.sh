@@ -31,3 +31,4 @@ source ${PULSAR_HOME}/.ci/helm.sh
 ci::ensure_mesh_worker_service_role
 ci::ensure_function_mesh_config
 ci::verify_mesh_worker_service_pulsar_admin
+ci::verify_function_stats_api
