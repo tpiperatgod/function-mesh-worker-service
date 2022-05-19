@@ -18,9 +18,12 @@
  */
 package io.functionmesh.compute.rest.api;
 
+import static io.functionmesh.compute.util.KubernetesUtils.validateResourceOwner;
+import static io.functionmesh.compute.util.KubernetesUtils.validateStatefulSet;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
+import io.functionmesh.compute.sources.models.V1alpha1SourceList;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecJava;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPod;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodInitContainers;
@@ -39,25 +42,7 @@ import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
-import lombok.extern.slf4j.Slf4j;
-import okhttp3.Call;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
-import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
-import org.apache.pulsar.common.functions.UpdateOptionsImpl;
-import org.apache.pulsar.common.io.ConfigFieldDefinition;
-import org.apache.pulsar.common.io.ConnectorDefinition;
-import org.apache.pulsar.common.io.SourceConfig;
-import org.apache.pulsar.common.policies.data.SourceStatus;
-import org.apache.pulsar.common.util.RestException;
-import org.apache.pulsar.functions.proto.Function;
-import org.apache.pulsar.functions.proto.InstanceCommunication;
-import org.apache.pulsar.functions.proto.InstanceControlGrpc;
-import org.apache.pulsar.functions.utils.ComponentTypeUtils;
-import org.apache.pulsar.functions.worker.service.api.Sources;
-import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
-
-import javax.ws.rs.core.Response;
+import io.kubernetes.client.util.generic.GenericKubernetesApi;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
@@ -67,17 +52,40 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
+import okhttp3.Call;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
+import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
+import org.apache.pulsar.common.functions.UpdateOptionsImpl;
+import org.apache.pulsar.common.io.ConfigFieldDefinition;
+import org.apache.pulsar.common.io.ConnectorDefinition;
+import org.apache.pulsar.common.io.SourceConfig;
+import org.apache.pulsar.common.policies.data.FunctionInstanceStatsImpl;
+import org.apache.pulsar.common.policies.data.SourceStatus;
+import org.apache.pulsar.common.util.RestException;
+import org.apache.pulsar.functions.proto.Function;
+import org.apache.pulsar.functions.proto.InstanceCommunication;
+import org.apache.pulsar.functions.proto.InstanceControlGrpc;
+import org.apache.pulsar.functions.utils.ComponentTypeUtils;
+import org.apache.pulsar.functions.worker.service.api.Sources;
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 
 @Slf4j
-public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorkerService> {
+public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1SourceList>
+        implements Sources<MeshWorkerService> {
     private final String kind = "Source";
 
     private final String plural = "sources";
 
     public SourcesImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier) {
         super(meshWorkerServiceSupplier, Function.FunctionDetails.ComponentType.SOURCE);
-        super.plural = this.plural;
-        super.kind = this.kind;
+        super.API_PLURAL = this.plural;
+        super.API_KIND = this.kind;
+        this.resourceApi = new GenericKubernetesApi<>(
+                V1alpha1Source.class, V1alpha1SourceList.class, API_GROUP, API_VERSION, API_PLURAL,
+                meshWorkerServiceSupplier.get().getApiClient());
     }
 
     private void validateSourceEnabled() {
@@ -105,7 +113,8 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
         if (jarUploaded && customConfig != null && !customConfig.isUploadEnabled()) {
             throw new RestException(Response.Status.BAD_REQUEST, "Uploading Jar File is not enabled");
         }
-        this.validateResources(sourceConfig.getResources(), worker().getWorkerConfig().getFunctionInstanceMinResources(),
+        this.validateResources(sourceConfig.getResources(),
+                worker().getWorkerConfig().getFunctionInstanceMinResources(),
                 worker().getWorkerConfig().getFunctionInstanceMaxResources());
     }
 
@@ -158,9 +167,9 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
         String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
         V1alpha1Source v1alpha1Source = SourcesUtil
                 .createV1alpha1SourceFromSourceConfig(
-                        kind,
-                        group,
-                        version,
+                        API_KIND,
+                        API_GROUP,
+                        API_VERSION,
                         sourceName,
                         packageURL,
                         uploadedInputStream,
@@ -170,10 +179,11 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
 
         v1alpha1Source.getMetadata().setNamespace(worker().getJobNamespace());
         try {
-            this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source, clientAuthenticationDataHttps);
+            this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source,
+                    clientAuthenticationDataHttps);
             Call call = worker().getCustomObjectsApi().createNamespacedCustomObjectCall(
-                    group, version, worker().getJobNamespace(),
-                    plural,
+                    API_GROUP, API_VERSION, worker().getJobNamespace(),
+                    API_PLURAL,
                     v1alpha1Source,
                     null,
                     null,
@@ -228,9 +238,9 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
             String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
             V1alpha1Source v1alpha1Source = SourcesUtil
                     .createV1alpha1SourceFromSourceConfig(
-                            kind,
-                            group,
-                            version,
+                            API_KIND,
+                            API_GROUP,
+                            API_VERSION,
                             sourceName,
                             packageURL,
                             uploadedInputStream,
@@ -238,27 +248,29 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                             this.meshWorkerServiceSupplier.get().getConnectorsManager(),
                             cluster, worker());
             Call getCall = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    group,
-                    version,
+                    API_GROUP,
+                    API_VERSION,
                     worker().getJobNamespace(),
-                    plural,
+                    API_PLURAL,
                     v1alpha1Source.getMetadata().getName(),
                     null
             );
             V1alpha1Source oldRes = executeCall(getCall, V1alpha1Source.class);
             if (oldRes.getMetadata() == null || oldRes.getMetadata().getLabels() == null) {
-                log.error("update {}/{}/{} source failed, the source resource cannot be found", tenant, namespace, sourceName);
+                log.error("update {}/{}/{} source failed, the source resource cannot be found", tenant, namespace,
+                        sourceName);
                 throw new RestException(Response.Status.NOT_FOUND, "This source resource was not found");
             }
 
             v1alpha1Source.getMetadata().setNamespace(worker().getJobNamespace());
             v1alpha1Source.getMetadata().setResourceVersion(oldRes.getMetadata().getResourceVersion());
-            this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source, clientAuthenticationDataHttps);
+            this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source,
+                    clientAuthenticationDataHttps);
             Call replaceCall = worker().getCustomObjectsApi().replaceNamespacedCustomObjectCall(
-                    group,
-                    version,
+                    API_GROUP,
+                    API_VERSION,
                     worker().getJobNamespace(),
-                    plural,
+                    API_PLURAL,
                     v1alpha1Source.getMetadata().getName(),
                     v1alpha1Source,
                     null,
@@ -290,8 +302,8 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
             String nameSpaceName = worker().getJobNamespace();
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    group, version, nameSpaceName,
-                    plural, hashName, null);
+                    API_GROUP, API_VERSION, nameSpaceName,
+                    API_PLURAL, hashName, null);
             V1alpha1Source v1alpha1Source = executeCall(call, V1alpha1Source.class);
             V1alpha1SourceStatus v1alpha1SourceStatus = v1alpha1Source.getStatus();
             if (v1alpha1SourceStatus == null) {
@@ -311,8 +323,10 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                 throw new RestException(Response.Status.NOT_FOUND, "no Metadata exists");
             }
             String sourceLabelSelector = v1alpha1SourceStatus.getSelector();
-            String jobName = CommonUtil.makeJobName(v1alpha1Source.getMetadata().getName(), CommonUtil.COMPONENT_SOURCE);
-            V1StatefulSet v1StatefulSet = worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
+            String jobName =
+                    CommonUtil.makeJobName(v1alpha1Source.getMetadata().getName(), CommonUtil.COMPONENT_SOURCE);
+            V1StatefulSet v1StatefulSet =
+                    worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
             String statefulSetName = "";
             String subdomain = "";
             if (v1StatefulSet == null) {
@@ -350,8 +364,10 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                 if (replicas != null) {
                     sourceStatus.setNumInstances(replicas);
                     for (int i = 0; i < replicas; i++) {
-                        SourceStatus.SourceInstanceStatus sourceInstanceStatus = new SourceStatus.SourceInstanceStatus();
-                        SourceStatus.SourceInstanceStatus.SourceInstanceStatusData sourceInstanceStatusData = new SourceStatus.SourceInstanceStatus.SourceInstanceStatusData();
+                        SourceStatus.SourceInstanceStatus sourceInstanceStatus =
+                                new SourceStatus.SourceInstanceStatus();
+                        SourceStatus.SourceInstanceStatus.SourceInstanceStatusData sourceInstanceStatusData =
+                                new SourceStatus.SourceInstanceStatus.SourceInstanceStatusData();
                         sourceInstanceStatus.setInstanceId(i);
                         sourceInstanceStatus.setStatus(sourceInstanceStatusData);
                         sourceStatus.addInstance(sourceInstanceStatus);
@@ -402,14 +418,17 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                             }
                         }
                         if (sourceInstanceStatus != null) {
-                            SourceStatus.SourceInstanceStatus.SourceInstanceStatusData sourceInstanceStatusData = sourceInstanceStatus.getStatus();
+                            SourceStatus.SourceInstanceStatus.SourceInstanceStatusData sourceInstanceStatusData =
+                                    sourceInstanceStatus.getStatus();
                             V1PodStatus podStatus = pod.getStatus();
-                            if (v1alpha1Source.getSpec() != null && StringUtils.isNotEmpty(v1alpha1Source.getSpec().getClusterName())) {
+                            if (v1alpha1Source.getSpec() != null && StringUtils.isNotEmpty(
+                                    v1alpha1Source.getSpec().getClusterName())) {
                                 sourceInstanceStatusData.setWorkerId(v1alpha1Source.getSpec().getClusterName());
                             }
                             if (podStatus != null) {
                                 sourceInstanceStatusData.setRunning(KubernetesUtils.isPodRunning(pod));
-                                if (podStatus.getContainerStatuses() != null && !podStatus.getContainerStatuses().isEmpty()) {
+                                if (podStatus.getContainerStatuses() != null && !podStatus.getContainerStatuses()
+                                        .isEmpty()) {
                                     V1ContainerStatus containerStatus = podStatus.getContainerStatuses().get(0);
                                     sourceInstanceStatusData.setNumRestarts(containerStatus.getRestartCount());
                                 }
@@ -421,7 +440,8 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                                         .build();
                                 stub[podIndex] = InstanceControlGrpc.newFutureStub(channel[podIndex]);
                             }
-                            CompletableFuture<InstanceCommunication.FunctionStatus> future = CommonUtil.getFunctionStatusAsync(stub[podIndex]);
+                            CompletableFuture<InstanceCommunication.FunctionStatus> future =
+                                    CommonUtil.getFunctionStatusAsync(stub[podIndex]);
                             future.whenComplete((fs, e) -> {
                                 if (channel[podIndex] != null) {
                                     log.debug("closing channel {}", podIndex);
@@ -440,7 +460,9 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                             });
                             completableFutureSet.add(future);
                         } else {
-                            log.error("Get source {}-{} status failed from namespace {}, cannot find status for shardId {}",
+                            log.error(
+                                    "Get source {}-{} status failed from namespace {}, cannot find status for shardId"
+                                            + " {}",
                                     finalStatefulSetName,
                                     shardId,
                                     nameSpaceName,
@@ -465,13 +487,14 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                             }
                         }
                         if (sourceInstanceStatus != null) {
-                            SourceStatus.SourceInstanceStatus.SourceInstanceStatusData sourceInstanceStatusData = sourceInstanceStatus.getStatus();
+                            SourceStatus.SourceInstanceStatus.SourceInstanceStatusData sourceInstanceStatusData =
+                                    sourceInstanceStatus.getStatus();
                             V1PodStatus podStatus = pod.getStatus();
                             if (podStatus != null) {
                                 List<V1ContainerStatus> containerStatuses = podStatus.getContainerStatuses();
                                 if (containerStatuses != null && !containerStatuses.isEmpty()) {
                                     V1ContainerStatus containerStatus = null;
-                                    for (V1ContainerStatus s : containerStatuses){
+                                    for (V1ContainerStatus s : containerStatuses) {
                                         // TODO need more precise way to find the status
                                         if (s.getImage().contains(v1alpha1Source.getSpec().getImage())) {
                                             containerStatus = s;
@@ -487,7 +510,8 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                                         } else {
                                             V1ContainerState lastState = containerStatus.getLastState();
                                             if (lastState != null && lastState.getTerminated() != null) {
-                                                sourceInstanceStatusData.setError(lastState.getTerminated().getMessage());
+                                                sourceInstanceStatusData.setError(
+                                                        lastState.getTerminated().getMessage());
                                             } else if (lastState != null && lastState.getWaiting() != null) {
                                                 sourceInstanceStatusData.setError(lastState.getWaiting().getMessage());
                                             }
@@ -501,11 +525,13 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                                 }
                             }
                         } else {
-                            log.error("Get source {}-{} status failed from namespace {}, cannot find status for shardId {}",
-                                finalStatefulSetName,
-                                shardId,
-                                nameSpaceName,
-                                shardId);
+                            log.error(
+                                    "Get source {}-{} status failed from namespace {}, cannot find status for shardId"
+                                            + " {}",
+                                    finalStatefulSetName,
+                                    shardId,
+                                    nameSpaceName,
+                                    shardId);
                         }
                     });
                 }
@@ -535,14 +561,14 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                                       final String namespace,
                                       final String componentName) {
         validateSourceEnabled();
-        this.validateGetInfoRequestParams(tenant, namespace, componentName, kind);
+        this.validateGetInfoRequestParams(tenant, namespace, componentName, API_KIND);
         String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
         try {
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    group,
-                    version,
+                    API_GROUP,
+                    API_VERSION,
                     worker().getJobNamespace(),
-                    plural,
+                    API_PLURAL,
                     hashName,
                     null
             );
@@ -550,7 +576,7 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
             V1alpha1Source v1alpha1Source = executeCall(call, V1alpha1Source.class);
             return SourcesUtil.createSourceConfigFromV1alpha1Source(tenant, namespace, componentName, v1alpha1Source);
         } catch (Exception e) {
-            log.error("Get source info {}/{}/{} {} failed", tenant, namespace, componentName, plural, e);
+            log.error("Get source info {}/{}/{} {} failed", tenant, namespace, componentName, API_PLURAL, e);
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -603,22 +629,24 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                             v1alpha1SourceSpecJava = v1alpha1Source.getSpec().getJava();
                         } else if (v1alpha1Source.getSpec() != null && v1alpha1Source.getSpec().getJava() == null &&
                                 v1alpha1Source.getSpec().getPython() == null &&
-                                v1alpha1Source.getSpec().getGolang() == null){
+                                v1alpha1Source.getSpec().getGolang() == null) {
                             v1alpha1SourceSpecJava = new V1alpha1SourceSpecJava();
                         }
-                        if (v1alpha1SourceSpecJava != null  && StringUtils.isEmpty(v1alpha1SourceSpecJava.getExtraDependenciesDir())) {
+                        if (v1alpha1SourceSpecJava != null && StringUtils.isEmpty(
+                                v1alpha1SourceSpecJava.getExtraDependenciesDir())) {
                             v1alpha1SourceSpecJava.setExtraDependenciesDir(customConfig.getExtraDependenciesDir());
                             v1alpha1Source.getSpec().setJava(v1alpha1SourceSpecJava);
                         }
                     }
                     if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
-                            && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
-                        String authSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "auth",
+                            && !StringUtils.isEmpty(
+                            worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
+                        String authSecretName = KubernetesUtils.upsertSecret(API_KIND.toLowerCase(), "auth",
                                 v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName, worker());
                         v1alpha1Source.getSpec().getPulsar().setAuthSecret(authSecretName);
                     }
                     if (worker().getWorkerConfig().getTlsEnabled()) {
-                        String tlsSecretName = KubernetesUtils.upsertSecret(kind.toLowerCase(), "tls",
+                        String tlsSecretName = KubernetesUtils.upsertSecret(API_KIND.toLowerCase(), "tls",
                                 v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName, worker());
                         v1alpha1Source.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
@@ -646,5 +674,112 @@ public class SourcesImpl extends MeshComponentImpl implements Sources<MeshWorker
                 }
             }
         }
+    }
+
+    @Override
+    List<FunctionInstanceStatsImpl> getComponentInstancesStats(String tenant, String namespace, String componentName) {
+        validateSourceEnabled();
+        List<FunctionInstanceStatsImpl> functionInstanceStatsList = new ArrayList<>();
+        try {
+            String nameSpaceName = worker().getJobNamespace();
+            String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
+            V1alpha1Source v1alpha1Source = extractResponse(getResourceApi().get(nameSpaceName, hashName));
+            try {
+                validateResourceObject(v1alpha1Source);
+            } catch (IllegalArgumentException e) {
+                log.warn("get stats {}/{}/{} source failed", tenant, namespace, componentName, e);
+                return functionInstanceStatsList;
+            }
+            V1alpha1SourceStatus v1alpha1SourceStatus = v1alpha1Source.getStatus();
+            final V1StatefulSet v1StatefulSet = getFunctionStatefulSet(v1alpha1Source);
+            try {
+                validateStatefulSet(v1StatefulSet);
+            } catch (IllegalArgumentException e) {
+                log.warn("get stats {}/{}/{} source failed", tenant, namespace, componentName, e);
+                return functionInstanceStatsList;
+            }
+            final String statefulSetName = v1StatefulSet.getMetadata().getName();
+            final String subdomain = v1StatefulSet.getSpec().getServiceName();
+            if (v1StatefulSet.getStatus() != null) {
+                Integer replicas = v1StatefulSet.getStatus().getReplicas();
+                if (replicas != null) {
+                    for (int i = 0; i < replicas; i++) {
+                        FunctionInstanceStatsImpl functionInstanceStats = new FunctionInstanceStatsImpl();
+                        functionInstanceStats.setInstanceId(i);
+                        functionInstanceStatsList.add(functionInstanceStats);
+                    }
+                }
+            }
+            V1PodList podList = getFunctionPods(tenant, namespace, componentName, v1alpha1SourceStatus);
+            if (podList != null) {
+                List<V1Pod> runningPods = podList.getItems().stream().
+                        filter(KubernetesUtils::isPodRunning).collect(Collectors.toList());
+                if (!runningPods.isEmpty()) {
+                    int podsCount = runningPods.size();
+                    ManagedChannel[] channel = new ManagedChannel[podsCount];
+                    InstanceControlGrpc.InstanceControlFutureStub[] stub =
+                            new InstanceControlGrpc.InstanceControlFutureStub[podsCount];
+                    Set<CompletableFuture<InstanceCommunication.MetricsData>> completableFutureSet =
+                            fetchStatsFromGRPC(runningPods, subdomain, statefulSetName,
+                                    nameSpaceName, functionInstanceStatsList, channel, stub);
+                    completableFutureSet.forEach(CompletableFuture::join);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Get source {} stats failed from namespace {}",
+                    componentName, namespace, e);
+        }
+        return functionInstanceStatsList;
+    }
+
+    @Override
+    void validateResourceObject(V1alpha1Source obj) throws IllegalArgumentException {
+        if (obj == null) {
+            throw new IllegalArgumentException("Source Resource is null");
+        }
+        if (obj.getMetadata() == null) {
+            throw new IllegalArgumentException("Source Resource metadata is null");
+        }
+        if (obj.getSpec() == null) {
+            throw new IllegalArgumentException("Source Resource spec is null");
+        }
+        if (obj.getStatus() == null) {
+            throw new IllegalArgumentException("Source Resource status is null");
+        }
+    }
+
+    public V1StatefulSet getFunctionStatefulSet(V1alpha1Source v1alpha1Source) {
+        try {
+            String nameSpaceName = worker().getJobNamespace();
+            String jobName =
+                    CommonUtil.makeJobName(v1alpha1Source.getMetadata().getName(), CommonUtil.COMPONENT_SOURCE);
+            V1StatefulSet v1StatefulSet =
+                    worker().getAppsV1Api().readNamespacedStatefulSet(jobName, nameSpaceName, null, null, null);
+            if (validateResourceOwner(v1StatefulSet, v1alpha1Source)) {
+                return v1StatefulSet;
+            } else {
+                log.warn("get source statefulset failed, not owned by the resource");
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("get source statefulset failed, error: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    public V1PodList getFunctionPods(String tenant, String namespace, String componentName,
+                                     V1alpha1SourceStatus v1alpha1SourceStatus) {
+        V1PodList podList = null;
+        try {
+            String nameSpaceName = worker().getJobNamespace();
+            String functionLabelSelector = v1alpha1SourceStatus.getSelector();
+            podList = worker().getCoreV1Api().listNamespacedPod(
+                    nameSpaceName, null, null, null, null,
+                    functionLabelSelector, null, null, null, null,
+                    null);
+        } catch (Exception e) {
+            log.error("get source pods failed, {}/{}/{}", tenant, namespace, componentName, e);
+        }
+        return podList;
     }
 }

@@ -88,6 +88,7 @@ import static org.powermock.api.mockito.PowerMockito.spy;
         CommonUtil.class,
         FunctionsUtil.class,
         PackageManagementServiceUtil.class,
+        KubernetesUtils.class,
         InstanceControlGrpc.InstanceControlFutureStub.class})
 @PowerMockIgnore({"javax.management.*"})
 @Slf4j
@@ -244,6 +245,7 @@ public class FunctionsImplTest {
         builder.setRunning(true);
         PowerMockito.mockStatic(InstanceControlGrpc.InstanceControlFutureStub.class);
         PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFunctionStatusAsync")).toReturn(CompletableFuture.completedFuture(builder.build()));
+        PowerMockito.stub(PowerMockito.method(KubernetesUtils.class, "validateResourceOwner")).toReturn(true);
 
         FunctionsImpl functions = spy(new FunctionsImpl(meshWorkerServiceSupplier));
         FunctionStatus functionStatus = functions.getFunctionStatus(

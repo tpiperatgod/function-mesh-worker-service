@@ -18,6 +18,7 @@
  */
 package io.functionmesh.compute;
 
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.ServiceConfiguration;
@@ -31,19 +32,17 @@ import org.apache.pulsar.functions.worker.WorkerService;
 import org.apache.pulsar.functions.worker.rest.WorkerServer;
 import org.apache.pulsar.metadata.api.extended.MetadataStoreExtended;
 
-import java.io.IOException;
-
 /**
  * This class for test.
  */
 @Slf4j
 public class MeshWorker {
 
-    private PulsarResources pulsarResources;
-    private MetadataStoreExtended configMetadataStore;
     private final WorkerConfig workerConfig;
     private final WorkerService workerService;
     private final ErrorNotifier errorNotifier;
+    private PulsarResources pulsarResources;
+    private MetadataStoreExtended configMetadataStore;
     private WorkerServer server;
 
 

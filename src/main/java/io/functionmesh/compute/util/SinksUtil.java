@@ -18,6 +18,12 @@
  */
 package io.functionmesh.compute.util;
 
+import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
+import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
+import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
+import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
+import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
+import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
@@ -30,12 +36,19 @@ import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecInputCryptoConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecInputSourceSpecs;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecJava;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPod;
-import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPulsar;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodResources;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPulsar;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecSecretsMap;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.custom.Quantity;
+import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
@@ -49,21 +62,6 @@ import org.apache.pulsar.functions.proto.Function;
 import org.apache.pulsar.functions.proto.InstanceCommunication;
 import org.apache.pulsar.functions.utils.SinkConfigUtils;
 
-import javax.ws.rs.core.Response;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-
-import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
-import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
-import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
-import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
-import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
-import static org.apache.pulsar.common.functions.Utils.BUILTIN;
-
 @Slf4j
 public class SinksUtil {
     public static final String cpuKey = "cpu";
@@ -74,7 +72,8 @@ public class SinksUtil {
                                                                 MeshConnectorsManager connectorsManager,
                                                                 String cluster, MeshWorkerService worker) {
         MeshWorkerServiceCustomConfig customConfig = worker.getMeshWorkerServiceCustomConfig();
-        CustomRuntimeOptions customRuntimeOptions = CommonUtil.getCustomRuntimeOptions(sinkConfig.getCustomRuntimeOptions());
+        CustomRuntimeOptions customRuntimeOptions =
+                CommonUtil.getCustomRuntimeOptions(sinkConfig.getCustomRuntimeOptions());
         String clusterName = CommonUtil.getClusterName(cluster, customRuntimeOptions);
         String serviceAccountName = customRuntimeOptions.getServiceAccountName();
 
@@ -88,14 +87,17 @@ public class SinksUtil {
         String archive = sinkConfig.getArchive();
         SinkConfigUtils.ExtractedSinkDetails extractedSinkDetails =
                 new SinkConfigUtils.ExtractedSinkDetails("", customRuntimeOptions.getInputTypeClassName());
-        Map<String, String> customLabelClaims = getCustomLabelClaims(clusterName, sinkConfig.getTenant(), sinkConfig.getNamespace(), sinkConfig.getName(), worker, kind);
+        Map<String, String> customLabelClaims =
+                getCustomLabelClaims(clusterName, sinkConfig.getTenant(), sinkConfig.getNamespace(),
+                        sinkConfig.getName(), worker, kind);
 
         Function.FunctionDetails functionDetails = null;
         try {
             functionDetails = SinkConfigUtils.convert(sinkConfig, extractedSinkDetails);
         } catch (Exception ex) {
             log.error("cannot convert SinkConfig to FunctionDetails", ex);
-            throw new RestException(Response.Status.BAD_REQUEST, "functionConfig cannot be parsed into functionDetails");
+            throw new RestException(Response.Status.BAD_REQUEST,
+                    "functionConfig cannot be parsed into functionDetails");
         }
 
         V1alpha1Sink v1alpha1Sink = new V1alpha1Sink();
@@ -123,7 +125,8 @@ public class SinksUtil {
 
         V1alpha1SinkSpecJava v1alpha1SinkSpecJava = new V1alpha1SinkSpecJava();
         String extraDependenciesDir = "";
-        if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
+        if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(
+                worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
             if (Paths.get(worker.getFactoryConfig().getExtraFunctionDependenciesDir()).isAbsolute()) {
                 extraDependenciesDir = worker.getFactoryConfig().getExtraFunctionDependenciesDir();
             } else {
@@ -154,10 +157,12 @@ public class SinksUtil {
                 v1alpha1SinkSpec.setJava(v1alpha1SinkSpecJava);
             } else {
                 log.warn("cannot find built-in connector {}", connectorType);
-                throw new RestException(Response.Status.BAD_REQUEST, String.format("connectorType %s is not supported yet", connectorType));
+                throw new RestException(Response.Status.BAD_REQUEST,
+                        String.format("connectorType %s is not supported yet", connectorType));
             }
-        } else if (StringUtils.isNotEmpty(sinkConfig.getArchive())){
-            v1alpha1SinkSpecJava.setJar(buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), sinkConfig.getArchive()));
+        } else if (StringUtils.isNotEmpty(sinkConfig.getArchive())) {
+            v1alpha1SinkSpecJava.setJar(
+                    buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), sinkConfig.getArchive()));
             if (StringUtils.isNotEmpty(sinkPkgUrl)) {
                 v1alpha1SinkSpecJava.setJarLocation(location);
             }
@@ -172,7 +177,8 @@ public class SinksUtil {
 
         V1alpha1SinkSpecInput v1alpha1SinkSpecInput = new V1alpha1SinkSpecInput();
 
-        for (Map.Entry<String, Function.ConsumerSpec> inputSpecs : functionDetails.getSource().getInputSpecsMap().entrySet()) {
+        for (Map.Entry<String, Function.ConsumerSpec> inputSpecs : functionDetails.getSource().getInputSpecsMap()
+                .entrySet()) {
             V1alpha1SinkSpecInputSourceSpecs inputSourceSpecsItem = new V1alpha1SinkSpecInputSourceSpecs();
             if (Strings.isNotEmpty(inputSpecs.getValue().getSerdeClassName())) {
                 inputSourceSpecsItem.setSerdeClassname(inputSpecs.getValue().getSerdeClassName());
@@ -219,12 +225,14 @@ public class SinksUtil {
                             boolean updated = false;
                             if (StringUtils.isNotEmpty(functionMeshConnectorDefinition.getDefaultSchemaType())
                                     && StringUtils.isEmpty(inputSourceSpecsItem.getSchemaType())) {
-                                inputSourceSpecsItem.setSchemaType(functionMeshConnectorDefinition.getDefaultSchemaType());
+                                inputSourceSpecsItem.setSchemaType(
+                                        functionMeshConnectorDefinition.getDefaultSchemaType());
                                 updated = true;
                             }
                             if (StringUtils.isNotEmpty(functionMeshConnectorDefinition.getDefaultSerdeClassName())
                                     && StringUtils.isEmpty(inputSourceSpecsItem.getSerdeClassname())) {
-                                inputSourceSpecsItem.setSerdeClassname(functionMeshConnectorDefinition.getDefaultSerdeClassName());
+                                inputSourceSpecsItem.setSerdeClassname(
+                                        functionMeshConnectorDefinition.getDefaultSerdeClassName());
                                 updated = true;
                             }
                             if (updated) {
@@ -417,7 +425,8 @@ public class SinksUtil {
         }
 
         if (v1alpha1SinkSpecInput.getSourceSpecs() != null) {
-            for (Map.Entry<String, V1alpha1SinkSpecInputSourceSpecs> source : v1alpha1SinkSpecInput.getSourceSpecs().entrySet()) {
+            for (Map.Entry<String, V1alpha1SinkSpecInputSourceSpecs> source : v1alpha1SinkSpecInput.getSourceSpecs()
+                    .entrySet()) {
                 String topic = source.getKey();
                 V1alpha1SinkSpecInputSourceSpecs sourceSpecs = source.getValue();
                 ConsumerConfig consumerConfig = consumerConfigMap.getOrDefault(topic, new ConsumerConfig());
@@ -500,7 +509,7 @@ public class SinksUtil {
     }
 
     public static void convertFunctionStatusToInstanceStatusData(InstanceCommunication.FunctionStatus functionStatus,
-                                                            SinkStatus.SinkInstanceStatus.SinkInstanceStatusData sinkInstanceStatusData) {
+                                                                 SinkStatus.SinkInstanceStatus.SinkInstanceStatusData sinkInstanceStatusData) {
         if (functionStatus == null || sinkInstanceStatusData == null) {
             return;
         }
@@ -510,22 +519,26 @@ public class SinksUtil {
         sinkInstanceStatusData.setNumSystemExceptions(functionStatus.getNumSystemExceptions()
                 + functionStatus.getNumUserExceptions() + functionStatus.getNumSourceExceptions());
         List<ExceptionInformation> systemExceptionInformationList = new LinkedList<>();
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestUserExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestUserExceptionsList()) {
             ExceptionInformation exceptionInformation = getExceptionInformation(exceptionEntry);
             systemExceptionInformationList.add(exceptionInformation);
         }
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestSystemExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestSystemExceptionsList()) {
             ExceptionInformation exceptionInformation = getExceptionInformation(exceptionEntry);
             systemExceptionInformationList.add(exceptionInformation);
         }
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestSourceExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestSourceExceptionsList()) {
             ExceptionInformation exceptionInformation = getExceptionInformation(exceptionEntry);
             systemExceptionInformationList.add(exceptionInformation);
         }
         sinkInstanceStatusData.setLatestSystemExceptions(systemExceptionInformationList);
         sinkInstanceStatusData.setNumSinkExceptions(functionStatus.getNumSinkExceptions());
         List<ExceptionInformation> sinkExceptionInformationList = new LinkedList<>();
-        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry : functionStatus.getLatestSinkExceptionsList()) {
+        for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
+                functionStatus.getLatestSinkExceptionsList()) {
             ExceptionInformation exceptionInformation = getExceptionInformation(exceptionEntry);
             sinkExceptionInformationList.add(exceptionInformation);
         }
