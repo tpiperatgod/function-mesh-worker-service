@@ -260,13 +260,18 @@ public class CommonUtil {
         return retval;
     }
 
-    public static String getFilenameFromPackageMetadata(String functionPkgUrl, PulsarAdmin admin)
-            throws PulsarAdminException {
-        PackageMetadata packageMetadata = admin.packages().getMetadata(functionPkgUrl);
-        if (packageMetadata != null && packageMetadata.getProperties() != null && packageMetadata.getProperties()
-                .containsKey(PROPERTY_FILE_NAME) &&
-                StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
-            return packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
+    public static String getFilenameFromPackageMetadata(String functionPkgUrl, PulsarAdmin admin) {
+        try {
+            PackageMetadata packageMetadata = admin.packages().getMetadata(functionPkgUrl);
+            if (packageMetadata != null && packageMetadata.getProperties() != null && packageMetadata.getProperties()
+                    .containsKey(PROPERTY_FILE_NAME) &&
+                    StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
+                return packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
+            }
+        } catch (PulsarAdminException.NotFoundException ex) {
+            log.warn("Not found package '{}' metadata", functionPkgUrl);
+        } catch (Exception ex) {
+            log.warn("[{}] Failed to get package metadata", functionPkgUrl, ex);
         }
         return DEFAULT_FUNCTION_EXECUTABLE;
     }

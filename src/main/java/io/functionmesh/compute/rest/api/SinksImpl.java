@@ -145,7 +145,7 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                 ComponentTypeUtils.toString(componentType));
         this.validateTenantIsExist(tenant, namespace, sinkName, clientRole);
         String packageURL = sinkPkgUrl;
-        if (uploadedInputStream != null) {
+        if (uploadedInputStream != null && worker().getMeshWorkerServiceCustomConfig().isUploadEnabled()) {
             try {
                 String tempDirectory = System.getProperty("java.io.tmpdir");
                 packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(
@@ -225,7 +225,7 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                 ComponentTypeUtils.toString(componentType));
         this.validateTenantIsExist(tenant, namespace, sinkName, clientRole);
         String packageURL = sinkPkgUrl;
-        if (uploadedInputStream != null) {
+        if (uploadedInputStream != null && worker().getMeshWorkerServiceCustomConfig().isUploadEnabled()) {
             try {
                 String tempDirectory = System.getProperty("java.io.tmpdir");
                 packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(
