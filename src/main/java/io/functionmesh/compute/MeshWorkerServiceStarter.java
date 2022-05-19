@@ -18,10 +18,9 @@
  */
 package io.functionmesh.compute;
 
+import java.io.File;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.functions.worker.WorkerConfig;
-
-import java.io.File;
 
 @Slf4j
 public class MeshWorkerServiceStarter {

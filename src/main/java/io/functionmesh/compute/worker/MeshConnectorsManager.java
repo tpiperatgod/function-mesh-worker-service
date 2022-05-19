@@ -19,11 +19,6 @@
 package io.functionmesh.compute.worker;
 
 import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.pulsar.common.io.ConnectorDefinition;
-import org.apache.pulsar.common.util.ObjectMapperFactory;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -32,6 +27,10 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.common.io.ConnectorDefinition;
+import org.apache.pulsar.common.util.ObjectMapperFactory;
 
 @Slf4j
 public class MeshConnectorsManager {
@@ -56,7 +55,8 @@ public class MeshConnectorsManager {
         }
         try {
             String configs = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
-            FunctionMeshConnectorDefinition[] data = ObjectMapperFactory.getThreadLocalYaml().readValue(configs, FunctionMeshConnectorDefinition[].class);
+            FunctionMeshConnectorDefinition[] data = ObjectMapperFactory.getThreadLocalYaml()
+                    .readValue(configs, FunctionMeshConnectorDefinition[].class);
             for (FunctionMeshConnectorDefinition d : data) {
                 results.put(d.getName(), d);
             }
@@ -76,6 +76,6 @@ public class MeshConnectorsManager {
     }
 
     public List<ConnectorDefinition> getConnectorDefinitions() {
-        return connectors.values().stream().map(v -> (ConnectorDefinition)v).collect(Collectors.toList());
+        return connectors.values().stream().map(v -> (ConnectorDefinition) v).collect(Collectors.toList());
     }
 }

@@ -19,15 +19,15 @@
 package io.functionmesh.compute;
 
 import io.functionmesh.compute.util.SecurityUtil;
-import javax.net.ssl.SSLContext;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
 import java.util.concurrent.Executor;
+import javax.net.ssl.SSLContext;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jetty.client.HttpClient;
@@ -69,14 +69,16 @@ public class MeshWorkerServiceHandler extends ProxyServlet {
         String value = config.getInitParameter("maxThreads");
         if (value == null || "-".equals(value)) {
             executor = (Executor) getServletContext().getAttribute("org.eclipse.jetty.server.Executor");
-            if (executor == null)
+            if (executor == null) {
                 throw new IllegalStateException("No server executor for proxy");
+            }
         } else {
             QueuedThreadPool qtp = new QueuedThreadPool(Integer.parseInt(value));
             String servletName = config.getServletName();
             int dot = servletName.lastIndexOf('.');
-            if (dot >= 0)
+            if (dot >= 0) {
                 servletName = servletName.substring(dot + 1);
+            }
             qtp.setName(servletName);
             executor = qtp;
         }
@@ -84,22 +86,26 @@ public class MeshWorkerServiceHandler extends ProxyServlet {
         httpClient.setExecutor(executor);
 
         value = config.getInitParameter("maxConnections");
-        if (value == null)
+        if (value == null) {
             value = "256";
+        }
         httpClient.setMaxConnectionsPerDestination(Integer.parseInt(value));
 
         value = config.getInitParameter("idleTimeout");
-        if (value == null)
+        if (value == null) {
             value = "30000";
+        }
         httpClient.setIdleTimeout(Long.parseLong(value));
 
         value = config.getInitParameter("requestBufferSize");
-        if (value != null)
+        if (value != null) {
             httpClient.setRequestBufferSize(Integer.parseInt(value));
+        }
 
         value = config.getInitParameter("responseBufferSize");
-        if (value != null)
+        if (value != null) {
             httpClient.setResponseBufferSize(Integer.parseInt(value));
+        }
 
         try {
             httpClient.start();
@@ -150,14 +156,15 @@ public class MeshWorkerServiceHandler extends ProxyServlet {
         boolean isFunctionMeshRestRequest = false;
         String requestUri = request.getRequestURI();
         if (requestUri.startsWith(FUNCTION_MESH_PATH_PREFIX)) {
-            String [] requestUriPath = requestUri.split("/");
+            String[] requestUriPath = requestUri.split("/");
             if (requestUriPath.length >= 7 && requestUriPath[6].equals(FUNCTION_MESH_KEY)) {
                 isFunctionMeshRestRequest = true;
             }
         }
         if (isFunctionMeshRestRequest) {
             String controllerHost = this.getEnvironment(KUBERNETES_SERVICE_HOST);
-            url.append("https://").append(controllerHost).append(":").append(KUBERNETES_SERVICE_PORT).append(requestUri);
+            url.append("https://").append(controllerHost).append(":").append(KUBERNETES_SERVICE_PORT)
+                    .append(requestUri);
             String query = request.getQueryString();
             if (query != null) {
                 url.append("?").append(query);

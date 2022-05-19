@@ -18,12 +18,33 @@
  */
 package io.functionmesh.compute.rest.api;
 
-import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM;
+import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
+import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.apache.pulsar.functions.worker.rest.RestUtils.throwUnavailableException;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
 import io.functionmesh.compute.util.CommonUtil;
-import io.functionmesh.compute.util.FunctionsUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.util.PackageManagementServiceUtil;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.kubernetes.client.openapi.models.V1Pod;
+import io.kubernetes.client.util.generic.GenericKubernetesApi;
+import io.kubernetes.client.util.generic.KubernetesApiResponse;
+import java.io.InputStream;
+import java.net.URI;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
+import javax.ws.rs.core.StreamingOutput;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import okhttp3.Response;
@@ -38,40 +59,29 @@ import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.io.ConnectorDefinition;
 import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.policies.data.FunctionInstanceStatsDataImpl;
+import org.apache.pulsar.common.policies.data.FunctionInstanceStatsImpl;
 import org.apache.pulsar.common.policies.data.FunctionStatsImpl;
 import org.apache.pulsar.common.policies.data.TenantInfo;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.Function;
+import org.apache.pulsar.functions.proto.InstanceCommunication;
+import org.apache.pulsar.functions.proto.InstanceControlGrpc;
 import org.apache.pulsar.functions.utils.ComponentTypeUtils;
+import org.apache.pulsar.functions.worker.WorkerService;
 import org.apache.pulsar.functions.worker.service.api.Component;
 
-import javax.ws.rs.core.StreamingOutput;
-import java.io.InputStream;
-import java.net.URI;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.function.Supplier;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM;
-import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
-import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 @Slf4j
-public abstract class MeshComponentImpl implements Component<MeshWorkerService> {
+public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.KubernetesObject,
+        K extends io.kubernetes.client.common.KubernetesListObject> implements Component<MeshWorkerService> {
 
+    final static String API_GROUP = "compute.functionmesh.io";
     protected final Supplier<MeshWorkerService> meshWorkerServiceSupplier;
     protected final Function.FunctionDetails.ComponentType componentType;
-
-    String plural = "functions";
-
-    final String group = "compute.functionmesh.io";
-
-    final String version = "v1alpha1";
-
-    String kind = "Function";
+    protected String API_VERSION = "v1alpha1";
+    protected String API_KIND = "Function";
+    protected String API_PLURAL = "functions";
+    @Getter
+    protected GenericKubernetesApi<T, K> resourceApi;
 
     MeshComponentImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier,
                       Function.FunctionDetails.ComponentType componentType) {
@@ -97,7 +107,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
                                    final String componentName,
                                    final String clientRole,
                                    AuthenticationDataHttps clientAuthenticationDataHttps) {
-        this.validateGetInfoRequestParams(tenant, namespace, componentName, kind);
+        this.validateGetInfoRequestParams(tenant, namespace, componentName, API_KIND);
 
         this.validatePermission(tenant,
                 namespace,
@@ -108,10 +118,10 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             String clusterName = worker().getWorkerConfig().getPulsarFunctionsCluster();
             String hashName = CommonUtil.createObjectName(clusterName, tenant, namespace, componentName);
             Call deleteObjectCall = worker().getCustomObjectsApi().deleteNamespacedCustomObjectCall(
-                    group,
-                    version,
+                    API_GROUP,
+                    API_VERSION,
                     worker().getJobNamespace(),
-                    plural,
+                    API_PLURAL,
                     hashName,
                     null,
                     null,
@@ -123,15 +133,15 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             executeCall(deleteObjectCall, null);
 
             PackageManagementServiceUtil.deletePackageFromPackageService(
-                worker().getBrokerAdmin(), getPackageTypeFromComponentType(componentType),
-                tenant, namespace, componentName);
+                    worker().getBrokerAdmin(), getPackageTypeFromComponentType(componentType),
+                    tenant, namespace, componentName);
 
             if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
                     && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
                 Call deleteAuthSecretCall = worker().getCoreV1Api()
                         .deleteNamespacedSecretCall(
                                 KubernetesUtils.getUniqueSecretName(
-                                        kind.toLowerCase(),
+                                        API_KIND.toLowerCase(),
                                         "auth",
                                         DigestUtils.sha256Hex(
                                                 KubernetesUtils.getSecretName(
@@ -151,7 +161,7 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
                 Call deleteTlsSecretCall = worker().getCoreV1Api()
                         .deleteNamespacedSecretCall(
                                 KubernetesUtils.getUniqueSecretName(
-                                        kind.toLowerCase(),
+                                        API_KIND.toLowerCase(),
                                         "tls",
                                         DigestUtils.sha256Hex(
                                                 KubernetesUtils.getSecretName(
@@ -168,12 +178,12 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
                 executeCall(deleteTlsSecretCall, null);
             }
         } catch (Exception e) {
-            log.error("deregister {}/{}/{} {} failed", tenant, namespace, componentName, plural, e);
+            log.error("deregister {}/{}/{} {} failed", tenant, namespace, componentName, API_PLURAL, e);
             throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
-    public <T> T executeCall(Call call, Class<T> c) throws Exception {
+    public <t> t executeCall(Call call, Class<t> c) throws Exception {
         Response response;
         response = call.execute();
         if (response.isSuccessful() && response.body() != null) {
@@ -190,7 +200,21 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             String err = String.format(
                     "failed to perform the request: responseCode: %s, responseMessage: %s, responseBody: %s",
                     response.code(), response.message(), body);
-            throw new Exception(err);
+            throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, err);
+        }
+    }
+
+    public T extractResponse(KubernetesApiResponse<T> response) throws RestException {
+        if (response.isSuccess()) {
+            return response.getObject();
+        } else if (response.getHttpStatusCode() == 409) {
+            throw new RestException(javax.ws.rs.core.Response.Status.CONFLICT,
+                    "This resource already exists, please change the name");
+        } else {
+            String err = String.format(
+                    "failed to perform the request: responseCode: %s, responseMessage: %s",
+                    response.getHttpStatusCode(), response.getStatus().getMessage());
+            throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, err);
         }
     }
 
@@ -271,9 +295,33 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
                                               final URI uri,
                                               final String clientRole,
                                               final AuthenticationDataSource clientAuthenticationDataHttps) {
-        FunctionStatsImpl functionStats = new FunctionStatsImpl();
+        if (!isWorkerServiceAvailable()) {
+            throwUnavailableException();
+        }
 
-        return functionStats;
+        this.validatePermission(tenant,
+                namespace,
+                clientRole,
+                clientAuthenticationDataHttps,
+                ComponentTypeUtils.toString(componentType));
+        this.validateTenantIsExist(tenant, namespace, componentName, clientRole);
+        this.validateGetInfoRequestParams(tenant, namespace, componentName, ComponentTypeUtils.toString(componentType));
+
+        FunctionStatsImpl functionStats = new FunctionStatsImpl();
+        try {
+            List<FunctionInstanceStatsImpl> instanceStatsList =
+                    getComponentInstancesStats(tenant, namespace, componentName);
+            for (FunctionInstanceStatsImpl instanceStats : instanceStatsList) {
+                if (instanceStats != null) {
+                    functionStats.addInstance(instanceStats);
+                }
+            }
+
+            return functionStats.calculateOverall();
+        } catch (Exception e) {
+            log.error("{}/{}/{} Got Exception Getting Stats", tenant, namespace, componentName, e);
+            throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
     @Override
@@ -310,9 +358,9 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
             labelSelector = getCustomLabelClaimsSelector(cluster, tenant, namespace);
             Call call = worker().getCustomObjectsApi().listNamespacedCustomObjectCall(
-                    group,
-                    version,
-                    worker().getJobNamespace(), plural,
+                    API_GROUP,
+                    API_VERSION,
+                    worker().getJobNamespace(), API_PLURAL,
                     "false",
                     null,
                     null,
@@ -423,7 +471,8 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             if (clientRole != null) {
                 try {
                     TenantInfo tenantInfo = worker().getBrokerAdmin().tenants().getTenantInfo(tenant);
-                    if (tenantInfo != null && worker().getAuthorizationService().isTenantAdmin(tenant, clientRole, tenantInfo, authenticationData).get()) {
+                    if (tenantInfo != null && worker().getAuthorizationService()
+                            .isTenantAdmin(tenant, clientRole, tenantInfo, authenticationData).get()) {
                         return true;
                     }
                 } catch (PulsarAdminException.NotFoundException | InterruptedException | ExecutionException e) {
@@ -447,20 +496,25 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             switch (componentType) {
                 case SINK:
                     return worker().getAuthorizationService().allowSinkOpsAsync(
-                            namespaceName, role, authenticationData).get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
+                                    namespaceName, role, authenticationData)
+                            .get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
                 case SOURCE:
                     return worker().getAuthorizationService().allowSourceOpsAsync(
-                            namespaceName, role, authenticationData).get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
+                                    namespaceName, role, authenticationData)
+                            .get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
                 case FUNCTION:
                 default:
                     return worker().getAuthorizationService().allowFunctionOpsAsync(
-                            namespaceName, role, authenticationData).get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
+                                    namespaceName, role, authenticationData)
+                            .get(worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), SECONDS);
             }
         } catch (InterruptedException e) {
-            log.warn("Time-out {} sec while checking function authorization on {} ", worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), namespaceName);
+            log.warn("Time-out {} sec while checking function authorization on {} ",
+                    worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), namespaceName);
             throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         } catch (Exception e) {
-            log.warn("Admin-client with Role - {} failed to get function permissions for namespace - {}. {}", role, namespaceName,
+            log.warn("Admin-client with Role - {} failed to get function permissions for namespace - {}. {}", role,
+                    namespaceName,
                     e.getMessage(), e);
             throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
@@ -475,7 +529,8 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
             if (!isAuthorizedRole(tenant, namespace, clientRole, clientAuthenticationDataHttps)) {
                 log.warn("{}/{}/{} Client [{}] is not authorized to get {}", tenant, namespace,
                         componentName, clientRole, ComponentTypeUtils.toString(componentType));
-                throw new RestException(javax.ws.rs.core.Response.Status.UNAUTHORIZED, "client is not authorize to perform operation");
+                throw new RestException(javax.ws.rs.core.Response.Status.UNAUTHORIZED,
+                        "client is not authorize to perform operation");
             }
         } catch (PulsarAdminException e) {
             log.error("{}/{}/{} Failed to authorize", tenant, namespace, componentName, e);
@@ -504,7 +559,8 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
         } catch (PulsarAdminException.NotAuthorizedException e) {
             log.error("{}/{}/{} Client [{}] is not authorized to operate {} on tenant", tenant, namespace,
                     name, clientRole, ComponentTypeUtils.toString(componentType));
-            throw new RestException(javax.ws.rs.core.Response.Status.UNAUTHORIZED, "client is not authorize to perform operation");
+            throw new RestException(javax.ws.rs.core.Response.Status.UNAUTHORIZED,
+                    "client is not authorize to perform operation");
         } catch (PulsarAdminException.NotFoundException e) {
             log.error("{}/{}/{} Tenant {} does not exist", tenant, namespace, name, tenant);
             throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, "Tenant does not exist");
@@ -518,13 +574,85 @@ public abstract class MeshComponentImpl implements Component<MeshWorkerService> 
         if (componentResources != null) {
             if (minResource != null && (componentResources.getCpu() < minResource.getCpu()
                     || componentResources.getRam() < minResource.getRam())) {
-                throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, "Resource is less than minimum requirement");
+                throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST,
+                        "Resource is less than minimum requirement");
             }
             if (maxResource != null && (componentResources.getCpu() > maxResource.getCpu()
                     || componentResources.getRam() > maxResource.getRam())) {
-                throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, "Resource is larger than max requirement");
+                throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST,
+                        "Resource is larger than max requirement");
             }
         }
+    }
+
+    boolean isWorkerServiceAvailable() {
+        WorkerService workerService = meshWorkerServiceSupplier.get();
+        if (workerService == null) {
+            return false;
+        }
+        return workerService.isInitialized();
+    }
+
+    abstract List<FunctionInstanceStatsImpl> getComponentInstancesStats(String tenant, String namespace,
+                                                                        String componentName);
+
+    abstract void validateResourceObject(T obj) throws IllegalArgumentException;
+
+    public Set<CompletableFuture<InstanceCommunication.MetricsData>> fetchStatsFromGRPC(List<V1Pod> pods,
+                                                                                        String subdomain,
+                                                                                        String statefulSetName,
+                                                                                        String nameSpaceName,
+                                                                                        List<FunctionInstanceStatsImpl> functionInstanceStatsList,
+                                                                                        ManagedChannel[] channel,
+                                                                                        InstanceControlGrpc.InstanceControlFutureStub[] stub) {
+        Set<CompletableFuture<InstanceCommunication.MetricsData>> completableFutureSet = new HashSet<>();
+        pods.forEach(pod -> {
+            String podName = KubernetesUtils.getPodName(pod);
+            int shardId = CommonUtil.getShardIdFromPodName(podName);
+            int podIndex = pods.indexOf(pod);
+            String address = KubernetesUtils.getServiceUrl(podName, subdomain, nameSpaceName);
+            if (shardId == -1) {
+                log.warn("shardId invalid {}", podName);
+                return;
+            }
+            final FunctionInstanceStatsImpl functionInstanceStats =
+                    functionInstanceStatsList.stream().filter(v -> v.getInstanceId() == shardId).findFirst()
+                            .orElse(null);
+            if (functionInstanceStats != null) {
+                // get status from grpc
+                if (channel[podIndex] == null && stub[podIndex] == null) {
+                    channel[podIndex] = ManagedChannelBuilder.forAddress(address, 9093)
+                            .usePlaintext()
+                            .build();
+                    stub[podIndex] = InstanceControlGrpc.newFutureStub(channel[podIndex]);
+                }
+                CompletableFuture<InstanceCommunication.MetricsData> future =
+                        CommonUtil.getFunctionMetricsAsync(stub[podIndex]);
+                future.whenComplete((fs, e) -> {
+                    if (channel[podIndex] != null) {
+                        log.debug("closing channel {}", podIndex);
+                        channel[podIndex].shutdown();
+                    }
+                    if (e != null) {
+                        log.warn("Get {}-{} stats from grpc failed from namespace {}",
+                                statefulSetName,
+                                shardId,
+                                nameSpaceName,
+                                e);
+                    } else if (fs != null) {
+                        CommonUtil.convertFunctionMetricsToFunctionInstanceStats(fs, functionInstanceStats);
+                    }
+                });
+                completableFutureSet.add(future);
+            } else {
+                log.warn("Get {}-{} stats failed from namespace {}, cannot find status for shardId {}",
+                        statefulSetName,
+                        shardId,
+                        nameSpaceName,
+                        shardId);
+            }
+        });
+        return completableFutureSet;
     }
 }
 
