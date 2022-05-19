@@ -103,7 +103,7 @@ public class PackageManagementServiceUtil {
                                                        final String type,
                                                        final String tenant,
                                                        final String namespace,
-                                                       final String functionName) throws Exception {
+                                                       final String functionName) {
         String packageName = generatePackageURL(type, tenant, namespace, functionName);
         try {
             PackageMetadata packageMetadata = admin.packages().getMetadata(packageName);
@@ -113,7 +113,10 @@ public class PackageManagementServiceUtil {
                     packageMetadata.getContact().equals(MESH_WORKER_SERVICE_PACKAGE_CONTACT)) {
                 admin.packages().delete(packageName);
             }
-        } catch (PulsarAdminException.NotFoundException ignore) {
+        } catch (PulsarAdminException.NotFoundException ex) {
+            log.warn("Not found package '{}' metadata", packageName);
+        } catch (Exception ex) {
+            log.warn("Delete function package '{}' failed", packageName, ex);
         }
     }
 

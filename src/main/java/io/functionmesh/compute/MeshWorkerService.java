@@ -80,6 +80,7 @@ public class MeshWorkerService implements WorkerService {
     private AuthenticationService authenticationService;
     private AuthorizationService authorizationService;
     private MeshConnectorsManager connectorsManager;
+    private ServiceConfiguration brokerConfig;
 
     public MeshWorkerService() {
 
@@ -129,6 +130,7 @@ public class MeshWorkerService implements WorkerService {
                              WorkerConfig workerConfig, PulsarResources pulsarResources,
                              ConfigurationCacheService configurationCacheService,
                              InternalConfigurationData internalConfigurationData) throws Exception {
+        this.brokerConfig = brokerConfig;
         this.init(workerConfig);
     }
 
@@ -145,6 +147,14 @@ public class MeshWorkerService implements WorkerService {
                 workerConfig.getFunctionsWorkerServiceCustomConfigs(), MeshWorkerServiceCustomConfig.class);
     }
 
+    public void validateExternalServices() throws Exception {
+        if (this.brokerConfig != null
+                && this.meshWorkerServiceCustomConfig.isUploadEnabled()
+                && !this.brokerConfig.isEnablePackagesManagement()) {
+            throw new RuntimeException("uploadEnabled requires enablePackagesManagement to be enabled from broker's configuration");
+        }
+    }
+
     private void initKubernetesClient() throws IOException {
         try {
             apiClient = Config.defaultClient();
@@ -159,11 +169,12 @@ public class MeshWorkerService implements WorkerService {
 
     public void start(AuthenticationService authenticationService,
                       AuthorizationService authorizationService,
-                      ErrorNotifier errorNotifier) {
+                      ErrorNotifier errorNotifier) throws Exception {
         this.authenticationService = authenticationService;
         this.authorizationService = authorizationService;
         this.brokerAdmin = clientCreator.newPulsarAdmin(workerConfig.getPulsarWebServiceUrl(), workerConfig);
         this.connectorsManager = new MeshConnectorsManager();
+        this.validateExternalServices();
         this.isInitialized = true;
         log.info("/** Started mesh worker service **/");
     }
