@@ -129,6 +129,7 @@ public class MeshWorkerService implements WorkerService {
                              WorkerConfig workerConfig, PulsarResources pulsarResources,
                              InternalConfigurationData internalConf) throws Exception {
         this.init(workerConfig);
+        this.validate(brokerConfig);
     }
 
     public void initInBroker(ServiceConfiguration brokerConfig,
@@ -149,6 +150,12 @@ public class MeshWorkerService implements WorkerService {
                 workerConfig.getFunctionRuntimeFactoryConfigs(), KubernetesRuntimeFactoryConfig.class);
         this.meshWorkerServiceCustomConfig = RuntimeUtils.getRuntimeFunctionConfig(
                 workerConfig.getFunctionsWorkerServiceCustomConfigs(), MeshWorkerServiceCustomConfig.class);
+    }
+
+    public void validate(ServiceConfiguration brokerConfig) {
+        if (this.meshWorkerServiceCustomConfig.isUploadEnabled() && !brokerConfig.isEnablePackagesManagement()) {
+            throw new RuntimeException("uploadEnabled is enabled but enablePackagesManagement from broker config is disabled");
+        }
     }
 
     private void initKubernetesClient() throws IOException {

@@ -132,9 +132,11 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             );
             executeCall(deleteObjectCall, null);
 
-            PackageManagementServiceUtil.deletePackageFromPackageService(
-                    worker().getBrokerAdmin(), getPackageTypeFromComponentType(componentType),
-                    tenant, namespace, componentName);
+            if (worker().getMeshWorkerServiceCustomConfig().isUploadEnabled()) {
+                PackageManagementServiceUtil.deletePackageFromPackageService(
+                        worker().getBrokerAdmin(), getPackageTypeFromComponentType(componentType),
+                        tenant, namespace, componentName);
+            }
 
             if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
                     && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
