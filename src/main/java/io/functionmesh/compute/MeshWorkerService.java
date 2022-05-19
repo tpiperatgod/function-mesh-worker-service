@@ -29,6 +29,7 @@ import io.kubernetes.client.openapi.apis.AppsV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
 import io.kubernetes.client.util.Config;
+import java.io.IOException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.ServiceConfiguration;
@@ -53,8 +54,6 @@ import org.apache.pulsar.functions.worker.service.api.Sinks;
 import org.apache.pulsar.functions.worker.service.api.Sources;
 import org.apache.pulsar.functions.worker.service.api.Workers;
 
-import java.io.IOException;
-
 /**
  * Function mesh proxy implement.
  */
@@ -62,8 +61,8 @@ import java.io.IOException;
 @Getter
 public class MeshWorkerService implements WorkerService {
 
+    final PulsarWorkerService.PulsarClientCreator clientCreator;
     private volatile boolean isInitialized = false;
-
     private WorkerConfig workerConfig;
     private boolean authenticationEnabled;
     private Functions<MeshWorkerService> functions;
@@ -78,11 +77,9 @@ public class MeshWorkerService implements WorkerService {
     @Deprecated
     private KubernetesRuntimeFactoryConfig factoryConfig;
     private MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig;
-
     private AuthenticationService authenticationService;
     private AuthorizationService authorizationService;
     private MeshConnectorsManager connectorsManager;
-    final PulsarWorkerService.PulsarClientCreator clientCreator;
 
     public MeshWorkerService() {
 
@@ -102,6 +99,7 @@ public class MeshWorkerService implements WorkerService {
                     return WorkerUtils.getPulsarAdminClient(pulsarServiceUrl);
                 }
             }
+
             @Override
             public PulsarClient newPulsarClient(String pulsarServiceUrl, WorkerConfig workerConfig) {
                 // using isBrokerClientAuthenticationEnabled instead of isAuthenticationEnabled in function-worker
@@ -172,6 +170,8 @@ public class MeshWorkerService implements WorkerService {
         this.authorizationService = authorizationService;
         this.brokerAdmin = clientCreator.newPulsarAdmin(workerConfig.getPulsarWebServiceUrl(), workerConfig);
         this.connectorsManager = new MeshConnectorsManager();
+        this.isInitialized = true;
+        log.info("/** Started mesh worker service **/");
     }
 
     public void stop() {
