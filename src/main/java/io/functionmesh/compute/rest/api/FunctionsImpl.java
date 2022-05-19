@@ -142,7 +142,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                 ComponentTypeUtils.toString(componentType));
         this.validateTenantIsExist(tenant, namespace, functionName, clientRole);
         String packageURL = functionPkgUrl;
-        if (uploadedInputStream != null) {
+        if (uploadedInputStream != null && worker().getMeshWorkerServiceCustomConfig().isUploadEnabled()) {
             try {
                 String tempDirectory = System.getProperty("java.io.tmpdir");
                 packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(
@@ -218,7 +218,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                 ComponentTypeUtils.toString(componentType));
         this.validateTenantIsExist(tenant, namespace, functionName, clientRole);
         String packageURL = functionPkgUrl;
-        if (uploadedInputStream != null) {
+        if (uploadedInputStream != null && worker().getMeshWorkerServiceCustomConfig().isUploadEnabled()) {
             try {
                 String tempDirectory = System.getProperty("java.io.tmpdir");
                 packageURL = PackageManagementServiceUtil.uploadPackageToPackageService(
