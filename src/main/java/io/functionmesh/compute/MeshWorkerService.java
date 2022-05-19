@@ -80,6 +80,7 @@ public class MeshWorkerService implements WorkerService {
     private AuthenticationService authenticationService;
     private AuthorizationService authorizationService;
     private MeshConnectorsManager connectorsManager;
+    private ServiceConfiguration brokerConfig;
 
     public MeshWorkerService() {
 
@@ -128,14 +129,15 @@ public class MeshWorkerService implements WorkerService {
     public void initInBroker(ServiceConfiguration brokerConfig,
                              WorkerConfig workerConfig, PulsarResources pulsarResources,
                              InternalConfigurationData internalConf) throws Exception {
+        this.brokerConfig = brokerConfig;
         this.init(workerConfig);
-        this.validate(brokerConfig);
     }
 
     public void initInBroker(ServiceConfiguration brokerConfig,
                              WorkerConfig workerConfig, PulsarResources pulsarResources,
                              ConfigurationCacheService configurationCacheService,
                              InternalConfigurationData internalConfigurationData) throws Exception {
+        this.brokerConfig = brokerConfig;
         this.init(workerConfig);
     }
 
@@ -152,9 +154,11 @@ public class MeshWorkerService implements WorkerService {
                 workerConfig.getFunctionsWorkerServiceCustomConfigs(), MeshWorkerServiceCustomConfig.class);
     }
 
-    public void validate(ServiceConfiguration brokerConfig) {
-        if (this.meshWorkerServiceCustomConfig.isUploadEnabled() && !brokerConfig.isEnablePackagesManagement()) {
-            throw new RuntimeException("uploadEnabled is enabled but enablePackagesManagement from broker config is disabled");
+    public void validateExternalServices() throws Exception {
+        if (this.brokerConfig != null
+                && this.meshWorkerServiceCustomConfig.isUploadEnabled()
+                && !this.brokerConfig.isEnablePackagesManagement()) {
+            throw new RuntimeException("uploadEnabled requires enablePackagesManagement to be enabled from broker's configuration");
         }
     }
 
@@ -172,11 +176,12 @@ public class MeshWorkerService implements WorkerService {
 
     public void start(AuthenticationService authenticationService,
                       AuthorizationService authorizationService,
-                      ErrorNotifier errorNotifier) {
+                      ErrorNotifier errorNotifier) throws Exception {
         this.authenticationService = authenticationService;
         this.authorizationService = authorizationService;
         this.brokerAdmin = clientCreator.newPulsarAdmin(workerConfig.getPulsarWebServiceUrl(), workerConfig);
         this.connectorsManager = new MeshConnectorsManager();
+        this.validateExternalServices();
         this.isInitialized = true;
         log.info("/** Started mesh worker service **/");
     }

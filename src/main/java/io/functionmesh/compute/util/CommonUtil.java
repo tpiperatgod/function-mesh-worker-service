@@ -268,7 +268,8 @@ public class CommonUtil {
                     StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
                 return packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
             }
-        } catch (PulsarAdminException.NotFoundException ignore) {
+        } catch (PulsarAdminException.NotFoundException ex) {
+            log.warn("Not found package '{}' metadata", functionPkgUrl);
         } catch (Exception ex) {
             log.warn("[{}] Failed to get package metadata", functionPkgUrl, ex);
         }

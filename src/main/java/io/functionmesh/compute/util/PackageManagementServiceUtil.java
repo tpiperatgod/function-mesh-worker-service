@@ -113,7 +113,8 @@ public class PackageManagementServiceUtil {
                     packageMetadata.getContact().equals(MESH_WORKER_SERVICE_PACKAGE_CONTACT)) {
                 admin.packages().delete(packageName);
             }
-        } catch (PulsarAdminException.NotFoundException ignore) {
+        } catch (PulsarAdminException.NotFoundException ex) {
+            log.warn("Not found package '{}' metadata", packageName);
         } catch (Exception ex) {
             log.warn("Delete function package '{}' failed", packageName, ex);
         }
