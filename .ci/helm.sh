@@ -127,8 +127,8 @@ function ci::install_function_mesh_charts() {
   ${HELM} install function-mesh --values ./function-mesh-operator/values.yaml ./function-mesh-operator --debug -n ${NAMESPACE}
 
   echo "wait until controller-manager is alive"
-  ${KUBECTL} get deployment -n function-mesh-system
-  ${KUBECTL} wait --for condition=available --timeout=360s deployment/function-mesh-controller-manager -n function-mesh-system
+  ${KUBECTL} get deployment -n ${NAMESPACE}
+  ${KUBECTL} wait --for condition=available --timeout=360s deployment/function-mesh-controller-manager -n ${NAMESPACE}
 
   cd ../../
 }
