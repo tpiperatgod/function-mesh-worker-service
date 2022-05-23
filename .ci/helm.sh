@@ -128,6 +128,8 @@ function ci::install_function_mesh_charts() {
 
   echo "wait until controller-manager is alive"
   ${KUBECTL} get deployment -n ${NAMESPACE}
+  sleep 120
+  ${KUBECTL} -n ${NAMESPACE} logs deployment/function-mesh-controller-manager
   ${KUBECTL} wait --for condition=available --timeout=360s deployment/function-mesh-controller-manager -n ${NAMESPACE}
 
   cd ../../
