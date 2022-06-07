@@ -26,6 +26,7 @@ import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
@@ -53,6 +54,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.apache.pulsar.common.functions.ConsumerConfig;
+import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.io.SinkConfig;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
@@ -548,6 +550,14 @@ public class SinksUtil {
 
         sinkInstanceStatusData.setNumWrittenToSink(functionStatus.getNumSuccessfullyProcessed());
         sinkInstanceStatusData.setLastReceivedTime(functionStatus.getLastInvocationTime());
+    }
+
+    public static void mergeTrustedConfigs(final SinkConfig sinkConfig, V1alpha1Sink v1alpha1Sink) {
+        CustomRuntimeOptions customRuntimeOptions =
+                CommonUtil.getCustomRuntimeOptions(sinkConfig.getCustomRuntimeOptions());
+        if (StringUtils.isNotEmpty(customRuntimeOptions.getRunnerImage())) {
+            v1alpha1Sink.getSpec().setImage(customRuntimeOptions.getRunnerImage());
+        }
     }
 
 }

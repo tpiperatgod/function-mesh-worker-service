@@ -720,4 +720,12 @@ public class FunctionsUtil {
         return typeArgs;
     }
 
+    public static void mergeTrustedConfigs(final FunctionConfig functionConfig, V1alpha1Function v1alpha1Function) {
+        CustomRuntimeOptions customRuntimeOptions =
+                CommonUtil.getCustomRuntimeOptions(functionConfig.getCustomRuntimeOptions());
+        if (StringUtils.isNotEmpty(customRuntimeOptions.getRunnerImage())) {
+            v1alpha1Function.getSpec().setImage(customRuntimeOptions.getRunnerImage());
+        }
+    }
+
 }

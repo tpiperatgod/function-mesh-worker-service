@@ -25,6 +25,7 @@ import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
@@ -50,6 +51,7 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
+import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.ProducerConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.io.SourceConfig;
@@ -481,5 +483,13 @@ public class SourcesUtil {
 
         instanceStatusData.setNumWritten(functionStatus.getNumSuccessfullyProcessed());
         instanceStatusData.setLastReceivedTime(functionStatus.getLastInvocationTime());
+    }
+
+    public static void mergeTrustedConfigs(final SourceConfig sourceConfig, V1alpha1Source v1alpha1Source) {
+        CustomRuntimeOptions customRuntimeOptions =
+                CommonUtil.getCustomRuntimeOptions(sourceConfig.getCustomRuntimeOptions());
+        if (StringUtils.isNotEmpty(customRuntimeOptions.getRunnerImage())) {
+            v1alpha1Source.getSpec().setImage(customRuntimeOptions.getRunnerImage());
+        }
     }
 }

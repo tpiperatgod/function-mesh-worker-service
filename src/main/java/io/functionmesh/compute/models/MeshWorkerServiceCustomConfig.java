@@ -190,6 +190,11 @@ public class MeshWorkerServiceCustomConfig {
     )
     protected Resources defaultResources;
 
+    @FieldContext(
+            doc = "Enable the trusted mode, by default it is false"
+    )
+    protected boolean enableTrustedMode = false;
+
     public List<V1alpha1SinkSpecPodVolumes> asV1alpha1SinkSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SinkSpecPodVolumes>> typeRef
