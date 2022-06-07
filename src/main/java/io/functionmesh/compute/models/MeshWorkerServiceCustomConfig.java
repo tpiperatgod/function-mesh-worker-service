@@ -185,7 +185,8 @@ public class MeshWorkerServiceCustomConfig {
 
     @FieldContext(
             doc = "The default resources for each function instance, if not specified, it will use the default "
-                    + "resources (cpu: 1 core, ram: 1GB, disk: 10GB)."
+                    + "resources (cpu: 1 core, ram: 1GB, disk: 10GB). Available configs are "
+                    + "(cpu: in cores, ram: in bytes, disk: in bytes)."
     )
     protected Resources defaultResources;
 
