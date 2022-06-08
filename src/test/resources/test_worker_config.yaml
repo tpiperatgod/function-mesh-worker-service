@@ -102,3 +102,8 @@ functionsWorkerServiceCustomConfigs:
       image: streamnative/init:latest
       command: ['sh', '-c', 'echo hello world']
 
+  defaultResources:
+    cpu: 2
+    ram: 17179869184
+
+

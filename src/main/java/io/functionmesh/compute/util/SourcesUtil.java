@@ -240,10 +240,12 @@ public class SourcesUtil {
             v1alpha1SourceSpec.setMaxReplicas(customRuntimeOptions.getMaxReplicas());
         }
 
-        double cpu = sourceConfig.getResources() != null && sourceConfig.getResources().getCpu() != 0 ?
-                sourceConfig.getResources().getCpu() : 1;
-        long ramRequest = sourceConfig.getResources() != null && sourceConfig.getResources().getRam() != 0 ?
-                sourceConfig.getResources().getRam() : 1073741824;
+        Resources resources =
+                CommonUtil.mergeWithDefault(worker.getMeshWorkerServiceCustomConfig().getDefaultResources(),
+                        sourceConfig.getResources());
+
+        double cpu = resources.getCpu();
+        long ramRequest = resources.getRam();
 
         Map<String, Object> limits = new HashMap<>();
         Map<String, Object> requests = new HashMap<>();
