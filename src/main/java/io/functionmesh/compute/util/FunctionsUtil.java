@@ -244,10 +244,12 @@ public class FunctionsUtil {
 
         V1alpha1FunctionSpecPodResources v1alpha1FunctionSpecResources = new V1alpha1FunctionSpecPodResources();
 
-        double cpu = functionConfig.getResources() != null &&
-                functionConfig.getResources().getCpu() != 0 ? functionConfig.getResources().getCpu() : 1;
-        long ramRequest = functionConfig.getResources() != null &&
-                functionConfig.getResources().getRam() != 0 ? functionConfig.getResources().getRam() : 1073741824;
+        Resources resources =
+                CommonUtil.mergeWithDefault(worker.getMeshWorkerServiceCustomConfig().getDefaultResources(),
+                        functionConfig.getResources());
+
+        double cpu = resources.getCpu();
+        long ramRequest = resources.getRam();
 
         Map<String, Object> limits = new HashMap<>();
         Map<String, Object> requests = new HashMap<>();
@@ -489,7 +491,7 @@ public class FunctionsUtil {
         if (v1alpha1FunctionSpecInput.getSourceSpecs() != null) {
             for (Map.Entry<String, V1alpha1FunctionSpecInputSourceSpecs> source :
                     v1alpha1FunctionSpecInput.getSourceSpecs()
-                    .entrySet()) {
+                            .entrySet()) {
                 String topic = source.getKey();
                 V1alpha1FunctionSpecInputSourceSpecs sourceSpecs = source.getValue();
                 ConsumerConfig consumerConfig = consumerConfigMap.getOrDefault(topic, new ConsumerConfig());

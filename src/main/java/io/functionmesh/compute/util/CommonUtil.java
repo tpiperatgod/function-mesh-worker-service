@@ -47,6 +47,7 @@ import org.apache.logging.log4j.util.Strings;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.common.functions.FunctionConfig;
+import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
 import org.apache.pulsar.common.policies.data.FunctionInstanceStatsDataImpl;
 import org.apache.pulsar.common.policies.data.FunctionInstanceStatsImpl;
@@ -387,5 +388,18 @@ public class CommonUtil {
         functionInstanceStatsData.setUserMetrics(statsDataMap);
 
         functionInstanceStats.setMetrics(functionInstanceStatsData);
+    }
+
+    public static Resources mergeWithDefault(Resources defaultResources, Resources resources) {
+
+        if (resources == null) {
+            return defaultResources;
+        }
+
+        double cpu = resources.getCpu() == null ? defaultResources.getCpu() : resources.getCpu();
+        long ram = resources.getRam() == null ? defaultResources.getRam() : resources.getRam();
+        long disk = resources.getDisk() == null ? defaultResources.getDisk() : resources.getDisk();
+
+        return new Resources(cpu, ram, disk);
     }
 }

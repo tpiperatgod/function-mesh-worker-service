@@ -37,8 +37,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.functions.runtime.RuntimeUtils;
 import org.apache.pulsar.functions.worker.WorkerConfig;
+import org.junit.Assert;
 import org.junit.Test;
 
 @Slf4j
@@ -140,5 +142,9 @@ public class WorkerConfigTest {
         assertEquals("init", sinkSpecPodInitContainers.get(0).getName());
         assertEquals("streamnative/init:latest", sinkSpecPodInitContainers.get(0).getImage());
         assertEquals(cmds, sinkSpecPodInitContainers.get(0).getCommand());
+
+        Resources resources = customConfig.getDefaultResources();
+        assertEquals(2, resources.getCpu(), 0.1);
+        assertEquals(17179869184L, resources.getRam().longValue());
     }
 }
