@@ -280,10 +280,12 @@ public class SinksUtil {
             v1alpha1SinkSpec.setMaxReplicas(customRuntimeOptions.getMaxReplicas());
         }
 
-        double cpu = sinkConfig.getResources() != null &&
-                sinkConfig.getResources().getCpu() != 0 ? sinkConfig.getResources().getCpu() : 1;
-        long ramRequest = sinkConfig.getResources() != null &&
-                sinkConfig.getResources().getRam() != 0 ? sinkConfig.getResources().getRam() : 1073741824;
+        Resources resources =
+                CommonUtil.mergeWithDefault(worker.getMeshWorkerServiceCustomConfig().getDefaultResources(),
+                        sinkConfig.getResources());
+
+        double cpu = resources.getCpu();
+        long ramRequest = resources.getRam();
 
         Map<String, Object> limits = new HashMap<>();
         Map<String, Object> requests = new HashMap<>();

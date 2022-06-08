@@ -41,6 +41,7 @@ import java.util.Map;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.apache.pulsar.common.configuration.FieldContext;
+import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.util.ObjectMapperFactory;
 
 @Data
@@ -182,6 +183,13 @@ public class MeshWorkerServiceCustomConfig {
     )
     protected String jobNamespace;
 
+    @FieldContext(
+            doc = "The default resources for each function instance, if not specified, it will use the default "
+                    + "resources (cpu: 1 core, ram: 1GB, disk: 10GB). Available configs are "
+                    + "(cpu: in cores, ram: in bytes, disk: in bytes)."
+    )
+    protected Resources defaultResources;
+
     public List<V1alpha1SinkSpecPodVolumes> asV1alpha1SinkSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SinkSpecPodVolumes>> typeRef
@@ -297,5 +305,12 @@ public class MeshWorkerServiceCustomConfig {
         };
         String j = objectMapper.writeValueAsString(functionInitContainers);
         return objectMapper.readValue(j, typeRef);
+    }
+
+    public Resources getDefaultResources() {
+        if (defaultResources == null) {
+            defaultResources = Resources.getDefaultResources();
+        }
+        return defaultResources;
     }
 }
