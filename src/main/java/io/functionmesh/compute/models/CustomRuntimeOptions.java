@@ -18,7 +18,7 @@
  */
 package io.functionmesh.compute.models;
 
-import io.functionmesh.compute.annotation.Trusted;
+import io.functionmesh.compute.annotation.TrustedModeOnly;
 import lombok.Data;
 
 @Data
@@ -27,8 +27,10 @@ public class CustomRuntimeOptions {
     private String inputTypeClassName;
     private String outputTypeClassName;
     private int maxReplicas;
+
+    @TrustedModeOnly
     private String serviceAccountName;
 
-    @Trusted
+    @TrustedModeOnly
     private String runnerImage;
 }

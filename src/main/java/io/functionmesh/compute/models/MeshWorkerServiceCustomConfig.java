@@ -90,6 +90,7 @@ public class MeshWorkerServiceCustomConfig {
     @FieldContext(
             doc = "if allow user to change the service account name with custom-runtime-options"
     )
+    @Deprecated
     protected boolean allowUserDefinedServiceAccountName = false;
 
     @FieldContext(
@@ -191,7 +192,9 @@ public class MeshWorkerServiceCustomConfig {
     protected Resources defaultResources;
 
     @FieldContext(
-            doc = "Enable the trusted mode, by default it is false"
+            doc = "Enable the trusted mode, by default it is false. With trusted mode enabled, "
+                    + "the mesh worker service will allow user to override some of the default configs across the cluster. "
+                    + "For example, with trusted mode, user can submit the function running on a customized runner image."
     )
     protected boolean enableTrustedMode = false;
 
