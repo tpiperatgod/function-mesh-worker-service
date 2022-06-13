@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -64,8 +64,9 @@ import org.apache.pulsar.common.policies.data.FunctionStatsImpl;
 import org.apache.pulsar.common.policies.data.TenantInfo;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.Function;
-import org.apache.pulsar.functions.proto.InstanceCommunication;
+import org.apache.pulsar.functions.proto.InstanceCommunication.MetricsData;
 import org.apache.pulsar.functions.proto.InstanceControlGrpc;
+import org.apache.pulsar.functions.proto.InstanceControlGrpc.InstanceControlFutureStub;
 import org.apache.pulsar.functions.utils.ComponentTypeUtils;
 import org.apache.pulsar.functions.worker.WorkerService;
 import org.apache.pulsar.functions.worker.service.api.Component;
@@ -74,12 +75,12 @@ import org.apache.pulsar.functions.worker.service.api.Component;
 public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.KubernetesObject,
         K extends io.kubernetes.client.common.KubernetesListObject> implements Component<MeshWorkerService> {
 
-    final static String API_GROUP = "compute.functionmesh.io";
+    static final String API_GROUP = "compute.functionmesh.io";
     protected final Supplier<MeshWorkerService> meshWorkerServiceSupplier;
     protected final Function.FunctionDetails.ComponentType componentType;
-    protected String API_VERSION = "v1alpha1";
-    protected String API_KIND = "Function";
-    protected String API_PLURAL = "functions";
+    protected String apiVersion = "v1alpha1";
+    protected String apiKind = "Function";
+    protected String apiPlural = "functions";
     @Getter
     protected GenericKubernetesApi<T, K> resourceApi;
 
@@ -107,7 +108,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                                    final String componentName,
                                    final String clientRole,
                                    AuthenticationDataHttps clientAuthenticationDataHttps) {
-        this.validateGetInfoRequestParams(tenant, namespace, componentName, API_KIND);
+        this.validateGetInfoRequestParams(tenant, namespace, componentName, apiKind);
 
         this.validatePermission(tenant,
                 namespace,
@@ -119,9 +120,9 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             String hashName = CommonUtil.createObjectName(clusterName, tenant, namespace, componentName);
             Call deleteObjectCall = worker().getCustomObjectsApi().deleteNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VERSION,
+                    apiVersion,
                     worker().getJobNamespace(),
-                    API_PLURAL,
+                    apiPlural,
                     hashName,
                     null,
                     null,
@@ -143,7 +144,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                 Call deleteAuthSecretCall = worker().getCoreV1Api()
                         .deleteNamespacedSecretCall(
                                 KubernetesUtils.getUniqueSecretName(
-                                        API_KIND.toLowerCase(),
+                                        apiKind.toLowerCase(),
                                         "auth",
                                         DigestUtils.sha256Hex(
                                                 KubernetesUtils.getSecretName(
@@ -163,7 +164,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                 Call deleteTlsSecretCall = worker().getCoreV1Api()
                         .deleteNamespacedSecretCall(
                                 KubernetesUtils.getUniqueSecretName(
-                                        API_KIND.toLowerCase(),
+                                        apiKind.toLowerCase(),
                                         "tls",
                                         DigestUtils.sha256Hex(
                                                 KubernetesUtils.getSecretName(
@@ -180,12 +181,12 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                 executeCall(deleteTlsSecretCall, null);
             }
         } catch (Exception e) {
-            log.error("deregister {}/{}/{} {} failed", tenant, namespace, componentName, API_PLURAL, e);
+            log.error("deregister {}/{}/{} {} failed", tenant, namespace, componentName, apiPlural, e);
             throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
-    public <t> t executeCall(Call call, Class<t> c) throws Exception {
+    public <R> R executeCall(Call call, Class<R> c) throws Exception {
         Response response;
         response = call.execute();
         if (response.isSuccessful() && response.body() != null) {
@@ -333,7 +334,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                                                                    final String instanceId,
                                                                    final URI uri,
                                                                    final String clientRole,
-                                                                   final AuthenticationDataSource clientAuthenticationDataHttps) {
+                                                                   final AuthenticationDataSource
+                                                                           clientAuthenticationDataHttps) {
         return new FunctionInstanceStatsDataImpl();
     }
 
@@ -361,8 +363,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             labelSelector = getCustomLabelClaimsSelector(cluster, tenant, namespace);
             Call call = worker().getCustomObjectsApi().listNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VERSION,
-                    worker().getJobNamespace(), API_PLURAL,
+                    apiVersion,
+                    worker().getJobNamespace(), apiPlural,
                     "false",
                     null,
                     null,
@@ -600,14 +602,14 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
 
     abstract void validateResourceObject(T obj) throws IllegalArgumentException;
 
-    public Set<CompletableFuture<InstanceCommunication.MetricsData>> fetchStatsFromGRPC(List<V1Pod> pods,
-                                                                                        String subdomain,
-                                                                                        String statefulSetName,
-                                                                                        String nameSpaceName,
-                                                                                        List<FunctionInstanceStatsImpl> functionInstanceStatsList,
-                                                                                        ManagedChannel[] channel,
-                                                                                        InstanceControlGrpc.InstanceControlFutureStub[] stub) {
-        Set<CompletableFuture<InstanceCommunication.MetricsData>> completableFutureSet = new HashSet<>();
+    public Set<CompletableFuture<MetricsData>> fetchStatsFromGRPC(List<V1Pod> pods,
+                                                                  String subdomain,
+                                                                  String statefulSetName,
+                                                                  String nameSpaceName,
+                                                                  List<FunctionInstanceStatsImpl> statsList,
+                                                                  ManagedChannel[] channel,
+                                                                  InstanceControlFutureStub[] stub) {
+        Set<CompletableFuture<MetricsData>> completableFutureSet = new HashSet<>();
         pods.forEach(pod -> {
             String podName = KubernetesUtils.getPodName(pod);
             int shardId = CommonUtil.getShardIdFromPodName(podName);
@@ -618,7 +620,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                 return;
             }
             final FunctionInstanceStatsImpl functionInstanceStats =
-                    functionInstanceStatsList.stream().filter(v -> v.getInstanceId() == shardId).findFirst()
+                    statsList.stream().filter(v -> v.getInstanceId() == shardId).findFirst()
                             .orElse(null);
             if (functionInstanceStats != null) {
                 // get status from grpc
@@ -628,7 +630,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                             .build();
                     stub[podIndex] = InstanceControlGrpc.newFutureStub(channel[podIndex]);
                 }
-                CompletableFuture<InstanceCommunication.MetricsData> future =
+                CompletableFuture<MetricsData> future =
                         CommonUtil.getFunctionMetricsAsync(stub[podIndex]);
                 future.whenComplete((fs, e) -> {
                     if (channel[podIndex] != null) {

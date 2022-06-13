@@ -200,27 +200,24 @@ public class MeshWorkerServiceCustomConfig {
 
     public List<V1alpha1SinkSpecPodVolumes> asV1alpha1SinkSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1SinkSpecPodVolumes>> typeRef
-                = new TypeReference<List<V1alpha1SinkSpecPodVolumes>>() {
-        };
+        TypeReference<List<V1alpha1SinkSpecPodVolumes>> typeRef =
+                new TypeReference<List<V1alpha1SinkSpecPodVolumes>>() {};
         String j = objectMapper.writeValueAsString(volumes);
         return objectMapper.readValue(j, typeRef);
     }
 
     public List<V1alpha1SourceSpecPodVolumes> asV1alpha1SourceSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1SourceSpecPodVolumes>> typeRef
-                = new TypeReference<List<V1alpha1SourceSpecPodVolumes>>() {
-        };
+        TypeReference<List<V1alpha1SourceSpecPodVolumes>> typeRef =
+                new TypeReference<List<V1alpha1SourceSpecPodVolumes>>() {};
         String j = objectMapper.writeValueAsString(volumes);
         return objectMapper.readValue(j, typeRef);
     }
 
     public List<V1alpha1FunctionSpecPodVolumes> asV1alpha1FunctionSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1FunctionSpecPodVolumes>> typeRef
-                = new TypeReference<List<V1alpha1FunctionSpecPodVolumes>>() {
-        };
+        TypeReference<List<V1alpha1FunctionSpecPodVolumes>> typeRef =
+                new TypeReference<List<V1alpha1FunctionSpecPodVolumes>>() {};
         String j = objectMapper.writeValueAsString(volumes);
         return objectMapper.readValue(j, typeRef);
     }
@@ -228,9 +225,8 @@ public class MeshWorkerServiceCustomConfig {
     public List<V1alpha1SinkSpecPodVolumeMounts> asV1alpha1SinkSpecPodVolumeMountsList()
             throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1SinkSpecPodVolumeMounts>> typeRef
-                = new TypeReference<List<V1alpha1SinkSpecPodVolumeMounts>>() {
-        };
+        TypeReference<List<V1alpha1SinkSpecPodVolumeMounts>> typeRef =
+                new TypeReference<List<V1alpha1SinkSpecPodVolumeMounts>>() {};
         String j = objectMapper.writeValueAsString(volumeMounts);
         return objectMapper.readValue(j, typeRef);
     }
@@ -238,9 +234,8 @@ public class MeshWorkerServiceCustomConfig {
     public List<V1alpha1SourceSpecPodVolumeMounts> asV1alpha1SourceSpecPodVolumeMountsList()
             throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1SourceSpecPodVolumeMounts>> typeRef
-                = new TypeReference<List<V1alpha1SourceSpecPodVolumeMounts>>() {
-        };
+        TypeReference<List<V1alpha1SourceSpecPodVolumeMounts>> typeRef =
+                new TypeReference<List<V1alpha1SourceSpecPodVolumeMounts>>() {};
         String j = objectMapper.writeValueAsString(volumeMounts);
         return objectMapper.readValue(j, typeRef);
     }
@@ -248,9 +243,8 @@ public class MeshWorkerServiceCustomConfig {
     public List<V1alpha1FunctionSpecPodVolumeMounts> asV1alpha1FunctionSpecPodVolumeMounts()
             throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1FunctionSpecPodVolumeMounts>> typeRef
-                = new TypeReference<List<V1alpha1FunctionSpecPodVolumeMounts>>() {
-        };
+        TypeReference<List<V1alpha1FunctionSpecPodVolumeMounts>> typeRef =
+                new TypeReference<List<V1alpha1FunctionSpecPodVolumeMounts>>() {};
         String j = objectMapper.writeValueAsString(volumeMounts);
         return objectMapper.readValue(j, typeRef);
     }
@@ -258,9 +252,8 @@ public class MeshWorkerServiceCustomConfig {
     public List<V1alpha1FunctionSpecPodImagePullSecrets> asV1alpha1FunctionSpecPodImagePullSecrets()
             throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1FunctionSpecPodImagePullSecrets>> typeRef
-                = new TypeReference<List<V1alpha1FunctionSpecPodImagePullSecrets>>() {
-        };
+        TypeReference<List<V1alpha1FunctionSpecPodImagePullSecrets>> typeRef =
+                new TypeReference<List<V1alpha1FunctionSpecPodImagePullSecrets>>() {};
         String j = objectMapper.writeValueAsString(imagePullSecrets);
         return objectMapper.readValue(j, typeRef);
     }
@@ -268,9 +261,8 @@ public class MeshWorkerServiceCustomConfig {
     public List<V1alpha1SinkSpecPodImagePullSecrets> asV1alpha1SinkSpecPodImagePullSecrets()
             throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1SinkSpecPodImagePullSecrets>> typeRef
-                = new TypeReference<List<V1alpha1SinkSpecPodImagePullSecrets>>() {
-        };
+        TypeReference<List<V1alpha1SinkSpecPodImagePullSecrets>> typeRef =
+                new TypeReference<List<V1alpha1SinkSpecPodImagePullSecrets>>() {};
         String j = objectMapper.writeValueAsString(imagePullSecrets);
         return objectMapper.readValue(j, typeRef);
     }
@@ -278,9 +270,8 @@ public class MeshWorkerServiceCustomConfig {
     public List<V1alpha1SourceSpecPodImagePullSecrets> asV1alpha1SourceSpecPodImagePullSecrets()
             throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1SourceSpecPodImagePullSecrets>> typeRef
-                = new TypeReference<List<V1alpha1SourceSpecPodImagePullSecrets>>() {
-        };
+        TypeReference<List<V1alpha1SourceSpecPodImagePullSecrets>> typeRef =
+                new TypeReference<List<V1alpha1SourceSpecPodImagePullSecrets>>() {};
         String j = objectMapper.writeValueAsString(imagePullSecrets);
         return objectMapper.readValue(j, typeRef);
     }
@@ -288,9 +279,8 @@ public class MeshWorkerServiceCustomConfig {
     public List<V1alpha1FunctionSpecPodInitContainers> asV1alpha1FunctionSpecPodInitContainers()
             throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1FunctionSpecPodInitContainers>> typeRef
-                = new TypeReference<List<V1alpha1FunctionSpecPodInitContainers>>() {
-        };
+        TypeReference<List<V1alpha1FunctionSpecPodInitContainers>> typeRef =
+                new TypeReference<List<V1alpha1FunctionSpecPodInitContainers>>() {};
         String j = objectMapper.writeValueAsString(functionInitContainers);
         return objectMapper.readValue(j, typeRef);
     }
@@ -298,9 +288,8 @@ public class MeshWorkerServiceCustomConfig {
     public List<V1alpha1SourceSpecPodInitContainers> asV1alpha1SourceSpecPodInitContainers()
             throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1SourceSpecPodInitContainers>> typeRef
-                = new TypeReference<List<V1alpha1SourceSpecPodInitContainers>>() {
-        };
+        TypeReference<List<V1alpha1SourceSpecPodInitContainers>> typeRef =
+                new TypeReference<List<V1alpha1SourceSpecPodInitContainers>>() {};
         String j = objectMapper.writeValueAsString(sourceInitContainers);
         return objectMapper.readValue(j, typeRef);
     }
@@ -308,9 +297,8 @@ public class MeshWorkerServiceCustomConfig {
     public List<V1alpha1SinkSpecPodInitContainers> asV1alpha1SinkSpecPodInitContainers()
             throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
-        TypeReference<List<V1alpha1SinkSpecPodInitContainers>> typeRef
-                = new TypeReference<List<V1alpha1SinkSpecPodInitContainers>>() {
-        };
+        TypeReference<List<V1alpha1SinkSpecPodInitContainers>> typeRef =
+                new TypeReference<List<V1alpha1SinkSpecPodInitContainers>>() {};
         String j = objectMapper.writeValueAsString(functionInitContainers);
         return objectMapper.readValue(j, typeRef);
     }

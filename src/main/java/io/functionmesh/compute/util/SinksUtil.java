@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -59,7 +59,7 @@ import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.io.SinkConfig;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
-import org.apache.pulsar.common.policies.data.SinkStatus;
+import org.apache.pulsar.common.policies.data.SinkStatus.SinkInstanceStatus.SinkInstanceStatusData;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.Function;
 import org.apache.pulsar.functions.proto.InstanceCommunication;
@@ -67,8 +67,8 @@ import org.apache.pulsar.functions.utils.SinkConfigUtils;
 
 @Slf4j
 public class SinksUtil {
-    public static final String cpuKey = "cpu";
-    public static final String memoryKey = "memory";
+    public static final String CPU_KEY = "cpu";
+    public static final String MEMORY_KEY = "memory";
 
     public static V1alpha1Sink createV1alpha1SkinFromSinkConfig(String kind, String group, String version
             , String sinkName, String sinkPkgUrl, InputStream uploadedInputStream, SinkConfig sinkConfig,
@@ -296,11 +296,11 @@ public class SinksUtil {
         long padding = Math.round(ramRequest * (10.0 / 100.0)); // percentMemoryPadding is 0.1
         long ramWithPadding = ramRequest + padding;
 
-        limits.put(cpuKey, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
-        limits.put(memoryKey, Quantity.fromString(Long.toString(ramWithPadding)).toSuffixedString());
+        limits.put(CPU_KEY, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
+        limits.put(MEMORY_KEY, Quantity.fromString(Long.toString(ramWithPadding)).toSuffixedString());
 
-        requests.put(cpuKey, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
-        requests.put(memoryKey, Quantity.fromString(Long.toString(ramRequest)).toSuffixedString());
+        requests.put(CPU_KEY, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
+        requests.put(MEMORY_KEY, Quantity.fromString(Long.toString(ramRequest)).toSuffixedString());
 
         V1alpha1SinkSpecPodResources v1alpha1SinkSpecResources = new V1alpha1SinkSpecPodResources();
         v1alpha1SinkSpecResources.setLimits(limits);
@@ -488,8 +488,8 @@ public class SinksUtil {
 
         Resources resources = new Resources();
         Map<String, Object> sinkResources = v1alpha1SinkSpec.getResources().getRequests();
-        Quantity cpuQuantity = Quantity.fromString((String) sinkResources.get(cpuKey));
-        Quantity memoryQuantity = Quantity.fromString((String) sinkResources.get(memoryKey));
+        Quantity cpuQuantity = Quantity.fromString((String) sinkResources.get(CPU_KEY));
+        Quantity memoryQuantity = Quantity.fromString((String) sinkResources.get(MEMORY_KEY));
         resources.setCpu(cpuQuantity.getNumber().doubleValue());
         resources.setRam(memoryQuantity.getNumber().longValue());
         sinkConfig.setResources(resources);
@@ -514,7 +514,7 @@ public class SinksUtil {
     }
 
     public static void convertFunctionStatusToInstanceStatusData(InstanceCommunication.FunctionStatus functionStatus,
-                                                                 SinkStatus.SinkInstanceStatus.SinkInstanceStatusData sinkInstanceStatusData) {
+                                                                 SinkInstanceStatusData sinkInstanceStatusData) {
         if (functionStatus == null || sinkInstanceStatusData == null) {
             return;
         }

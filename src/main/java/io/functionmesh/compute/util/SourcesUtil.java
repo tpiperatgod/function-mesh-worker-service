@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -57,7 +57,7 @@ import org.apache.pulsar.common.functions.ProducerConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.io.SourceConfig;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
-import org.apache.pulsar.common.policies.data.SourceStatus;
+import org.apache.pulsar.common.policies.data.SourceStatus.SourceInstanceStatus.SourceInstanceStatusData;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.Function;
 import org.apache.pulsar.functions.proto.InstanceCommunication;
@@ -65,8 +65,8 @@ import org.apache.pulsar.functions.utils.SourceConfigUtils;
 
 @Slf4j
 public class SourcesUtil {
-    public final static String cpuKey = "cpu";
-    public final static String memoryKey = "memory";
+    public static final String CPU_KEY = "cpu";
+    public static final String MEMORY_KEY = "memory";
 
     public static V1alpha1Source createV1alpha1SourceFromSourceConfig(String kind, String group, String version,
                                                                       String sourceName, String sourcePkgUrl,
@@ -188,8 +188,8 @@ public class SourcesUtil {
             v1alpha1SourceSpec.setForwardSourceMessageProperty(true);
         }
         // process ProducerConf
-        V1alpha1SourceSpecOutputProducerConf v1alpha1SourceSpecOutputProducerConf
-                = new V1alpha1SourceSpecOutputProducerConf();
+        V1alpha1SourceSpecOutputProducerConf v1alpha1SourceSpecOutputProducerConf =
+                new V1alpha1SourceSpecOutputProducerConf();
         Function.ProducerSpec producerSpec = functionDetails.getSink().getProducerSpec();
         if (Strings.isNotEmpty(producerSpec.getBatchBuilder())) {
             v1alpha1SourceSpecOutputProducerConf.setBatchBuilder(producerSpec.getBatchBuilder());
@@ -256,11 +256,11 @@ public class SourcesUtil {
         long padding = Math.round(ramRequest * (10.0 / 100.0)); // percentMemoryPadding is 0.1
         long ramWithPadding = ramRequest + padding;
 
-        limits.put(cpuKey, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
-        limits.put(memoryKey, Quantity.fromString(Long.toString(ramWithPadding)).toSuffixedString());
+        limits.put(CPU_KEY, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
+        limits.put(MEMORY_KEY, Quantity.fromString(Long.toString(ramWithPadding)).toSuffixedString());
 
-        requests.put(cpuKey, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
-        requests.put(memoryKey, Quantity.fromString(Long.toString(ramRequest)).toSuffixedString());
+        requests.put(CPU_KEY, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
+        requests.put(MEMORY_KEY, Quantity.fromString(Long.toString(ramRequest)).toSuffixedString());
 
         V1alpha1SourceSpecPodResources v1alpha1SourceSpecResources = new V1alpha1SourceSpecPodResources();
         v1alpha1SourceSpecResources.setLimits(limits);
@@ -403,8 +403,8 @@ public class SourcesUtil {
 
         Resources resources = new Resources();
         Map<String, Object> sourceResource = v1alpha1SourceSpec.getResources().getRequests();
-        Quantity cpuQuantity = Quantity.fromString((String) sourceResource.get(cpuKey));
-        Quantity memoryQuantity = Quantity.fromString((String) sourceResource.get(memoryKey));
+        Quantity cpuQuantity = Quantity.fromString((String) sourceResource.get(CPU_KEY));
+        Quantity memoryQuantity = Quantity.fromString((String) sourceResource.get(MEMORY_KEY));
         resources.setCpu(cpuQuantity.getNumber().doubleValue());
         resources.setRam(memoryQuantity.getNumber().longValue());
         sourceConfig.setResources(resources);
@@ -430,7 +430,7 @@ public class SourcesUtil {
     }
 
     public static void convertFunctionStatusToInstanceStatusData(InstanceCommunication.FunctionStatus functionStatus,
-                                                                 SourceStatus.SourceInstanceStatus.SourceInstanceStatusData instanceStatusData) {
+                                                                 SourceInstanceStatusData instanceStatusData) {
         if (functionStatus == null || instanceStatusData == null) {
             return;
         }
@@ -442,8 +442,7 @@ public class SourcesUtil {
         List<ExceptionInformation> sourceExceptionInformationList = new LinkedList<>();
         for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
                 functionStatus.getLatestSourceExceptionsList()) {
-            ExceptionInformation exceptionInformation
-                    = new ExceptionInformation();
+            ExceptionInformation exceptionInformation = new ExceptionInformation();
             exceptionInformation.setTimestampMs(exceptionEntry.getMsSinceEpoch());
             exceptionInformation.setExceptionString(exceptionEntry.getExceptionString());
             sourceExceptionInformationList.add(exceptionInformation);
@@ -456,8 +455,7 @@ public class SourcesUtil {
         List<ExceptionInformation> systemExceptionInformationList = new LinkedList<>();
         for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
                 functionStatus.getLatestUserExceptionsList()) {
-            ExceptionInformation exceptionInformation
-                    = new ExceptionInformation();
+            ExceptionInformation exceptionInformation = new ExceptionInformation();
             exceptionInformation.setTimestampMs(exceptionEntry.getMsSinceEpoch());
             exceptionInformation.setExceptionString(exceptionEntry.getExceptionString());
             systemExceptionInformationList.add(exceptionInformation);
@@ -465,8 +463,7 @@ public class SourcesUtil {
 
         for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
                 functionStatus.getLatestSystemExceptionsList()) {
-            ExceptionInformation exceptionInformation
-                    = new ExceptionInformation();
+            ExceptionInformation exceptionInformation = new ExceptionInformation();
             exceptionInformation.setTimestampMs(exceptionEntry.getMsSinceEpoch());
             exceptionInformation.setExceptionString(exceptionEntry.getExceptionString());
             systemExceptionInformationList.add(exceptionInformation);
@@ -474,8 +471,7 @@ public class SourcesUtil {
 
         for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
                 functionStatus.getLatestSinkExceptionsList()) {
-            ExceptionInformation exceptionInformation
-                    = new ExceptionInformation();
+            ExceptionInformation exceptionInformation = new ExceptionInformation();
             exceptionInformation.setTimestampMs(exceptionEntry.getMsSinceEpoch());
             exceptionInformation.setExceptionString(exceptionEntry.getExceptionString());
             systemExceptionInformationList.add(exceptionInformation);

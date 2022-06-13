@@ -218,13 +218,13 @@ public class KubernetesUtils {
     }
 
     public static boolean isPodRunning(V1Pod pod) {
-		if (pod == null) {
-			return false;
-		}
+        if (pod == null) {
+            return false;
+        }
         V1PodStatus podStatus = pod.getStatus();
-		if (podStatus == null) {
-			return false;
-		}
+        if (podStatus == null) {
+            return false;
+        }
         return podStatus.getPhase() != null && podStatus.getPhase().equals("Running")
                 && podStatus.getContainerStatuses() != null
                 && podStatus.getContainerStatuses().stream().allMatch(V1ContainerStatus::getReady);
@@ -232,9 +232,9 @@ public class KubernetesUtils {
 
     public static String getPodName(V1Pod pod) {
         String podName = "";
-		if (pod == null) {
-			return podName;
-		}
+        if (pod == null) {
+            return podName;
+        }
         if (pod.getMetadata() != null && pod.getMetadata().getName() != null) {
             podName = pod.getMetadata().getName();
         }

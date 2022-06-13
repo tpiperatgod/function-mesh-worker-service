@@ -23,7 +23,7 @@ import org.junit.Test;
 
 public class FunctionMeshConnectorDefinitionTest {
     @Test
-    public void TestFunctionMeshConnectorDefinition() {
+    public void testFunctionMeshConnectorDefinition() {
         FunctionMeshConnectorDefinition functionMeshConnectorDefinition = new FunctionMeshConnectorDefinition();
         functionMeshConnectorDefinition.setId("pulsar-io-test");
         functionMeshConnectorDefinition.setName("test");
@@ -35,7 +35,8 @@ public class FunctionMeshConnectorDefinitionTest {
         Assert.assertEquals(functionMeshConnectorDefinition.getVersion(), "2.7.0");
         Assert.assertEquals(functionMeshConnectorDefinition.getImageTag(), "2.7.0");
         Assert.assertEquals(functionMeshConnectorDefinition.getImageRepository(), "streamnative/pulsar-io-test");
-        Assert.assertEquals(functionMeshConnectorDefinition.toFullImageURL(), "docker.io/streamnative/pulsar-io-test:2.7.0");
+        Assert.assertEquals(functionMeshConnectorDefinition.toFullImageURL(),
+                "docker.io/streamnative/pulsar-io-test:2.7.0");
         Assert.assertEquals(functionMeshConnectorDefinition.getJar(), "connectors/pulsar-io-test-2.7.0.nar");
     }
 }

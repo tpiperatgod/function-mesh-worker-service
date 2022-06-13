@@ -158,7 +158,8 @@ public class MeshWorkerService implements WorkerService {
         if (this.brokerConfig != null
                 && this.meshWorkerServiceCustomConfig.isUploadEnabled()
                 && !this.brokerConfig.isEnablePackagesManagement()) {
-            throw new RuntimeException("uploadEnabled requires enablePackagesManagement to be enabled from broker's configuration");
+            throw new RuntimeException("uploadEnabled requires enablePackagesManagement"
+                    + " to be enabled from broker's configuration");
         }
     }
 
