@@ -674,6 +674,9 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                 }
             }
         }
+        if (worker().getMeshWorkerServiceCustomConfig().isEnableTrustedMode()) {
+            SourcesUtil.mergeTrustedConfigs(sourceConfig, v1alpha1Source);
+        }
     }
 
     @Override

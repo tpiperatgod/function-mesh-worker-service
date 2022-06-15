@@ -25,9 +25,11 @@ import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPod;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpec;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecJava;
@@ -50,6 +52,7 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
+import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.ProducerConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.io.SourceConfig;
@@ -481,5 +484,19 @@ public class SourcesUtil {
 
         instanceStatusData.setNumWritten(functionStatus.getNumSuccessfullyProcessed());
         instanceStatusData.setLastReceivedTime(functionStatus.getLastInvocationTime());
+    }
+
+    public static void mergeTrustedConfigs(final SourceConfig sourceConfig, V1alpha1Source v1alpha1Source) {
+        CustomRuntimeOptions customRuntimeOptions =
+                CommonUtil.getCustomRuntimeOptions(sourceConfig.getCustomRuntimeOptions());
+        if (v1alpha1Source.getSpec().getPod() == null) {
+            v1alpha1Source.getSpec().setPod(new V1alpha1SourceSpecPod());
+        }
+        if (StringUtils.isNotEmpty(customRuntimeOptions.getRunnerImage())) {
+            v1alpha1Source.getSpec().setImage(customRuntimeOptions.getRunnerImage());
+        }
+        if (StringUtils.isNotEmpty(customRuntimeOptions.getServiceAccountName())) {
+            v1alpha1Source.getSpec().getPod().setServiceAccountName(customRuntimeOptions.getServiceAccountName());
+        }
     }
 }
