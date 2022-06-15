@@ -65,7 +65,7 @@ import org.apache.pulsar.common.functions.ProducerConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.functions.Utils;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
-import org.apache.pulsar.common.policies.data.FunctionStatus;
+import org.apache.pulsar.common.policies.data.FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData;
 import org.apache.pulsar.common.util.ClassLoaderUtils;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.Function;
@@ -75,9 +75,9 @@ import org.apache.pulsar.functions.utils.FunctionConfigUtils;
 
 @Slf4j
 public class FunctionsUtil {
-    public final static String cpuKey = "cpu";
-    public final static String memoryKey = "memory";
-    public final static String sourceKey = "source";
+    public static final String CPU_KEY = "cpu";
+    public static final String MEMORY_KEY = "memory";
+    public static final String SOURCE_KEY = "source";
 
 
     public static V1alpha1Function createV1alpha1FunctionFromFunctionConfig(String kind, String group, String version
@@ -195,8 +195,8 @@ public class FunctionsUtil {
             v1alpha1FunctionSpecOutput.setSinkSchemaType(functionDetails.getSink().getSchemaType());
         }
         // process ProducerConf
-        V1alpha1FunctionSpecOutputProducerConf v1alpha1FunctionSpecOutputProducerConf
-                = new V1alpha1FunctionSpecOutputProducerConf();
+        V1alpha1FunctionSpecOutputProducerConf v1alpha1FunctionSpecOutputProducerConf =
+                new V1alpha1FunctionSpecOutputProducerConf();
         Function.ProducerSpec producerSpec = functionDetails.getSink().getProducerSpec();
         if (Strings.isNotEmpty(producerSpec.getBatchBuilder())) {
             v1alpha1FunctionSpecOutputProducerConf.setBatchBuilder(producerSpec.getBatchBuilder());
@@ -257,11 +257,11 @@ public class FunctionsUtil {
         long padding = Math.round(ramRequest * (10.0 / 100.0)); // percentMemoryPadding is 0.1
         long ramWithPadding = ramRequest + padding;
 
-        limits.put(cpuKey, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
-        limits.put(memoryKey, Quantity.fromString(Long.toString(ramWithPadding)).toSuffixedString());
+        limits.put(CPU_KEY, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
+        limits.put(MEMORY_KEY, Quantity.fromString(Long.toString(ramWithPadding)).toSuffixedString());
 
-        requests.put(cpuKey, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
-        requests.put(memoryKey, Quantity.fromString(Long.toString(ramRequest)).toSuffixedString());
+        requests.put(CPU_KEY, Quantity.fromString(Double.toString(cpu)).toSuffixedString());
+        requests.put(MEMORY_KEY, Quantity.fromString(Long.toString(ramRequest)).toSuffixedString());
 
         v1alpha1FunctionSpecResources.setLimits(limits);
         v1alpha1FunctionSpecResources.setRequests(requests);
@@ -609,8 +609,8 @@ public class FunctionsUtil {
 
         Resources resources = new Resources();
         Map<String, Object> functionResource = v1alpha1FunctionSpec.getResources().getLimits();
-        Quantity cpuQuantity = Quantity.fromString((String) functionResource.get(cpuKey));
-        Quantity memoryQuantity = Quantity.fromString((String) functionResource.get(memoryKey));
+        Quantity cpuQuantity = Quantity.fromString((String) functionResource.get(CPU_KEY));
+        Quantity memoryQuantity = Quantity.fromString((String) functionResource.get(MEMORY_KEY));
         resources.setCpu(cpuQuantity.getNumber().doubleValue());
         resources.setRam(memoryQuantity.getNumber().longValue());
         functionConfig.setResources(resources);
@@ -626,16 +626,16 @@ public class FunctionsUtil {
     }
 
     public static void convertFunctionStatusToInstanceStatusData(InstanceCommunication.FunctionStatus functionStatus,
-                                                                 FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData functionInstanceStatusData) {
-        if (functionStatus == null || functionInstanceStatusData == null) {
+                                                                 FunctionInstanceStatusData statusData) {
+        if (functionStatus == null || statusData == null) {
             return;
         }
-        functionInstanceStatusData.setRunning(functionStatus.getRunning());
-        functionInstanceStatusData.setError(functionStatus.getFailureException());
-        functionInstanceStatusData.setNumRestarts(functionStatus.getNumRestarts());
-        functionInstanceStatusData.setNumReceived(functionStatus.getNumReceived());
-        functionInstanceStatusData.setNumSuccessfullyProcessed(functionStatus.getNumSuccessfullyProcessed());
-        functionInstanceStatusData.setNumUserExceptions(functionStatus.getNumUserExceptions());
+        statusData.setRunning(functionStatus.getRunning());
+        statusData.setError(functionStatus.getFailureException());
+        statusData.setNumRestarts(functionStatus.getNumRestarts());
+        statusData.setNumReceived(functionStatus.getNumReceived());
+        statusData.setNumSuccessfullyProcessed(functionStatus.getNumSuccessfullyProcessed());
+        statusData.setNumUserExceptions(functionStatus.getNumUserExceptions());
 
         List<ExceptionInformation> userExceptionInformationList = new LinkedList<>();
         for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
@@ -643,10 +643,10 @@ public class FunctionsUtil {
             ExceptionInformation exceptionInformation = getExceptionInformation(exceptionEntry);
             userExceptionInformationList.add(exceptionInformation);
         }
-        functionInstanceStatusData.setLatestUserExceptions(userExceptionInformationList);
+        statusData.setLatestUserExceptions(userExceptionInformationList);
 
         // For regular functions source/sink errors are system exceptions
-        functionInstanceStatusData.setNumSystemExceptions(functionStatus.getNumSystemExceptions()
+        statusData.setNumSystemExceptions(functionStatus.getNumSystemExceptions()
                 + functionStatus.getNumSourceExceptions() + functionStatus.getNumSinkExceptions());
         List<ExceptionInformation> systemExceptionInformationList = new LinkedList<>();
         for (InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry :
@@ -664,10 +664,10 @@ public class FunctionsUtil {
             ExceptionInformation exceptionInformation = getExceptionInformation(exceptionEntry);
             systemExceptionInformationList.add(exceptionInformation);
         }
-        functionInstanceStatusData.setLatestSystemExceptions(systemExceptionInformationList);
+        statusData.setLatestSystemExceptions(systemExceptionInformationList);
 
-        functionInstanceStatusData.setAverageLatency(functionStatus.getAverageLatency());
-        functionInstanceStatusData.setLastInvocationTime(functionStatus.getLastInvocationTime());
+        statusData.setAverageLatency(functionStatus.getAverageLatency());
+        statusData.setLastInvocationTime(functionStatus.getLastInvocationTime());
     }
 
     private static File downloadPackageFile(MeshWorkerService worker, String packageName)

@@ -19,11 +19,11 @@
 package io.functionmesh.compute.models;
 
 public class PackageMetadataProperties {
-    public final static String PROPERTY_TENANT = "tenant";
-    public final static String PROPERTY_NAMESPACE = "namespace";
-    public final static String PROPERTY_FUNCTION_NAME = "functionName";
-    public final static String PROPERTY_FILE_NAME = "fileName";
-    public final static String PROPERTY_FILE_SIZE = "fileSize";
-    public final static String PROPERTY_CHECKSUM = "checksum";
-    public final static String PROPERTY_MANAGED_BY_MESH_WORKER_SERVICE = "managedByMeshWorkerService";
+    public static final String PROPERTY_TENANT = "tenant";
+    public static final String PROPERTY_NAMESPACE = "namespace";
+    public static final String PROPERTY_FUNCTION_NAME = "functionName";
+    public static final String PROPERTY_FILE_NAME = "fileName";
+    public static final String PROPERTY_FILE_SIZE = "fileSize";
+    public static final String PROPERTY_CHECKSUM = "checksum";
+    public static final String PROPERTY_MANAGED_BY_MESH_WORKER_SERVICE = "managedByMeshWorkerService";
 }

@@ -64,6 +64,7 @@ import org.apache.pulsar.common.io.ConnectorDefinition;
 import org.apache.pulsar.common.io.SourceConfig;
 import org.apache.pulsar.common.policies.data.FunctionInstanceStatsImpl;
 import org.apache.pulsar.common.policies.data.SourceStatus;
+import org.apache.pulsar.common.policies.data.SourceStatus.SourceInstanceStatus.SourceInstanceStatusData;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.Function;
 import org.apache.pulsar.functions.proto.InstanceCommunication;
@@ -81,10 +82,10 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
 
     public SourcesImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier) {
         super(meshWorkerServiceSupplier, Function.FunctionDetails.ComponentType.SOURCE);
-        super.API_PLURAL = this.plural;
-        super.API_KIND = this.kind;
+        super.apiPlural = this.plural;
+        super.apiKind = this.kind;
         this.resourceApi = new GenericKubernetesApi<>(
-                V1alpha1Source.class, V1alpha1SourceList.class, API_GROUP, API_VERSION, API_PLURAL,
+                V1alpha1Source.class, V1alpha1SourceList.class, API_GROUP, apiVersion, apiPlural,
                 meshWorkerServiceSupplier.get().getApiClient());
     }
 
@@ -167,9 +168,9 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
         String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
         V1alpha1Source v1alpha1Source = SourcesUtil
                 .createV1alpha1SourceFromSourceConfig(
-                        API_KIND,
+                        apiKind,
                         API_GROUP,
-                        API_VERSION,
+                        apiVersion,
                         sourceName,
                         packageURL,
                         uploadedInputStream,
@@ -182,8 +183,8 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
             this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source,
                     clientAuthenticationDataHttps);
             Call call = worker().getCustomObjectsApi().createNamespacedCustomObjectCall(
-                    API_GROUP, API_VERSION, worker().getJobNamespace(),
-                    API_PLURAL,
+                    API_GROUP, apiVersion, worker().getJobNamespace(),
+                    apiPlural,
                     v1alpha1Source,
                     null,
                     null,
@@ -238,9 +239,9 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
             String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
             V1alpha1Source v1alpha1Source = SourcesUtil
                     .createV1alpha1SourceFromSourceConfig(
-                            API_KIND,
+                            apiKind,
                             API_GROUP,
-                            API_VERSION,
+                            apiVersion,
                             sourceName,
                             packageURL,
                             uploadedInputStream,
@@ -249,9 +250,9 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                             cluster, worker());
             Call getCall = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VERSION,
+                    apiVersion,
                     worker().getJobNamespace(),
-                    API_PLURAL,
+                    apiPlural,
                     v1alpha1Source.getMetadata().getName(),
                     null
             );
@@ -268,9 +269,9 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                     clientAuthenticationDataHttps);
             Call replaceCall = worker().getCustomObjectsApi().replaceNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VERSION,
+                    apiVersion,
                     worker().getJobNamespace(),
-                    API_PLURAL,
+                    apiPlural,
                     v1alpha1Source.getMetadata().getName(),
                     v1alpha1Source,
                     null,
@@ -302,8 +303,8 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
             String nameSpaceName = worker().getJobNamespace();
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    API_GROUP, API_VERSION, nameSpaceName,
-                    API_PLURAL, hashName, null);
+                    API_GROUP, apiVersion, nameSpaceName,
+                    apiPlural, hashName, null);
             V1alpha1Source v1alpha1Source = executeCall(call, V1alpha1Source.class);
             V1alpha1SourceStatus v1alpha1SourceStatus = v1alpha1Source.getStatus();
             if (v1alpha1SourceStatus == null) {
@@ -366,8 +367,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                     for (int i = 0; i < replicas; i++) {
                         SourceStatus.SourceInstanceStatus sourceInstanceStatus =
                                 new SourceStatus.SourceInstanceStatus();
-                        SourceStatus.SourceInstanceStatus.SourceInstanceStatusData sourceInstanceStatusData =
-                                new SourceStatus.SourceInstanceStatus.SourceInstanceStatusData();
+                        SourceInstanceStatusData sourceInstanceStatusData = new SourceInstanceStatusData();
                         sourceInstanceStatus.setInstanceId(i);
                         sourceInstanceStatus.setStatus(sourceInstanceStatusData);
                         sourceStatus.addInstance(sourceInstanceStatus);
@@ -418,8 +418,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                             }
                         }
                         if (sourceInstanceStatus != null) {
-                            SourceStatus.SourceInstanceStatus.SourceInstanceStatusData sourceInstanceStatusData =
-                                    sourceInstanceStatus.getStatus();
+                            SourceInstanceStatusData sourceInstanceStatusData = sourceInstanceStatus.getStatus();
                             V1PodStatus podStatus = pod.getStatus();
                             if (v1alpha1Source.getSpec() != null && StringUtils.isNotEmpty(
                                     v1alpha1Source.getSpec().getClusterName())) {
@@ -487,8 +486,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                             }
                         }
                         if (sourceInstanceStatus != null) {
-                            SourceStatus.SourceInstanceStatus.SourceInstanceStatusData sourceInstanceStatusData =
-                                    sourceInstanceStatus.getStatus();
+                            SourceInstanceStatusData sourceInstanceStatusData = sourceInstanceStatus.getStatus();
                             V1PodStatus podStatus = pod.getStatus();
                             if (podStatus != null) {
                                 List<V1ContainerStatus> containerStatuses = podStatus.getContainerStatuses();
@@ -544,31 +542,29 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
         return sourceStatus;
     }
 
-    public SourceStatus.SourceInstanceStatus.SourceInstanceStatusData getSourceInstanceStatus(final String tenant,
-                                                                                              final String namespace,
-                                                                                              final String sourceName,
-                                                                                              final String instanceId,
-                                                                                              final URI uri,
-                                                                                              final String clientRole,
-                                                                                              final AuthenticationDataSource clientAuthenticationDataHttps) {
+    public SourceInstanceStatusData getSourceInstanceStatus(final String tenant,
+                                                              final String namespace,
+                                                              final String sourceName,
+                                                              final String instanceId,
+                                                              final URI uri,
+                                                              final String clientRole,
+                                                              final AuthenticationDataSource dataSource) {
         validateSourceEnabled();
-        SourceStatus.SourceInstanceStatus.SourceInstanceStatusData sourceInstanceStatusData =
-                new SourceStatus.SourceInstanceStatus.SourceInstanceStatusData();
-        return sourceInstanceStatusData;
+        return new SourceInstanceStatusData();
     }
 
     public SourceConfig getSourceInfo(final String tenant,
                                       final String namespace,
                                       final String componentName) {
         validateSourceEnabled();
-        this.validateGetInfoRequestParams(tenant, namespace, componentName, API_KIND);
+        this.validateGetInfoRequestParams(tenant, namespace, componentName, apiKind);
         String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
         try {
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VERSION,
+                    apiVersion,
                     worker().getJobNamespace(),
-                    API_PLURAL,
+                    apiPlural,
                     hashName,
                     null
             );
@@ -576,7 +572,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
             V1alpha1Source v1alpha1Source = executeCall(call, V1alpha1Source.class);
             return SourcesUtil.createSourceConfigFromV1alpha1Source(tenant, namespace, componentName, v1alpha1Source);
         } catch (Exception e) {
-            log.error("Get source info {}/{}/{} {} failed", tenant, namespace, componentName, API_PLURAL, e);
+            log.error("Get source info {}/{}/{} {} failed", tenant, namespace, componentName, apiPlural, e);
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -641,12 +637,12 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                     if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
                             && !StringUtils.isEmpty(
                             worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
-                        String authSecretName = KubernetesUtils.upsertSecret(API_KIND.toLowerCase(), "auth",
+                        String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
                                 v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName, worker());
                         v1alpha1Source.getSpec().getPulsar().setAuthSecret(authSecretName);
                     }
                     if (worker().getWorkerConfig().getTlsEnabled()) {
-                        String tlsSecretName = KubernetesUtils.upsertSecret(API_KIND.toLowerCase(), "tls",
+                        String tlsSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "tls",
                                 v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName, worker());
                         v1alpha1Source.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
