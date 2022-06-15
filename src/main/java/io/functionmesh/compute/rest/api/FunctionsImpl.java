@@ -746,6 +746,9 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                 }
             }
         }
+        if (worker().getMeshWorkerServiceCustomConfig().isEnableTrustedMode()) {
+            FunctionsUtil.mergeTrustedConfigs(functionConfig, v1alpha1Function);
+        }
     }
 
     public V1StatefulSet getFunctionStatefulSet(V1alpha1Function v1alpha1Function) {

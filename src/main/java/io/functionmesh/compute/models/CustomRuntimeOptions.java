@@ -18,19 +18,19 @@
  */
 package io.functionmesh.compute.models;
 
+import io.functionmesh.compute.annotation.TrustedModeOnly;
 import lombok.Data;
 
 @Data
 public class CustomRuntimeOptions {
-    public final static String clusterNameKey = "clusterName";
-    public final static String inputTypeClassNameKey = "inputTypeClassName";
-    public final static String outputTypeClassNameKey = "outputTypeClassName";
-    public final static String maxReplicasKey = "maxReplicas";
-    public final static String serviceAccountNameKey = "serviceAccountName";
-
     private String clusterName;
     private String inputTypeClassName;
     private String outputTypeClassName;
     private int maxReplicas;
+
+    @TrustedModeOnly
     private String serviceAccountName;
+
+    @TrustedModeOnly
+    private String runnerImage;
 }
