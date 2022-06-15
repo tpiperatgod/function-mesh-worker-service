@@ -77,7 +77,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
     public FunctionsImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier) {
         super(meshWorkerServiceSupplier, Function.FunctionDetails.ComponentType.FUNCTION);
         this.resourceApi = new GenericKubernetesApi<>(
-                V1alpha1Function.class, V1alpha1FunctionList.class, API_GROUP, API_VERSION, API_PLURAL,
+                V1alpha1Function.class, V1alpha1FunctionList.class, API_GROUP, apiVersion, apiPlural,
                 meshWorkerServiceSupplier.get().getApiClient());
     }
 
@@ -111,7 +111,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
     }
 
     private void validateGetFunctionInfoRequestParams(String tenant, String namespace, String functionName) {
-        this.validateGetInfoRequestParams(tenant, namespace, functionName, API_KIND);
+        this.validateGetInfoRequestParams(tenant, namespace, functionName, apiKind);
     }
 
     private void validateFunctionEnabled() {
@@ -156,9 +156,9 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
 
         String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
         V1alpha1Function v1alpha1Function = FunctionsUtil.createV1alpha1FunctionFromFunctionConfig(
-                API_KIND,
+                apiKind,
                 API_GROUP,
-                API_VERSION,
+                apiVersion,
                 functionName,
                 packageURL,
                 functionConfig,
@@ -172,9 +172,9 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                     clientAuthenticationDataHttps);
             Call call = worker().getCustomObjectsApi().createNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VERSION,
+                    apiVersion,
                     worker().getJobNamespace(),
-                    API_PLURAL,
+                    apiPlural,
                     v1alpha1Function,
                     null,
                     null,
@@ -232,9 +232,9 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
         try {
             String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
             V1alpha1Function v1alpha1Function = FunctionsUtil.createV1alpha1FunctionFromFunctionConfig(
-                    API_KIND,
+                    apiKind,
                     API_GROUP,
-                    API_VERSION,
+                    apiVersion,
                     functionName,
                     packageURL,
                     functionConfig,
@@ -243,9 +243,9 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
             );
             Call getCall = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VERSION,
+                    apiVersion,
                     worker().getJobNamespace(),
-                    API_PLURAL,
+                    apiPlural,
                     v1alpha1Function.getMetadata().getName(),
                     null
             );
@@ -263,9 +263,9 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                     clientAuthenticationDataHttps);
             Call replaceCall = worker().getCustomObjectsApi().replaceNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VERSION,
+                    apiVersion,
                     worker().getJobNamespace(),
-                    API_PLURAL,
+                    apiPlural,
                     v1alpha1Function.getMetadata().getName(),
                     v1alpha1Function,
                     null,
@@ -298,9 +298,9 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
         try {
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
                     API_GROUP,
-                    API_VERSION,
+                    apiVersion,
                     worker().getJobNamespace(),
-                    API_PLURAL,
+                    apiPlural,
                     hashName,
                     null
             );
@@ -417,8 +417,8 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
             String nameSpaceName = worker().getJobNamespace();
             Call call = worker().getCustomObjectsApi().getNamespacedCustomObjectCall(
-                    API_GROUP, API_VERSION, nameSpaceName,
-                    API_PLURAL, hashName, null);
+                    API_GROUP, apiVersion, nameSpaceName,
+                    apiPlural, hashName, null);
             V1alpha1Function v1alpha1Function = executeCall(call, V1alpha1Function.class);
             V1alpha1FunctionStatus v1alpha1FunctionStatus = v1alpha1Function.getStatus();
             if (v1alpha1FunctionStatus == null) {
@@ -449,8 +449,8 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                         componentName);
                 throw new RestException(Response.Status.NOT_FOUND, "no StatefulSet exists");
             }
-            if (v1StatefulSet.getMetadata() != null &&
-                    StringUtils.isNotEmpty(v1StatefulSet.getMetadata().getName())) {
+            if (v1StatefulSet.getMetadata() != null
+                    && StringUtils.isNotEmpty(v1StatefulSet.getMetadata().getName())) {
                 statefulSetName = v1StatefulSet.getMetadata().getName();
             } else {
                 log.error(
@@ -460,8 +460,8 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                         componentName);
                 throw new RestException(Response.Status.NOT_FOUND, "no statefulSetName exists");
             }
-            if (v1StatefulSet.getSpec() != null &&
-                    StringUtils.isNotEmpty(v1StatefulSet.getSpec().getServiceName())) {
+            if (v1StatefulSet.getSpec() != null
+                    && StringUtils.isNotEmpty(v1StatefulSet.getSpec().getServiceName())) {
                 subdomain = v1StatefulSet.getSpec().getServiceName();
             } else {
                 log.error(
@@ -699,9 +699,9 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                         V1alpha1FunctionSpecJava v1alpha1FunctionSpecJava = null;
                         if (v1alpha1Function.getSpec() != null && v1alpha1Function.getSpec().getJava() != null) {
                             v1alpha1FunctionSpecJava = v1alpha1Function.getSpec().getJava();
-                        } else if (v1alpha1Function.getSpec() != null && v1alpha1Function.getSpec().getJava() == null &&
-                                v1alpha1Function.getSpec().getPython() == null &&
-                                v1alpha1Function.getSpec().getGolang() == null) {
+                        } else if (v1alpha1Function.getSpec() != null && v1alpha1Function.getSpec().getJava() == null
+                                && v1alpha1Function.getSpec().getPython() == null
+                                && v1alpha1Function.getSpec().getGolang() == null) {
                             v1alpha1FunctionSpecJava = new V1alpha1FunctionSpecJava();
                         }
                         if (v1alpha1FunctionSpecJava != null && StringUtils.isEmpty(
@@ -713,12 +713,12 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                     if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
                             && !StringUtils.isEmpty(
                             worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
-                        String authSecretName = KubernetesUtils.upsertSecret(API_KIND.toLowerCase(), "auth",
+                        String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
                                 v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, worker());
                         v1alpha1Function.getSpec().getPulsar().setAuthSecret(authSecretName);
                     }
                     if (worker().getWorkerConfig().getTlsEnabled()) {
-                        String tlsSecretName = KubernetesUtils.upsertSecret(API_KIND.toLowerCase(), "tls",
+                        String tlsSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "tls",
                                 v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, worker());
                         v1alpha1Function.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }

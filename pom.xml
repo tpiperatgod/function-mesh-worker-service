@@ -40,6 +40,8 @@
         <nifi-nar-maven-plugin.version>1.2.0</nifi-nar-maven-plugin.version>
         <grpc.version>1.42.1</grpc.version>
         <function-mesh.version>v0.2.0</function-mesh.version>
+        <maven-checkstyle-plugin.version>3.1.2</maven-checkstyle-plugin.version>
+        <puppycrawl.checkstyle.version>8.37</puppycrawl.checkstyle.version>
     </properties>
 
     <dependencies>
@@ -198,6 +200,23 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${maven-checkstyle-plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${puppycrawl.checkstyle.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <configLocation>${basedir}/src/main/resources/checkstyle.xml</configLocation>
+                    <suppressionsLocation>${basedir}/src/main/resources/suppressions.xml</suppressionsLocation>
+                    <encoding>UTF-8</encoding>
+                </configuration>
             </plugin>
         </plugins>
     </build>

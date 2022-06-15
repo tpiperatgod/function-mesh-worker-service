@@ -47,8 +47,8 @@ public class FunctionMeshProxyHandlerTest {
         PowerMockito.when(httpServletRequest.getRequestURI()).thenReturn(path);
         PowerMockito.when(httpServletRequest.getQueryString()).thenReturn("limit=500");
         String rewriteTarget = meshWorkerServiceHandler.rewriteTarget(httpServletRequest);
-        String expectedValue = "https://localhost:443" +
-                "/apis/compute.functionmesh.io/v1alpha1/namespaces/default/functionmeshes?limit=500";
+        String expectedValue = "https://localhost:443"
+                + "/apis/compute.functionmesh.io/v1alpha1/namespaces/default/functionmeshes?limit=500";
         Assert.assertEquals(rewriteTarget, expectedValue);
     }
 }

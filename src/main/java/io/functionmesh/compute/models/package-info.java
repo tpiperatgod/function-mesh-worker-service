@@ -17,14 +17,3 @@
  * under the License.
  */
 package io.functionmesh.compute.models;
-
-import lombok.Data;
-
-@Data
-public class SecretRef {
-    public static final String PATH_KEY = "path";
-    public static final String KEY_KEY = "key";
-
-    private String path;
-    private String key;
-}

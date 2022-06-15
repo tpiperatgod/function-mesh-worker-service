@@ -188,8 +188,7 @@ public class CommonUtil {
 
     public static ExceptionInformation getExceptionInformation(
             InstanceCommunication.FunctionStatus.ExceptionInformation exceptionEntry) {
-        ExceptionInformation exceptionInformation
-                = new ExceptionInformation();
+        ExceptionInformation exceptionInformation = new ExceptionInformation();
         exceptionInformation.setTimestampMs(exceptionEntry.getMsSinceEpoch());
         exceptionInformation.setExceptionString(exceptionEntry.getExceptionString());
         return exceptionInformation;
@@ -265,8 +264,8 @@ public class CommonUtil {
         try {
             PackageMetadata packageMetadata = admin.packages().getMetadata(functionPkgUrl);
             if (packageMetadata != null && packageMetadata.getProperties() != null && packageMetadata.getProperties()
-                    .containsKey(PROPERTY_FILE_NAME) &&
-                    StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
+                    .containsKey(PROPERTY_FILE_NAME)
+                    && StringUtils.isNotEmpty(packageMetadata.getProperties().get(PROPERTY_FILE_NAME))) {
                 return packageMetadata.getProperties().get(PROPERTY_FILE_NAME);
             }
         } catch (PulsarAdminException.NotFoundException ex) {
