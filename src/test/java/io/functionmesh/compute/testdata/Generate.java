@@ -22,21 +22,18 @@ import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
 import com.google.gson.Gson;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
-import io.functionmesh.compute.util.FunctionsUtil;
-import org.apache.pulsar.common.functions.ConsumerConfig;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.io.SinkConfig;
 import org.apache.pulsar.common.io.SourceConfig;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
 public class Generate {
-    public static String TEST_CLUSTER_NAME = "test-pulsar";
+    public static final String TEST_CLUSTER_NAME = "test-pulsar";
 
-    public static FunctionConfig CreateJavaFunctionConfig(String tenant, String namespace, String functionName) {
+    public static FunctionConfig createJavaFunctionConfig(String tenant, String namespace, String functionName) {
         FunctionConfig functionConfig = new FunctionConfig();
         functionConfig.setName(functionName);
         functionConfig.setTenant(tenant);
@@ -61,7 +58,8 @@ public class Generate {
         return functionConfig;
     }
 
-    public static FunctionConfig CreateJavaFunctionWithPackageURLConfig(String tenant, String namespace, String functionName) {
+    public static FunctionConfig createJavaFunctionWithPackageURLConfig(String tenant, String namespace,
+                                                                        String functionName) {
         FunctionConfig functionConfig = new FunctionConfig();
         functionConfig.setName(functionName);
         functionConfig.setTenant(tenant);
@@ -87,11 +85,11 @@ public class Generate {
         Map<String, Object> configs = new HashMap<>();
         configs.put("foo", "bar");
         functionConfig.setUserConfig(configs);
-        functionConfig.setSecrets(CreateSecretsData());
+        functionConfig.setSecrets(createSecretsData());
         return functionConfig;
     }
 
-    public static Map<String, Object> CreateSecretsData() {
+    public static Map<String, Object> createSecretsData() {
         Map<String, Object> secrets = new HashMap<>();
         Map<String, String> value1 = new HashMap<>();
         value1.put(PATH_KEY, "secretPath1");
@@ -104,7 +102,7 @@ public class Generate {
         return secrets;
     }
 
-    public static SinkConfig CreateSinkConfig(String tenant, String namespace, String functionName) {
+    public static SinkConfig createSinkConfig(String tenant, String namespace, String functionName) {
         SinkConfig sinkConfig = new SinkConfig();
         sinkConfig.setName(functionName);
         sinkConfig.setTenant(tenant);
@@ -130,7 +128,7 @@ public class Generate {
         return sinkConfig;
     }
 
-    public static SinkConfig CreateSinkConfigBuiltin(String tenant, String namespace, String functionName) {
+    public static SinkConfig createSinkConfigBuiltin(String tenant, String namespace, String functionName) {
         SinkConfig sinkConfig = new SinkConfig();
         sinkConfig.setName(functionName);
         sinkConfig.setTenant(tenant);
@@ -156,7 +154,7 @@ public class Generate {
         return sinkConfig;
     }
 
-    public static SourceConfig CreateSourceConfig(String tenant, String namespace, String functionName) {
+    public static SourceConfig createSourceConfig(String tenant, String namespace, String functionName) {
         SourceConfig sourceConfig = new SourceConfig();
         sourceConfig.setName(functionName);
         sourceConfig.setTenant(tenant);
@@ -181,7 +179,7 @@ public class Generate {
         return sourceConfig;
     }
 
-    public static SourceConfig CreateSourceConfigBuiltin(String tenant, String namespace, String functionName) {
+    public static SourceConfig createSourceConfigBuiltin(String tenant, String namespace, String functionName) {
         SourceConfig sourceConfig = new SourceConfig();
         sourceConfig.setName(functionName);
         sourceConfig.setTenant(tenant);

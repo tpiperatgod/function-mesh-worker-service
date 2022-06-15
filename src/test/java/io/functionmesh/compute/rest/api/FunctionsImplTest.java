@@ -18,6 +18,11 @@
  */
 package io.functionmesh.compute.rest.api;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.anyString;
+import static org.powermock.api.mockito.PowerMockito.spy;
 import com.google.common.collect.Maps;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
@@ -34,7 +39,6 @@ import io.kubernetes.client.openapi.JSON;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
-import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
@@ -42,7 +46,13 @@ import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
 import io.kubernetes.client.openapi.models.V1StatefulSetSpec;
 import io.kubernetes.client.openapi.models.V1StatefulSetStatus;
-import java.util.HashMap;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import okhttp3.Response;
@@ -65,21 +75,6 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.anyString;
-import static org.powermock.api.mockito.PowerMockito.spy;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({
@@ -114,7 +109,9 @@ public class FunctionsImplTest {
                 "      }\n" +
                 "    ],\n" +
                 "    \"resourceVersion\": \"899291\",\n" +
-                "    \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/functions/functionmesh-sample-ex1\",\n" +
+                "    \"selfLink\": \"/apis/compute.functionmesh"
+                + ".io/v1alpha1/namespaces/default/functions/functionmesh-sample-ex1\",\n"
+                +
                 "    \"uid\": \"9e4509ba-c8bd-4c76-8905-ea0cf7251552\"\n" +
                 "  },\n" +
                 "  \"spec\": {\n" +
@@ -215,7 +212,8 @@ public class FunctionsImplTest {
         PowerMockito.when(apiClient.getJSON()).thenReturn(json);
 
         V1StatefulSet v1StatefulSet = PowerMockito.mock(V1StatefulSet.class);
-        PowerMockito.when(appsV1Api.readNamespacedStatefulSet(any(), any(), any(), any(), any())).thenReturn(v1StatefulSet);
+        PowerMockito.when(appsV1Api.readNamespacedStatefulSet(any(), any(), any(), any(), any()))
+                .thenReturn(v1StatefulSet);
 
         V1ObjectMeta v1StatefulSetV1ObjectMeta = PowerMockito.mock(V1ObjectMeta.class);
         PowerMockito.when(v1StatefulSet.getMetadata()).thenReturn(v1StatefulSetV1ObjectMeta);
@@ -244,7 +242,8 @@ public class FunctionsImplTest {
         InstanceCommunication.FunctionStatus.Builder builder = InstanceCommunication.FunctionStatus.newBuilder();
         builder.setRunning(true);
         PowerMockito.mockStatic(InstanceControlGrpc.InstanceControlFutureStub.class);
-        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFunctionStatusAsync")).toReturn(CompletableFuture.completedFuture(builder.build()));
+        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFunctionStatusAsync"))
+                .toReturn(CompletableFuture.completedFuture(builder.build()));
         PowerMockito.stub(PowerMockito.method(KubernetesUtils.class, "validateResourceOwner")).toReturn(true);
 
         FunctionsImpl functions = spy(new FunctionsImpl(meshWorkerServiceSupplier));
@@ -280,7 +279,9 @@ public class FunctionsImplTest {
                 "    \"name\": \"word-count\",\n" +
                 "    \"namespace\": \"default\",\n" +
                 "    \"resourceVersion\": \"24794021\",\n" +
-                "    \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/functions/word-count\",\n" +
+                "    \"selfLink\": \"/apis/compute.functionmesh"
+                + ".io/v1alpha1/namespaces/default/functions/word-count\",\n"
+                +
                 "    \"uid\": \"b9e3ada1-b945-4d70-901c-00d7c7a7b0af\"\n" +
                 "  },\n" +
                 "  \"spec\": {\n" +
@@ -339,12 +340,15 @@ public class FunctionsImplTest {
         ResponseBody responseBody = PowerMockito.mock(RealResponseBody.class);
         ApiClient apiClient = PowerMockito.mock(ApiClient.class);
         PowerMockito.stub(PowerMockito.method(FunctionsUtil.class, "downloadPackageFile")).toReturn(null);
-        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata")).toReturn("word-count.jar");
+        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata"))
+                .toReturn("word-count.jar");
 
-        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
+                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isFunctionEnabled()).thenReturn(true);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
+                .thenReturn(meshWorkerServiceCustomConfig);
 
         String tenant = "public";
         String namespace = "default";
@@ -354,7 +358,8 @@ public class FunctionsImplTest {
         String version = "v1alpha1";
         String kind = "Function";
 
-        FunctionConfig functionConfig = Generate.CreateJavaFunctionWithPackageURLConfig(tenant, namespace, functionName);
+        FunctionConfig functionConfig =
+                Generate.createJavaFunctionWithPackageURLConfig(tenant, namespace, functionName);
 
         PowerMockito.when(tenants.getTenantInfo(tenant)).thenReturn(null);
 
@@ -424,7 +429,9 @@ public class FunctionsImplTest {
                 "    \"name\": \"word-count\",\n" +
                 "    \"namespace\": \"default\",\n" +
                 "    \"resourceVersion\": \"24794021\",\n" +
-                "    \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/functions/word-count\",\n" +
+                "    \"selfLink\": \"/apis/compute.functionmesh"
+                + ".io/v1alpha1/namespaces/default/functions/word-count\",\n"
+                +
                 "    \"uid\": \"b9e3ada1-b945-4d70-901c-00d7c7a7b0af\"\n" +
                 "  },\n" +
                 "  \"spec\": {\n" +
@@ -471,7 +478,9 @@ public class FunctionsImplTest {
                 "    \"name\": \"word-count-640ae9e6\",\n" +
                 "    \"namespace\": \"default\",\n" +
                 "    \"resourceVersion\": \"27794021\",\n" +
-                "    \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/functions/word-count\",\n" +
+                "    \"selfLink\": \"/apis/compute.functionmesh"
+                + ".io/v1alpha1/namespaces/default/functions/word-count\",\n"
+                +
                 "    \"uid\": \"b9e3ada1-b945-4d70-901c-00d7c7a7b0af\"\n" +
                 "  },\n" +
                 "  \"spec\": {\n" +
@@ -556,16 +565,21 @@ public class FunctionsImplTest {
         PowerMockito.when(meshWorkerService.getCustomObjectsApi()
                 .getNamespacedCustomObjectCall(any(), any(), any(), any(), any(), any())).thenReturn(getCall);
 
-        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
+                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isFunctionEnabled()).thenReturn(true);
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
+                .thenReturn(meshWorkerServiceCustomConfig);
 
         PowerMockito.stub(PowerMockito.method(FunctionsUtil.class, "downloadPackageFile")).toReturn(null);
-        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata")).toReturn("word-count.jar");
-        PowerMockito.stub(PowerMockito.method(PackageManagementServiceUtil.class, "deletePackageFromPackageService")).toReturn(null);
+        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata"))
+                .toReturn("word-count.jar");
+        PowerMockito.stub(PowerMockito.method(PackageManagementServiceUtil.class, "deletePackageFromPackageService"))
+                .toReturn(null);
 
-        FunctionConfig functionConfig = Generate.CreateJavaFunctionWithPackageURLConfig(tenant, namespace, functionName);
+        FunctionConfig functionConfig =
+                Generate.createJavaFunctionWithPackageURLConfig(tenant, namespace, functionName);
 
         PowerMockito.when(meshWorkerService.getCustomObjectsApi()
                 .replaceNamespacedCustomObjectCall(
@@ -612,7 +626,9 @@ public class FunctionsImplTest {
                 "    \"name\": \"word-count\",\n" +
                 "    \"namespace\": \"default\",\n" +
                 "    \"resourceVersion\": \"24794021\",\n" +
-                "    \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/functions/word-count\",\n" +
+                "    \"selfLink\": \"/apis/compute.functionmesh"
+                + ".io/v1alpha1/namespaces/default/functions/word-count\",\n"
+                +
                 "    \"uid\": \"b9e3ada1-b945-4d70-901c-00d7c7a7b0af\"\n" +
                 "  },\n" +
                 "  \"spec\": {\n" +
@@ -656,12 +672,14 @@ public class FunctionsImplTest {
         CustomObjectsApi customObjectsApi = PowerMockito.mock(CustomObjectsApi.class);
         PowerMockito.when(meshWorkerService.getCustomObjectsApi()).thenReturn(customObjectsApi);
         WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
-        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig = PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
+                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
         PowerMockito.when(workerConfig.isAuthorizationEnabled()).thenReturn(false);
         PowerMockito.when(workerConfig.isAuthenticationEnabled()).thenReturn(false);
         PowerMockito.when(workerConfig.getPulsarFunctionsCluster()).thenReturn("test-pulsar");
-        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(meshWorkerServiceCustomConfig);
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
+                .thenReturn(meshWorkerServiceCustomConfig);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         Call call = PowerMockito.mock(Call.class);
         Response response = PowerMockito.mock(Response.class);
@@ -748,7 +766,8 @@ public class FunctionsImplTest {
                 null
         )).thenReturn(deleteTlsSecretCall);
         PowerMockito.when(deleteTlsSecretCall.execute()).thenReturn(response);
-        PowerMockito.stub(PowerMockito.method(PackageManagementServiceUtil.class, "deletePackageFromPackageService")).toReturn(null);
+        PowerMockito.stub(PowerMockito.method(PackageManagementServiceUtil.class, "deletePackageFromPackageService"))
+                .toReturn(null);
 
         FunctionsImpl functions = spy(new FunctionsImpl(meshWorkerServiceSupplier));
         try {
@@ -769,7 +788,9 @@ public class FunctionsImplTest {
                 "    \"name\": \"word-count\",\n" +
                 "    \"namespace\": \"default\",\n" +
                 "    \"resourceVersion\": \"24794021\",\n" +
-                "    \"selfLink\": \"/apis/compute.functionmesh.io/v1alpha1/namespaces/default/functions/word-count\",\n" +
+                "    \"selfLink\": \"/apis/compute.functionmesh"
+                + ".io/v1alpha1/namespaces/default/functions/word-count\",\n"
+                +
                 "    \"uid\": \"b9e3ada1-b945-4d70-901c-00d7c7a7b0af\"\n" +
                 "  },\n" +
                 "  \"spec\": {\n" +

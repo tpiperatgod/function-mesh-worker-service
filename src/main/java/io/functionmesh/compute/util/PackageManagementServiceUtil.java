@@ -44,10 +44,10 @@ import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 @Slf4j
 public class PackageManagementServiceUtil {
 
-    public final static String MESH_WORKER_SERVICE_PACKAGE_CONTACT = "mesh-worker-service";
-    public final static String PACKAGE_TYPE_FUNCTION = "function";
-    public final static String PACKAGE_TYPE_SINK = "sink";
-    public final static String PACKAGE_TYPE_SOURCE = "source";
+    public static final String MESH_WORKER_SERVICE_PACKAGE_CONTACT = "mesh-worker-service";
+    public static final String PACKAGE_TYPE_FUNCTION = "function";
+    public static final String PACKAGE_TYPE_SINK = "sink";
+    public static final String PACKAGE_TYPE_SOURCE = "source";
 
     private static String generatePackageURL(final String type,
                                              final String tenant,

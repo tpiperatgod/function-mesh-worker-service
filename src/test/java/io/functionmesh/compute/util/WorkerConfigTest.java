@@ -18,10 +18,9 @@
  */
 package io.functionmesh.compute.util;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodImagePullSecrets;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodInitContainers;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumes;
@@ -31,16 +30,13 @@ import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumes;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodInitContainers;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumes;
 import io.kubernetes.client.openapi.models.V1OwnerReference;
-
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.functions.runtime.RuntimeUtils;
 import org.apache.pulsar.functions.worker.WorkerConfig;
-import org.junit.Assert;
 import org.junit.Test;
 
 @Slf4j
@@ -98,7 +94,8 @@ public class WorkerConfigTest {
 
         assertEquals(3, customConfig.getFunctionRunnerImages().size());
         assertEquals("streamnative/pulsar-functions-java-runner", customConfig.getFunctionRunnerImages().get("JAVA"));
-        assertEquals("streamnative/pulsar-functions-python-runner", customConfig.getFunctionRunnerImages().get("PYTHON"));
+        assertEquals("streamnative/pulsar-functions-python-runner",
+                customConfig.getFunctionRunnerImages().get("PYTHON"));
         assertEquals("streamnative/pulsar-functions-go-runner", customConfig.getFunctionRunnerImages().get("GO"));
 
         assertEquals(2, customConfig.getLabels().size());
