@@ -720,4 +720,18 @@ public class FunctionsUtil {
         return typeArgs;
     }
 
+    public static void mergeTrustedConfigs(final FunctionConfig functionConfig, V1alpha1Function v1alpha1Function) {
+        CustomRuntimeOptions customRuntimeOptions =
+                CommonUtil.getCustomRuntimeOptions(functionConfig.getCustomRuntimeOptions());
+        if (v1alpha1Function.getSpec().getPod() == null) {
+            v1alpha1Function.getSpec().setPod(new V1alpha1FunctionSpecPod());
+        }
+        if (StringUtils.isNotEmpty(customRuntimeOptions.getRunnerImage())) {
+            v1alpha1Function.getSpec().setImage(customRuntimeOptions.getRunnerImage());
+        }
+        if (StringUtils.isNotEmpty(customRuntimeOptions.getServiceAccountName())) {
+            v1alpha1Function.getSpec().getPod().setServiceAccountName(customRuntimeOptions.getServiceAccountName());
+        }
+    }
+
 }

@@ -764,6 +764,9 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                 }
             }
         }
+        if (worker().getMeshWorkerServiceCustomConfig().isEnableTrustedMode()) {
+            SinksUtil.mergeTrustedConfigs(sinkConfig, v1alpha1Sink);
+        }
     }
 
     public V1StatefulSet getFunctionStatefulSet(V1alpha1Sink v1alpha1Sink) {
