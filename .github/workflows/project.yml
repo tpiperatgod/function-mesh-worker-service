@@ -29,10 +29,13 @@ jobs:
 
       - name: Login to GitHub Packages Docker Registry
         uses: docker/login-action@v1
+        env:
+          GITHUB_USER: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          registry: docker.pkg.github.com
-          username: ${{ secrets.IMAGE_GITHUB_USERNAME }}
-          password: ${{ secrets.IMAGE_GITHUB_TOKEN }}
+          registry: ghcr.io
+          username: $GITHUB_USER
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Auto generate crd model
         run: ./scripts/generate-crd.sh
