@@ -21,6 +21,7 @@ package io.functionmesh.compute.util;
 import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
 import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
+import static io.functionmesh.compute.util.CommonUtil.getClassNameFromFile;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 import com.google.gson.Gson;
@@ -312,6 +313,25 @@ public class SourcesUtil {
             }
             if (!secretsMapMap.isEmpty()) {
                 v1alpha1SourceSpec.setSecretsMap(secretsMapMap);
+            }
+        }
+
+        if (StringUtils.isEmpty(v1alpha1SourceSpec.getClassName())) {
+            boolean isPkgUrlProvided = StringUtils.isNotEmpty(sourcePkgUrl);
+            if (isPkgUrlProvided) {
+                try {
+                    String className = getClassNameFromFile(worker, sourcePkgUrl,
+                            Function.FunctionDetails.ComponentType.SOURCE);
+                    if (StringUtils.isNotEmpty(className)) {
+                        v1alpha1SourceSpec.setClassName(className);
+                    }
+                } catch (Exception e) {
+                    log.error("Invalid register source request {}", sourceName, e);
+                    throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
+                }
+            } else {
+                log.error("Invalid register source request {}: not provide className", sourceName);
+                throw new RestException(Response.Status.BAD_REQUEST, "no className provided");
             }
         }
 

@@ -21,6 +21,7 @@ package io.functionmesh.compute.util;
 import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
 import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
+import static io.functionmesh.compute.util.CommonUtil.getClassNameFromFile;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
@@ -352,6 +353,25 @@ public class SinksUtil {
             }
             if (!secretsMapMap.isEmpty()) {
                 v1alpha1SinkSpec.setSecretsMap(secretsMapMap);
+            }
+        }
+
+        if (StringUtils.isEmpty(v1alpha1SinkSpec.getClassName())) {
+            boolean isPkgUrlProvided = StringUtils.isNotEmpty(sinkPkgUrl);
+            if (isPkgUrlProvided) {
+                try {
+                    String className = getClassNameFromFile(worker, sinkPkgUrl,
+                            Function.FunctionDetails.ComponentType.SINK);
+                    if (StringUtils.isNotEmpty(className)) {
+                        v1alpha1SinkSpec.setClassName(className);
+                    }
+                } catch (Exception e) {
+                    log.error("Invalid register sink request {}", sinkName, e);
+                    throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
+                }
+            } else {
+                log.error("Invalid register sink request {}: not provide className", sinkName);
+                throw new RestException(Response.Status.BAD_REQUEST, "no className provided");
             }
         }
 
