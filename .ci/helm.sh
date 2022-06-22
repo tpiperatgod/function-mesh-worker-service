@@ -46,6 +46,9 @@ function ci::delete_cluster() {
 }
 
 function ci::cleanup() {
+    echo "Print events logs ..."
+    ${KUBECTL} -n default get events --sort-by='{.lastTimestamp}'
+
     echo "Clean up kind clusters ..."
     clusters=( $(kind get clusters | grep sn-platform) )
     for cluster in "${clusters[@]}"
@@ -76,6 +79,15 @@ function ci::install_metrics_server() {
       ${KUBECTL} get pods -n kube-system
       WC=$(${KUBECTL} get pods -n kube-system --field-selector=status.phase=Running | grep metrics-server | wc -l)
     done
+}
+
+function ci::install_cert_manager_charts() {
+    echo "Installing the cert manager charts ..."
+    ${HELM} repo add jetstack https://charts.jetstack.io
+    ${HELM} repo update
+    ${HELM} install cert-manager jetstack/cert-manager --set installCRDs=true
+    echo "wait until cert-manager is alive"
+    ${KUBECTL} wait --for condition=available --timeout=360s deployment/cert-manager
 }
 
 function ci::install_pulsar_charts() {
@@ -124,7 +136,8 @@ function ci::install_function_mesh_charts() {
   fi
   git clone --branch ${FMV} https://github.com/streamnative/function-mesh function-mesh
   cd function-mesh/charts/
-  ${HELM} install function-mesh --values ./function-mesh-operator/values.yaml ./function-mesh-operator --debug -n ${NAMESPACE}
+  helm dependency update ./function-mesh-operator
+  ${HELM} install function-mesh --values ./function-mesh-operator/values.yaml ./function-mesh-operator
 
   echo "wait until controller-manager is alive"
   ${KUBECTL} get deployment -n ${NAMESPACE}
