@@ -85,7 +85,7 @@ function ci::install_cert_manager_charts() {
     echo "Installing the cert manager charts ..."
     ${HELM} repo add jetstack https://charts.jetstack.io
     ${HELM} repo update
-    ${HELM} install cert-manager jetstack/cert-manager --set installCRDs=true
+    ${HELM} install cert-manager jetstack/cert-manager --set installCRDs=true --version v1.8.2
     echo "wait until cert-manager is alive"
     ${KUBECTL} wait --for condition=available --timeout=360s deployment/cert-manager
 }
