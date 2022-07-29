@@ -30,16 +30,43 @@ Replace the `YOUR-NAR-PATH` variable with your real path.
 
 2. Update the ZooKeeper and Broker URLs in the `functions_worker.yml` configuration file.
 
+3. Start the container. 
+
+  You must provide the `KUBE_CONFIG` environment variable and mount related volumes to the container to manage resources in the target Kubernetes cluster. 
+
 ```
-docker run -td --name worker -p 6750:6750 -v /YOUR-CONF/functions_worker.yml:/pulsar/conf/functions_worker.yml -v /YOUR-NAR-PATH/:/ANY-PATH apachepulsar/pulsar:2.9.2 bin/pulsar functions-worker
+docker run -td --name worker -p 6750:6750 -v /YOUR-CONF/functions_worker.yml:/pulsar/conf/functions_worker.yml -v /YOUR-NAR-PATH/:/ANY-PATH apachepulsar/pulsar:2.9.2 bin/pulsar -e KUBE_CONFIG=/kube/config -v /YOUR-KUBE-CONFIG:/kube/config functions-worker
 ```
 
-To run the Function Mesh Worker service in standalone mode, you should start a Pulsar proxy. For details, see [configure-proxies](https://pulsar.apache.org/docs/next/functions-worker-run-separately#configure-proxies-for-standalone-function-workers).
+To combine the worker service and pulsar cluster's admin endpoints, you should start a Pulsar proxy. For details, see [configure-proxies](https://pulsar.apache.org/docs/next/functions-worker-run-separately#configure-proxies-for-standalone-function-workers).
 
 
 #### Run in k8s
 
 For details, see a sample [YAML file](./examples/standalone.yaml). You can update the configuration based on your requirement and apply it.
+
+(Optional) If you want to use another Kubernetes cluster to manage Function mesh resources, you must add the `KUBE_CONFIG` environment variable and related volume to the Pod.
+
+```yaml
+...
+env:
+  - name: KUBE_CONFIG
+    value: /kube/config
+...
+volumeMounts:
+  - name: outside-k8s-config
+    mountPath: /kube/config
+    subPath: config
+...
+volumes:
+  - name: outside-k8s-config
+    secret:
+      secretName: k8s-config # create your own secret for k8s config
+      items:
+      - key: config
+        path: config
+...
+```
 
 
 ### Configuring the development environment
