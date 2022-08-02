@@ -37,6 +37,7 @@ import io.functionmesh.compute.sources.models.V1alpha1SourceSpecOutput;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecOutputProducerConf;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecOutputProducerConfCryptoConfig;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPod;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodEnv;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodResources;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPulsar;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecSecretsMap;
@@ -44,10 +45,12 @@ import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.custom.Quantity;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -294,6 +297,20 @@ public class SourcesUtil {
         if (!CommonUtil.isMapEmpty(customAnnotations)) {
             specPod.setAnnotations(customAnnotations);
         }
+        List<V1alpha1SourceSpecPodEnv> env = new ArrayList<>();
+        Map<String, String> finalEnv = new HashMap<>();
+        CommonUtil.mergeMap(customConfig.getEnv(), finalEnv);
+        CommonUtil.mergeMap(customConfig.getSourceEnv(), finalEnv);
+        CommonUtil.mergeMap(customRuntimeOptions.getEnv(), finalEnv);
+        if (!CommonUtil.isMapEmpty(finalEnv)) {
+            finalEnv.entrySet().forEach(entry -> {
+                V1alpha1SourceSpecPodEnv podEnv = new V1alpha1SourceSpecPodEnv();
+                podEnv.setName(entry.getKey());
+                podEnv.setValue(entry.getValue());
+                env.add(podEnv);
+            });
+        }
+        specPod.setEnv(env);
         v1alpha1SourceSpec.setPod(specPod);
 
         if (sourceConfig.getSecrets() != null && !sourceConfig.getSecrets().isEmpty()) {
@@ -343,7 +360,8 @@ public class SourcesUtil {
     }
 
     public static SourceConfig createSourceConfigFromV1alpha1Source(String tenant, String namespace, String sourceName,
-                                                                    V1alpha1Source v1alpha1Source) {
+                                                                    V1alpha1Source v1alpha1Source,
+                                                                    MeshWorkerService worker) {
         SourceConfig sourceConfig = new SourceConfig();
 
         sourceConfig.setName(sourceName);
@@ -351,6 +369,8 @@ public class SourcesUtil {
         sourceConfig.setTenant(tenant);
 
         V1alpha1SourceSpec v1alpha1SourceSpec = v1alpha1Source.getSpec();
+
+        MeshWorkerServiceCustomConfig customConfig = worker.getMeshWorkerServiceCustomConfig();
 
         if (v1alpha1SourceSpec == null) {
             throw new RestException(Response.Status.BAD_REQUEST, "Source CRD without Spec defined.");
@@ -406,9 +426,20 @@ public class SourcesUtil {
 
         CommonUtil.setManaged(customRuntimeOptions, v1alpha1Source.getMetadata());
 
-        if (v1alpha1SourceSpec.getPod() != null &&
-                Strings.isNotEmpty(v1alpha1SourceSpec.getPod().getServiceAccountName())) {
-            customRuntimeOptions.setServiceAccountName(v1alpha1SourceSpec.getPod().getServiceAccountName());
+        if (v1alpha1SourceSpec.getPod() != null) {
+            if (Strings.isNotEmpty(v1alpha1SourceSpec.getPod().getServiceAccountName())) {
+                customRuntimeOptions.setServiceAccountName(v1alpha1SourceSpec.getPod().getServiceAccountName());
+            }
+            if (v1alpha1SourceSpec.getPod().getEnv() != null) {
+                Map<String, String> customConfigEnv = new HashMap<>();
+                CommonUtil.mergeMap(customConfig.getEnv(), customConfigEnv);
+                CommonUtil.mergeMap(customConfig.getSourceEnv(), customConfigEnv);
+                Map<String, String> runtimeEnv =
+                        CommonUtil.getRuntimeEnv(customConfigEnv, v1alpha1SourceSpec.getPod().getEnv().stream().collect(
+                                Collectors.toMap(V1alpha1SourceSpecPodEnv::getName, V1alpha1SourceSpecPodEnv::getValue))
+                        );
+                customRuntimeOptions.setEnv(runtimeEnv);
+            }
         }
 
         if (v1alpha1SourceSpec.getSourceConfig() != null) {

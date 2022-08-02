@@ -276,7 +276,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
             V1alpha1Function v1alpha1Function = extractResponse(getResourceApi().get(nameSpaceName, hashName));
 
             return FunctionsUtil.createFunctionConfigFromV1alpha1Function(tenant, namespace, componentName,
-                    v1alpha1Function);
+                    v1alpha1Function, worker());
         } catch (Exception e) {
             log.error("get {}/{}/{} function failed", tenant, namespace, componentName, e);
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
