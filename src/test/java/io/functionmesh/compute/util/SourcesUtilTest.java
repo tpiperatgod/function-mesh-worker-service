@@ -18,11 +18,14 @@
  */
 package io.functionmesh.compute.util;
 
+import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpec;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodEnv;
 import io.functionmesh.compute.testdata.Generate;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import java.io.File;
@@ -31,6 +34,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.apache.pulsar.common.io.SourceConfig;
 import org.apache.pulsar.common.nar.NarClassLoader;
@@ -91,8 +95,27 @@ public class SourcesUtilTest {
         WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
+        Map<String, String> env = new HashMap<String, String>(){
+            {
+                put("unique", "unique");
+                put("shared", "shared");
+                put("shared2", "shared2");
+            }
+        };
+        Map<String, String> sourceEnv = new HashMap<String, String>(){
+            {
+                put("shared", "shared-source");
+                put("shared2", "shared2-source");
+                put("source", "source");
+            }
+        };
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
+                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getEnv()).thenReturn(env);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getSourceEnv()).thenReturn(sourceEnv);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+                .thenReturn(meshWorkerServiceCustomConfig);
+
         V1alpha1Source v1alpha1Source = SourcesUtil.createV1alpha1SourceFromSourceConfig(kind, group, version,
                 componentName, null, uploadedInputStream, sourceConfig, null,
                 null, meshWorkerService);
@@ -107,6 +130,16 @@ public class SourcesUtilTest {
         Assert.assertEquals(v1alpha1SourceSpec.getOutput().getTypeClassName(), typeClassName);
         Assert.assertEquals(v1alpha1SourceSpec.getJava().getJar(), jar);
         Assert.assertEquals(v1alpha1SourceSpec.getSourceConfig(), configs);
+        Assert.assertEquals(v1alpha1SourceSpec.getPod().getEnv().stream().collect(Collectors.toMap(
+                V1alpha1SourceSpecPodEnv::getName, V1alpha1SourceSpecPodEnv::getValue)), new HashMap<String, String>(){
+            {
+                put("unique", "unique");
+                put("shared", "shared-source");
+                put("source", "source");
+                put("runtime", "runtime-env");
+                put("shared2", "shared2-runtime");
+            }
+        } );
     }
 
     @Test
@@ -132,11 +165,40 @@ public class SourcesUtilTest {
         PowerMockito.<Class<?>>when(FunctionCommon.getSourceType(null)).thenReturn(getClass());
 
         SourceConfig sourceConfig = Generate.createSourceConfig(tenant, namespace, componentName);
+        // test whether will it filter out env got from the custom config
+        String expectedCustomRuntimeOptions = sourceConfig.getCustomRuntimeOptions();
+        CustomRuntimeOptions customRuntimeOptions =
+                CommonUtil.getCustomRuntimeOptions(sourceConfig.getCustomRuntimeOptions());
+        customRuntimeOptions.getEnv().put("unique", "unique");
+        customRuntimeOptions.getEnv().put("shared", "shared-source");
+        customRuntimeOptions.getEnv().put("source", "source");
+        String customRuntimeOptionsJSON = new Gson().toJson(customRuntimeOptions, CustomRuntimeOptions.class);
+        sourceConfig.setCustomRuntimeOptions(customRuntimeOptionsJSON);
 
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
+
+        Map<String, String> env = new HashMap<String, String>(){
+            {
+                put("unique", "unique");
+                put("shared", "shared");
+                put("shared2", "shared2");
+            }
+        };
+        Map<String, String> sourceEnv = new HashMap<String, String>(){
+            {
+                put("shared", "shared-source");
+                put("shared2", "shared2-source");
+                put("source", "source");
+            }
+        };
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
+                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getEnv()).thenReturn(env);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getSourceEnv()).thenReturn(sourceEnv);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+                .thenReturn(meshWorkerServiceCustomConfig);
+
         WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
@@ -145,7 +207,7 @@ public class SourcesUtilTest {
                 null, meshWorkerService);
 
         SourceConfig newSourceConfig = SourcesUtil.createSourceConfigFromV1alpha1Source(tenant, namespace,
-                componentName, v1alpha1Source);
+                componentName, v1alpha1Source, meshWorkerService);
 
         Assert.assertEquals(sourceConfig.getName(), newSourceConfig.getName());
         Assert.assertEquals(sourceConfig.getNamespace(), newSourceConfig.getNamespace());
@@ -154,7 +216,7 @@ public class SourcesUtilTest {
         Assert.assertEquals(sourceConfig.getArchive(), newSourceConfig.getArchive());
         Assert.assertEquals(sourceConfig.getResources(), newSourceConfig.getResources());
         Assert.assertEquals(sourceConfig.getClassName(), newSourceConfig.getClassName());
-        Assert.assertEquals(sourceConfig.getCustomRuntimeOptions(), newSourceConfig.getCustomRuntimeOptions());
+        Assert.assertEquals(expectedCustomRuntimeOptions, newSourceConfig.getCustomRuntimeOptions());
         Assert.assertEquals(sourceConfig.getTopicName(), newSourceConfig.getTopicName());
         Assert.assertEquals(sourceConfig.getParallelism(), newSourceConfig.getParallelism());
         Assert.assertEquals(sourceConfig.getRuntimeFlags(), newSourceConfig.getRuntimeFlags());

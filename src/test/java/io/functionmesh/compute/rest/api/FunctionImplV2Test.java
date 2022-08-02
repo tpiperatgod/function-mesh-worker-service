@@ -37,6 +37,7 @@ import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecInput;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecJava;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecOutput;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPod;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodEnv;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodResources;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionStatus;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
@@ -55,12 +56,14 @@ import io.kubernetes.client.openapi.models.V1StatefulSetSpec;
 import io.kubernetes.client.openapi.models.V1StatefulSetStatus;
 import io.kubernetes.client.util.generic.GenericKubernetesApi;
 import io.kubernetes.client.util.generic.KubernetesApiResponse;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import org.apache.distributedlog.api.namespace.Namespace;
 import org.apache.pulsar.client.admin.Namespaces;
 import org.apache.pulsar.client.admin.PulsarAdmin;
@@ -102,6 +105,11 @@ public class FunctionImplV2Test {
     private static final String pulsarFunctionCluster = "test-pulsar";
     private static final String kubernetesNamespace = "test";
     private static final String serviceAccount = "test-account";
+    private static final List<V1alpha1FunctionSpecPodEnv> env = new ArrayList<V1alpha1FunctionSpecPodEnv>() {
+        {
+            add(new V1alpha1FunctionSpecPodEnv().name("test-env-name").value("test-env-value"));
+        }
+    };
 
     private static final String API_GROUP = "compute.functionmesh.io";
     private static final String apiVersion = "v1alpha1";
@@ -408,6 +416,7 @@ public class FunctionImplV2Test {
         CustomRuntimeOptions customRuntimeOptions = new CustomRuntimeOptions();
         customRuntimeOptions.setRunnerImage(runnerImage);
         customRuntimeOptions.setServiceAccountName(serviceAccountName);
+        customRuntimeOptions.setEnv(env.stream().collect(Collectors.toMap(V1alpha1FunctionSpecPodEnv::getName, V1alpha1FunctionSpecPodEnv::getValue)));
         when(functionConfig.getCustomRuntimeOptions()).thenReturn(new Gson().toJson(customRuntimeOptions));
 
         return functionConfig;
@@ -462,6 +471,7 @@ public class FunctionImplV2Test {
 
         when(functionSpec.getPod()).thenReturn(functionSpecPod);
         when(functionSpecPod.getServiceAccountName()).thenReturn(serviceAccount);
+        when(functionSpecPod.getEnv()).thenReturn(env);
 
         when(functionSpec.getSubscriptionName()).thenReturn(outputTopic);
         when(functionSpec.getRetainKeyOrdering()).thenReturn(false);
@@ -498,6 +508,8 @@ public class FunctionImplV2Test {
         customRuntimeOptionsExpect.setClusterName(pulsarFunctionCluster);
         customRuntimeOptionsExpect.setMaxReplicas(2);
         customRuntimeOptionsExpect.setServiceAccountName(serviceAccount);
+        customRuntimeOptionsExpect.setEnv(env.stream().collect(
+                Collectors.toMap(V1alpha1FunctionSpecPodEnv::getName, V1alpha1FunctionSpecPodEnv::getValue)));
         String customRuntimeOptionsJSON = new Gson().toJson(customRuntimeOptionsExpect, CustomRuntimeOptions.class);
 
         Resources resourcesExpect = new Resources();

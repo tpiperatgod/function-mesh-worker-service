@@ -19,6 +19,7 @@
 package io.functionmesh.compute.models;
 
 import io.functionmesh.compute.annotation.TrustedModeOnly;
+import java.util.Map;
 import lombok.Data;
 
 @Data
@@ -27,6 +28,7 @@ public class CustomRuntimeOptions {
     private String inputTypeClassName;
     private String outputTypeClassName;
     private int maxReplicas;
+    private Map<String, String> env;
 
     @TrustedModeOnly
     private boolean managed = true;

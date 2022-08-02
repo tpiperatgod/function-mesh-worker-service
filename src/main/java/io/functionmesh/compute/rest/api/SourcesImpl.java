@@ -412,7 +412,8 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
             V1alpha1Source v1alpha1Source = extractResponse(getResourceApi().get(nameSpaceName, hashName));
 
-            return SourcesUtil.createSourceConfigFromV1alpha1Source(tenant, namespace, componentName, v1alpha1Source);
+            return SourcesUtil.createSourceConfigFromV1alpha1Source(tenant, namespace, componentName, v1alpha1Source,
+                    worker());
         } catch (Exception e) {
             log.error("Get source info {}/{}/{} {} failed", tenant, namespace, componentName, apiPlural, e);
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -626,13 +627,13 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
 
     @VisibleForTesting
     protected Set<CompletableFuture<InstanceCommunication.FunctionStatus>> fetchSourceStatusFromGRPC(List<V1Pod> pods,
-                                                                                                   String subdomain,
-                                                                                                   String statefulSetName,
-                                                                                                   String nameSpaceName,
-                                                                                                   SourceStatus sourceStatus,
-                                                                                                   V1alpha1Source v1alpha1Source,
-                                                                                                   ManagedChannel[] channel,
-                                                                                                   InstanceControlGrpc.InstanceControlFutureStub[] stub) {
+                                                                                                     String subdomain,
+                                                                                                     String statefulSetName,
+                                                                                                     String nameSpaceName,
+                                                                                                     SourceStatus sourceStatus,
+                                                                                                     V1alpha1Source v1alpha1Source,
+                                                                                                     ManagedChannel[] channel,
+                                                                                                     InstanceControlGrpc.InstanceControlFutureStub[] stub) {
         Set<CompletableFuture<InstanceCommunication.FunctionStatus>> completableFutureSet = new HashSet<>();
         pods.forEach(pod -> {
             String podName = KubernetesUtils.getPodName(pod);
@@ -710,10 +711,10 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
 
     @VisibleForTesting
     protected void fillSourceStatusByPendingPod(List<V1Pod> pods,
-                                              String statefulSetName,
-                                              String nameSpaceName,
-                                              SourceStatus sourceStatus,
-                                              V1alpha1Source v1alpha1Source) {
+                                                String statefulSetName,
+                                                String nameSpaceName,
+                                                SourceStatus sourceStatus,
+                                                V1alpha1Source v1alpha1Source) {
         pods.forEach(pod -> {
             String podName = KubernetesUtils.getPodName(pod);
             int shardId = CommonUtil.getShardIdFromPodName(podName);

@@ -415,7 +415,7 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
             String hashName = CommonUtil.generateObjectName(worker(), tenant, namespace, componentName);
             V1alpha1Sink v1alpha1Sink = extractResponse(getResourceApi().get(nameSpaceName, hashName));
             return SinksUtil.createSinkConfigFromV1alpha1Sink(
-                    tenant, namespace, componentName, v1alpha1Sink);
+                    tenant, namespace, componentName, v1alpha1Sink, worker());
         } catch (Exception e) {
             log.error(
                     "get {}/{}/{} function info failed",
