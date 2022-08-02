@@ -18,11 +18,15 @@
  */
 package io.functionmesh.compute.util;
 
+import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodEnv;
+import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1Sink;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpec;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodEnv;
 import io.functionmesh.compute.testdata.Generate;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import java.io.File;
@@ -31,6 +35,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.apache.pulsar.common.io.SinkConfig;
 import org.apache.pulsar.common.nar.NarClassLoader;
@@ -88,8 +93,28 @@ public class SinksUtilTest {
         SinkConfig sinkConfig = Generate.createSinkConfig(tenant, namespace, componentName);
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
+
+        Map<String, String> env = new HashMap<String, String>(){
+            {
+                put("unique", "unique");
+                put("shared", "shared");
+                put("shared2", "shared2");
+            }
+        };
+        Map<String, String> sinkEnv = new HashMap<String, String>(){
+            {
+                put("shared", "shared-sink");
+                put("shared2", "shared2-sink");
+                put("sink", "sink");
+            }
+        };
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
+                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getEnv()).thenReturn(env);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getSinkEnv()).thenReturn(sinkEnv);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+                .thenReturn(meshWorkerServiceCustomConfig);
+
         WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
@@ -110,6 +135,16 @@ public class SinksUtilTest {
         Assert.assertEquals(v1alpha1SinkSpec.getJava().getJar(), jar);
         Assert.assertEquals(v1alpha1SinkSpec.getAutoAck(), autoAck);
         Assert.assertEquals(v1alpha1SinkSpec.getSinkConfig(), configs);
+        Assert.assertEquals(v1alpha1SinkSpec.getPod().getEnv().stream().collect(Collectors.toMap(
+                V1alpha1SinkSpecPodEnv::getName, V1alpha1SinkSpecPodEnv::getValue)), new HashMap<String, String>(){
+            {
+                put("unique", "unique");
+                put("shared", "shared-sink");
+                put("sink", "sink");
+                put("runtime", "runtime-env");
+                put("shared2", "shared2-runtime");
+            }
+        } );
     }
 
     @Test
@@ -135,10 +170,40 @@ public class SinksUtilTest {
         PowerMockito.<Class<?>>when(FunctionCommon.getSourceType(null)).thenReturn(getClass());
 
         SinkConfig sinkConfig = Generate.createSinkConfig(tenant, namespace, componentName);
+        // test whether will it filter out env got from the custom config
+        String expectedCustomRuntimeOptions = sinkConfig.getCustomRuntimeOptions();
+        CustomRuntimeOptions customRuntimeOptions =
+                CommonUtil.getCustomRuntimeOptions(sinkConfig.getCustomRuntimeOptions());
+        customRuntimeOptions.getEnv().put("unique", "unique");
+        customRuntimeOptions.getEnv().put("shared", "shared-sink");
+        customRuntimeOptions.getEnv().put("sink", "sink");
+        String customRuntimeOptionsJSON = new Gson().toJson(customRuntimeOptions, CustomRuntimeOptions.class);
+        sinkConfig.setCustomRuntimeOptions(customRuntimeOptionsJSON);
+
         MeshWorkerService meshWorkerService =
                 PowerMockito.mock(MeshWorkerService.class);
+
+        Map<String, String> env = new HashMap<String, String>(){
+            {
+                put("unique", "unique");
+                put("shared", "shared");
+                put("shared2", "shared2");
+            }
+        };
+        Map<String, String> sinkEnv = new HashMap<String, String>(){
+            {
+                put("shared", "shared-sink");
+                put("shared2", "shared2-sink");
+                put("sink", "sink");
+            }
+        };
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
+                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getEnv()).thenReturn(env);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getSinkEnv()).thenReturn(sinkEnv);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
-                .thenReturn(new MeshWorkerServiceCustomConfig());
+                .thenReturn(meshWorkerServiceCustomConfig);
+
         WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
         PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
@@ -148,7 +213,7 @@ public class SinksUtilTest {
                         null, meshWorkerService);
 
         SinkConfig newSinkConfig =
-                SinksUtil.createSinkConfigFromV1alpha1Sink(tenant, namespace, componentName, actualV1alpha1Sink);
+                SinksUtil.createSinkConfigFromV1alpha1Sink(tenant, namespace, componentName, actualV1alpha1Sink, meshWorkerService);
 
         Assert.assertEquals(sinkConfig.getName(), newSinkConfig.getName());
         Assert.assertEquals(sinkConfig.getNamespace(), newSinkConfig.getNamespace());
@@ -158,7 +223,7 @@ public class SinksUtilTest {
         Assert.assertEquals(sinkConfig.getResources(), newSinkConfig.getResources());
         Assert.assertEquals(sinkConfig.getClassName(), newSinkConfig.getClassName());
         Assert.assertEquals(sinkConfig.getAutoAck(), newSinkConfig.getAutoAck());
-        Assert.assertEquals(sinkConfig.getCustomRuntimeOptions(), newSinkConfig.getCustomRuntimeOptions());
+        Assert.assertEquals(expectedCustomRuntimeOptions, newSinkConfig.getCustomRuntimeOptions());
         Assert.assertArrayEquals(sinkConfig.getInputs().toArray(), newSinkConfig.getInputs().toArray());
         Assert.assertEquals(sinkConfig.getMaxMessageRetries(), newSinkConfig.getMaxMessageRetries());
         Assert.assertEquals(sinkConfig.getCleanupSubscription(), newSinkConfig.getCleanupSubscription());

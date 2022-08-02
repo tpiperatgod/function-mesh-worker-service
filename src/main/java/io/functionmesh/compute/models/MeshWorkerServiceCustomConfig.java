@@ -160,6 +160,26 @@ public class MeshWorkerServiceCustomConfig {
     protected Map<String, String> sourceAnnotations;
 
     @FieldContext(
+            doc = "Env specifies the env to attach to pods the operator creates"
+    )
+    protected Map<String, String> env;
+
+    @FieldContext(
+            doc = "FunctionEnv specifies the env to attach to function's pod, will override the env if specified."
+    )
+    protected Map<String, String> functionEnv;
+
+    @FieldContext(
+            doc = "SinkEnv specifies the env to attach to sink's pod, will override the env if specified."
+    )
+    protected Map<String, String> sinkEnv;
+
+    @FieldContext(
+            doc = "SourceEnv specifies the env to attach to source's pod, will override the env if specified."
+    )
+    protected Map<String, String> sourceEnv;
+
+    @FieldContext(
             doc = "PodInitContainers specifies the initContainers to attach to function's pod, will override the "
                     + "initContainers if specified."
     )

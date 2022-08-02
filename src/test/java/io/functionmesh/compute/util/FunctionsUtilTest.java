@@ -21,15 +21,19 @@ package io.functionmesh.compute.util;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpec;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodEnv;
+import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.testdata.Generate;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 import okhttp3.Response;
 import okhttp3.internal.http.RealResponseBody;
 import org.apache.pulsar.client.admin.PulsarAdmin;
@@ -88,11 +92,27 @@ public class FunctionsUtilTest {
         PowerMockito.stub(PowerMockito.method(CommonUtil.class, "downloadPackageFile")).toReturn(null);
         PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata")).toReturn(null);
 
+        Map<String, String> env = new HashMap<String, String>(){
+            {
+                put("unique", "unique");
+                put("shared", "shared");
+                put("shared2", "shared2");
+            }
+        };
+        Map<String, String> functionEnv = new HashMap<String, String>(){
+            {
+                put("shared", "shared-function");
+                put("shared2", "shared2-function");
+                put("function", "function");
+            }
+        };
         MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
                 PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isFunctionEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isAllowUserDefinedServiceAccountName()).thenReturn(false);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getEnv()).thenReturn(env);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getFunctionEnv()).thenReturn(functionEnv);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
                 .thenReturn(meshWorkerServiceCustomConfig);
 
@@ -124,6 +144,16 @@ public class FunctionsUtilTest {
         Assert.assertEquals(v1alpha1FunctionSpec.getSecretsMap().get("secret2").getKey(), "secretKey2");
         Assert.assertEquals(v1alpha1FunctionSpec.getSecretsMap().get("secret2").getPath(), "secretPath2");
         Assert.assertEquals(v1alpha1FunctionSpec.getFuncConfig(), configs);
+        Assert.assertEquals(v1alpha1FunctionSpec.getPod().getEnv().stream().collect(Collectors.toMap(
+                V1alpha1FunctionSpecPodEnv::getName, V1alpha1FunctionSpecPodEnv::getValue)), new HashMap<String, String>(){
+            {
+                put("unique", "unique");
+                put("shared", "shared-function");
+                put("function", "function");
+                put("runtime", "runtime-env");
+                put("shared2", "shared2-runtime");
+            }
+        } );
     }
 
     @Test
@@ -152,22 +182,47 @@ public class FunctionsUtilTest {
         PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata"))
                 .toReturn("word-count.jar");
 
+        Map<String, String> env = new HashMap<String, String>(){
+            {
+                put("unique", "unique");
+                put("shared", "shared");
+                put("shared2", "shared2");
+            }
+        };
+        Map<String, String> functionEnv = new HashMap<String, String>(){
+            {
+                put("shared", "shared-function");
+                put("shared2", "shared2-function");
+                put("function", "function");
+            }
+        };
         MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
                 PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isFunctionEnabled()).thenReturn(true);
         PowerMockito.when(meshWorkerServiceCustomConfig.isAllowUserDefinedServiceAccountName()).thenReturn(false);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getEnv()).thenReturn(env);
+        PowerMockito.when(meshWorkerServiceCustomConfig.getFunctionEnv()).thenReturn(functionEnv);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
                 .thenReturn(meshWorkerServiceCustomConfig);
 
         FunctionConfig functionConfig =
                 Generate.createJavaFunctionWithPackageURLConfig(tenant, namespace, functionName);
+        // test whether will it filter out env got from the custom config
+        String expectedCustomRuntimeOptions = functionConfig.getCustomRuntimeOptions();
+        CustomRuntimeOptions customRuntimeOptions =
+                CommonUtil.getCustomRuntimeOptions(functionConfig.getCustomRuntimeOptions());
+        customRuntimeOptions.getEnv().put("unique", "unique");
+        customRuntimeOptions.getEnv().put("shared", "shared-function");
+        customRuntimeOptions.getEnv().put("function", "function");
+        String customRuntimeOptionsJSON = new Gson().toJson(customRuntimeOptions, CustomRuntimeOptions.class);
+        functionConfig.setCustomRuntimeOptions(customRuntimeOptionsJSON);
 
         V1alpha1Function v1alpha1Function = FunctionsUtil.createV1alpha1FunctionFromFunctionConfig(kind, group, version,
                 functionName, functionConfig.getJar(), functionConfig, null, meshWorkerService);
 
         FunctionConfig newFunctionConfig = FunctionsUtil.createFunctionConfigFromV1alpha1Function(tenant, namespace,
-                functionName, v1alpha1Function);
+                functionName, v1alpha1Function, meshWorkerService);
 
         Assert.assertEquals(functionConfig.getClassName(), newFunctionConfig.getClassName());
         Assert.assertEquals(functionConfig.getJar(), newFunctionConfig.getJar());
@@ -178,7 +233,7 @@ public class FunctionsUtilTest {
         Assert.assertEquals(functionConfig.getMaxMessageRetries(), newFunctionConfig.getMaxMessageRetries());
         Assert.assertEquals(functionConfig.getAutoAck(), newFunctionConfig.getAutoAck());
         Assert.assertEquals(functionConfig.getBatchBuilder(), newFunctionConfig.getBatchBuilder());
-        Assert.assertEquals(functionConfig.getCustomRuntimeOptions(), newFunctionConfig.getCustomRuntimeOptions());
+        Assert.assertEquals(expectedCustomRuntimeOptions, newFunctionConfig.getCustomRuntimeOptions());
         Assert.assertEquals(functionConfig.getSubName(), newFunctionConfig.getSubName());
         Assert.assertEquals(functionConfig.getCleanupSubscription(), newFunctionConfig.getCleanupSubscription());
         Assert.assertEquals(functionConfig.getCustomSchemaInputs(), newFunctionConfig.getCustomSchemaInputs());

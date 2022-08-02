@@ -38,6 +38,7 @@ import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecInputCryptoConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecInputSourceSpecs;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecJava;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPod;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodEnv;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodResources;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPulsar;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecSecretsMap;
@@ -50,6 +51,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -334,6 +336,20 @@ public class SinksUtil {
         if (!CommonUtil.isMapEmpty(customAnnotations)) {
             specPod.setAnnotations(customAnnotations);
         }
+        List<V1alpha1SinkSpecPodEnv> env = new ArrayList<>();
+        Map<String, String> finalEnv = new HashMap<>();
+        CommonUtil.mergeMap(customConfig.getEnv(), finalEnv);
+        CommonUtil.mergeMap(customConfig.getSinkEnv(), finalEnv);
+        CommonUtil.mergeMap(customRuntimeOptions.getEnv(), finalEnv);
+        if (!CommonUtil.isMapEmpty(finalEnv)) {
+            finalEnv.entrySet().forEach(entry -> {
+                V1alpha1SinkSpecPodEnv podEnv = new V1alpha1SinkSpecPodEnv();
+                podEnv.setName(entry.getKey());
+                podEnv.setValue(entry.getValue());
+                env.add(podEnv);
+            });
+        }
+        specPod.setEnv(env);
         v1alpha1SinkSpec.setPod(specPod);
 
         if (sinkConfig.getSecrets() != null && !sinkConfig.getSecrets().isEmpty()) {
@@ -382,12 +398,14 @@ public class SinksUtil {
     }
 
     public static SinkConfig createSinkConfigFromV1alpha1Sink(
-            String tenant, String namespace, String sinkName, V1alpha1Sink v1alpha1Sink) {
+            String tenant, String namespace, String sinkName, V1alpha1Sink v1alpha1Sink, MeshWorkerService worker) {
         SinkConfig sinkConfig = new SinkConfig();
 
         sinkConfig.setName(sinkName);
         sinkConfig.setNamespace(namespace);
         sinkConfig.setTenant(tenant);
+
+        MeshWorkerServiceCustomConfig customConfig = worker.getMeshWorkerServiceCustomConfig();
 
         V1alpha1SinkSpec v1alpha1SinkSpec = v1alpha1Sink.getSpec();
 
@@ -419,9 +437,20 @@ public class SinksUtil {
 
         CommonUtil.setManaged(customRuntimeOptions, v1alpha1Sink.getMetadata());
 
-        if (v1alpha1SinkSpec.getPod() != null &&
-                Strings.isNotEmpty(v1alpha1SinkSpec.getPod().getServiceAccountName())) {
-            customRuntimeOptions.setServiceAccountName(v1alpha1SinkSpec.getPod().getServiceAccountName());
+        if (v1alpha1SinkSpec.getPod() != null) {
+            if (Strings.isNotEmpty(v1alpha1SinkSpec.getPod().getServiceAccountName())) {
+                customRuntimeOptions.setServiceAccountName(v1alpha1SinkSpec.getPod().getServiceAccountName());
+            }
+            if (v1alpha1SinkSpec.getPod().getEnv() != null) {
+                Map<String, String> customConfigEnv = new HashMap<>();
+                CommonUtil.mergeMap(customConfig.getEnv(), customConfigEnv);
+                CommonUtil.mergeMap(customConfig.getSinkEnv(), customConfigEnv);
+                Map<String, String> runtimeEnv =
+                        CommonUtil.getRuntimeEnv(customConfigEnv, v1alpha1SinkSpec.getPod().getEnv().stream().collect(
+                                Collectors.toMap(V1alpha1SinkSpecPodEnv::getName, V1alpha1SinkSpecPodEnv::getValue))
+                        );
+                customRuntimeOptions.setEnv(runtimeEnv);
+            }
         }
 
         if (v1alpha1SinkSpecInput.getTopics() != null) {

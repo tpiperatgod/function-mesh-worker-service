@@ -37,6 +37,7 @@ import io.functionmesh.compute.sinks.models.V1alpha1SinkSpec;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecInput;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecJava;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPod;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodEnv;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodResources;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkStatus;
 import io.functionmesh.compute.util.SinksUtil;
@@ -52,12 +53,14 @@ import io.kubernetes.client.openapi.models.V1StatefulSetSpec;
 import io.kubernetes.client.openapi.models.V1StatefulSetStatus;
 import io.kubernetes.client.util.generic.GenericKubernetesApi;
 import io.kubernetes.client.util.generic.KubernetesApiResponse;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import org.apache.distributedlog.api.namespace.Namespace;
 import org.apache.pulsar.client.admin.Namespaces;
 import org.apache.pulsar.client.admin.PulsarAdmin;
@@ -93,6 +96,11 @@ public class SinksImplV2Test {
     private static final String pulsarFunctionCluster = "test-pulsar";
     private static final String kubernetesNamespace = "test";
     private static final String serviceAccount = "test-account";
+    private static final List<V1alpha1SinkSpecPodEnv> env = new ArrayList<V1alpha1SinkSpecPodEnv>() {
+        {
+            add(new V1alpha1SinkSpecPodEnv().name("test-env-name").value("test-env-value"));
+        }
+    };
 
     private static final String apiGroup = "compute.functionmesh.io";
     private static final String apiVersion = "v1alpha1";
@@ -320,6 +328,8 @@ public class SinksImplV2Test {
         customRuntimeOptions.setClusterName(pulsarFunctionCluster);
         customRuntimeOptions.setRunnerImage(runnerImage);
         customRuntimeOptions.setServiceAccountName(serviceAccountName);
+        customRuntimeOptions.setEnv(env.stream().collect(
+                Collectors.toMap(V1alpha1SinkSpecPodEnv::getName, V1alpha1SinkSpecPodEnv::getValue)));
         sinkConfig.setCustomRuntimeOptions(new Gson().toJson(customRuntimeOptions));
         return sinkConfig;
     }
@@ -343,6 +353,7 @@ public class SinksImplV2Test {
 
         when(mockSinkSpec.getPod()).thenReturn(mockSinkSpecPod);
         when(mockSinkSpecPod.getServiceAccountName()).thenReturn(serviceAccount);
+        when(mockSinkSpecPod.getEnv()).thenReturn(env);
 
         when(mockSinkSpec.getSubscriptionName()).thenReturn(outputTopic);
         when(mockSinkSpec.getRetainOrdering()).thenReturn(false);
@@ -406,6 +417,8 @@ public class SinksImplV2Test {
         customRuntimeOptionsExpect.setClusterName(pulsarFunctionCluster);
         customRuntimeOptionsExpect.setMaxReplicas(2);
         customRuntimeOptionsExpect.setServiceAccountName(serviceAccount);
+        customRuntimeOptionsExpect.setEnv(env.stream().collect(
+                Collectors.toMap(V1alpha1SinkSpecPodEnv::getName, V1alpha1SinkSpecPodEnv::getValue)));
         String customRuntimeOptionsJSON = new Gson().toJson(customRuntimeOptionsExpect, CustomRuntimeOptions.class);
 
         Resources resourcesExpect = new Resources();
