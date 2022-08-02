@@ -35,7 +35,7 @@ Replace the `YOUR-NAR-PATH` variable with your real path.
   You must provide the `KUBE_CONFIG` environment variable and mount related volumes to the container to manage resources in the target Kubernetes cluster. 
 
 ```
-docker run -td --name worker -p 6750:6750 -v /YOUR-CONF/functions_worker.yml:/pulsar/conf/functions_worker.yml -v /YOUR-NAR-PATH/:/ANY-PATH apachepulsar/pulsar:2.9.2 bin/pulsar -e KUBE_CONFIG=/kube/config -v /YOUR-KUBE-CONFIG:/kube/config functions-worker
+docker run -td --name worker -p 6750:6750 -v /YOUR-CONF/functions_worker.yml:/pulsar/conf/functions_worker.yml -v /YOUR-NAR-PATH/:/ANY-PATH -e KUBE_CONFIG=/kube/config -v /YOUR-KUBE-CONFIG:/kube/config apachepulsar/pulsar:2.9.2 bin/pulsar functions-worker
 ```
 
 To combine the worker service and pulsar cluster's admin endpoints, you should start a Pulsar proxy. For details, see [configure-proxies](https://pulsar.apache.org/docs/next/functions-worker-run-separately#configure-proxies-for-standalone-function-workers).
