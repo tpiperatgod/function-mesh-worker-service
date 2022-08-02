@@ -874,7 +874,7 @@ public class FunctionsImplTest {
 
         V1alpha1Function v1alpha1Function = json.getGson().fromJson(testBody, V1alpha1Function.class);
         FunctionConfig expectedFunctionConfig = FunctionsUtil.createFunctionConfigFromV1alpha1Function(tenant,
-                namespace, functionName, v1alpha1Function);
+                namespace, functionName, v1alpha1Function, meshWorkerService);
         assertEquals(expectedFunctionConfig, functionConfig);
     }
 }

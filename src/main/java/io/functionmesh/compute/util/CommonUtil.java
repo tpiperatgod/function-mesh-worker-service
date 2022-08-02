@@ -320,6 +320,18 @@ public class CommonUtil {
         return to;
     }
 
+    public static Map<String, String> getRuntimeEnv(Map<String, String> customConfigEnv, Map<String, String> env) {
+        // filter out env got from the custom config
+        Map<String, String> runtimeEnv = env.entrySet().stream()
+                .filter(entry -> !(customConfigEnv.containsKey(entry.getKey()) && customConfigEnv.get(entry.getKey())
+                        .equals(entry.getValue()))).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        // avoid '{}' in serialized json string
+        if (runtimeEnv.isEmpty()) {
+            return null;
+        }
+        return runtimeEnv;
+    }
+
     public static Map<String, String> getCustomLabelClaims(String clusterName, String tenant, String namespace,
                                                            String compName, MeshWorkerService worker, String kind) {
         Map<String, String> customLabelClaims = Maps.newHashMap();

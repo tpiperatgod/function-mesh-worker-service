@@ -38,6 +38,7 @@ import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecJava;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecOutput;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecOutputProducerConf;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPod;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodEnv;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodResources;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsar;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPython;
@@ -52,6 +53,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -382,6 +384,20 @@ public class FunctionsUtil {
         if (!CommonUtil.isMapEmpty(customAnnotations)) {
             specPod.setAnnotations(customAnnotations);
         }
+        List<V1alpha1FunctionSpecPodEnv> env = new ArrayList<>();
+        Map<String, String> finalEnv = new HashMap<>();
+        CommonUtil.mergeMap(customConfig.getEnv(), finalEnv);
+        CommonUtil.mergeMap(customConfig.getFunctionEnv(), finalEnv);
+        CommonUtil.mergeMap(customRuntimeOptions.getEnv(), finalEnv);
+        if (!CommonUtil.isMapEmpty(finalEnv)) {
+            finalEnv.entrySet().forEach(entry -> {
+                V1alpha1FunctionSpecPodEnv podEnv = new V1alpha1FunctionSpecPodEnv();
+                podEnv.setName(entry.getKey());
+                podEnv.setValue(entry.getValue());
+                env.add(podEnv);
+            });
+        }
+        specPod.setEnv(env);
         v1alpha1FunctionSpec.setPod(specPod);
 
         if (functionConfig.getSecrets() != null && !functionConfig.getSecrets().isEmpty()) {
@@ -417,7 +433,8 @@ public class FunctionsUtil {
 
     public static FunctionConfig createFunctionConfigFromV1alpha1Function(String tenant, String namespace,
                                                                           String functionName,
-                                                                          V1alpha1Function v1alpha1Function) {
+                                                                          V1alpha1Function v1alpha1Function,
+                                                                          MeshWorkerService worker) {
         FunctionConfig functionConfig = new FunctionConfig();
 
         functionConfig.setName(functionName);
@@ -425,6 +442,8 @@ public class FunctionsUtil {
         functionConfig.setTenant(tenant);
 
         V1alpha1FunctionSpec v1alpha1FunctionSpec = v1alpha1Function.getSpec();
+
+        MeshWorkerServiceCustomConfig customConfig = worker.getMeshWorkerServiceCustomConfig();
 
         if (v1alpha1FunctionSpec == null) {
             throw new RestException(Response.Status.BAD_REQUEST, "Function CRD without Spec defined.");
@@ -456,9 +475,22 @@ public class FunctionsUtil {
 
         CommonUtil.setManaged(customRuntimeOptions, v1alpha1Function.getMetadata());
 
-        if (v1alpha1FunctionSpec.getPod() != null &&
-                Strings.isNotEmpty(v1alpha1FunctionSpec.getPod().getServiceAccountName())) {
-            customRuntimeOptions.setServiceAccountName(v1alpha1FunctionSpec.getPod().getServiceAccountName());
+        if (v1alpha1FunctionSpec.getPod() != null) {
+            if (Strings.isNotEmpty(v1alpha1FunctionSpec.getPod().getServiceAccountName())) {
+                customRuntimeOptions.setServiceAccountName(v1alpha1FunctionSpec.getPod().getServiceAccountName());
+            }
+            if (v1alpha1FunctionSpec.getPod().getEnv() != null) {
+                Map<String, String> customConfigEnv = new HashMap<>();
+                CommonUtil.mergeMap(customConfig.getEnv(), customConfigEnv);
+                CommonUtil.mergeMap(customConfig.getFunctionEnv(), customConfigEnv);
+                Map<String, String> runtimeEnv =
+                        CommonUtil.getRuntimeEnv(customConfigEnv,
+                                v1alpha1FunctionSpec.getPod().getEnv().stream().collect(
+                                        Collectors.toMap(V1alpha1FunctionSpecPodEnv::getName,
+                                                V1alpha1FunctionSpecPodEnv::getValue))
+                        );
+                customRuntimeOptions.setEnv(runtimeEnv);
+            }
         }
 
         if (v1alpha1FunctionSpecInput.getTopics() != null) {
