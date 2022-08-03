@@ -58,6 +58,7 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
+import org.apache.pulsar.client.api.SubscriptionInitialPosition;
 import org.apache.pulsar.common.functions.ConsumerConfig;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.ProducerConfig;
@@ -161,6 +162,16 @@ public class FunctionsUtil {
 
         if (!StringUtils.isEmpty(functionDetails.getSource().getSubscriptionName())) {
             v1alpha1FunctionSpec.setSubscriptionName(functionDetails.getSource().getSubscriptionName());
+        }
+
+        switch (functionDetails.getSource().getSubscriptionPosition()) {
+            case LATEST:
+                v1alpha1FunctionSpec.setSubscriptionPosition(V1alpha1FunctionSpec.SubscriptionPositionEnum.LATEST);
+                break;
+            case EARLIEST:
+                v1alpha1FunctionSpec.setSubscriptionPosition(V1alpha1FunctionSpec.SubscriptionPositionEnum.EARLIEST);
+                break;
+            default:
         }
         v1alpha1FunctionSpec.setRetainOrdering(functionDetails.getRetainOrdering());
         v1alpha1FunctionSpec.setRetainKeyOrdering(functionDetails.getRetainKeyOrdering());
@@ -546,6 +557,17 @@ public class FunctionsUtil {
 
         if (Strings.isNotEmpty(v1alpha1FunctionSpec.getSubscriptionName())) {
             functionConfig.setSubName(v1alpha1FunctionSpec.getSubscriptionName());
+        }
+        if (v1alpha1FunctionSpec.getSubscriptionPosition() != null) {
+            switch (v1alpha1FunctionSpec.getSubscriptionPosition()) {
+                case LATEST:
+                    functionConfig.setSubscriptionPosition(SubscriptionInitialPosition.Latest);
+                    break;
+                case EARLIEST:
+                    functionConfig.setSubscriptionPosition(SubscriptionInitialPosition.Earliest);
+                    break;
+                default:
+            }
         }
         if (v1alpha1FunctionSpec.getRetainOrdering() != null) {
             functionConfig.setRetainOrdering(v1alpha1FunctionSpec.getRetainOrdering());

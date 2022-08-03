@@ -56,6 +56,7 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
+import org.apache.pulsar.client.api.SubscriptionInitialPosition;
 import org.apache.pulsar.common.functions.ConsumerConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.io.SinkConfig;
@@ -262,6 +263,15 @@ public class SinksUtil {
 
         if (Strings.isNotEmpty(functionDetails.getSource().getSubscriptionName())) {
             v1alpha1SinkSpec.setSubscriptionName(functionDetails.getSource().getSubscriptionName());
+        }
+        switch (functionDetails.getSource().getSubscriptionPosition()) {
+            case LATEST:
+                v1alpha1SinkSpec.setSubscriptionPosition(V1alpha1SinkSpec.SubscriptionPositionEnum.LATEST);
+                break;
+            case EARLIEST:
+                v1alpha1SinkSpec.setSubscriptionPosition(V1alpha1SinkSpec.SubscriptionPositionEnum.EARLIEST);
+                break;
+            default:
         }
         v1alpha1SinkSpec.setRetainOrdering(functionDetails.getRetainOrdering());
 
@@ -505,6 +515,17 @@ public class SinksUtil {
 
         if (Strings.isNotEmpty(v1alpha1SinkSpec.getSubscriptionName())) {
             sinkConfig.setSourceSubscriptionName(v1alpha1SinkSpec.getSubscriptionName());
+        }
+        if (v1alpha1SinkSpec.getSubscriptionPosition() != null) {
+            switch (v1alpha1SinkSpec.getSubscriptionPosition()) {
+                case LATEST:
+                    sinkConfig.setSourceSubscriptionPosition(SubscriptionInitialPosition.Latest);
+                    break;
+                case EARLIEST:
+                    sinkConfig.setSourceSubscriptionPosition(SubscriptionInitialPosition.Earliest);
+                    break;
+                default:
+            }
         }
         if (v1alpha1SinkSpec.getRetainOrdering() != null) {
             sinkConfig.setRetainOrdering(v1alpha1SinkSpec.getRetainOrdering());
