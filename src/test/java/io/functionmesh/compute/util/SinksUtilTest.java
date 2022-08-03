@@ -145,6 +145,8 @@ public class SinksUtilTest {
                 put("shared2", "shared2-runtime");
             }
         } );
+        Assert.assertEquals(v1alpha1SinkSpec.getSubscriptionName(), "test-sub");
+        Assert.assertEquals(v1alpha1SinkSpec.getSubscriptionPosition(), V1alpha1SinkSpec.SubscriptionPositionEnum.EARLIEST);
     }
 
     @Test
@@ -229,6 +231,8 @@ public class SinksUtilTest {
         Assert.assertEquals(sinkConfig.getCleanupSubscription(), newSinkConfig.getCleanupSubscription());
         Assert.assertEquals(sinkConfig.getParallelism(), newSinkConfig.getParallelism());
         Assert.assertEquals(sinkConfig.getRuntimeFlags(), newSinkConfig.getRuntimeFlags());
+        Assert.assertEquals(sinkConfig.getSourceSubscriptionName(), newSinkConfig.getSourceSubscriptionName());
+        Assert.assertEquals(sinkConfig.getSourceSubscriptionPosition(), newSinkConfig.getSourceSubscriptionPosition());
     }
 
     @Test

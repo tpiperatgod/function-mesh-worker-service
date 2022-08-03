@@ -154,6 +154,8 @@ public class FunctionsUtilTest {
                 put("shared2", "shared2-runtime");
             }
         } );
+        Assert.assertEquals(v1alpha1FunctionSpec.getSubscriptionName(), "test-sub");
+        Assert.assertEquals(v1alpha1FunctionSpec.getSubscriptionPosition(), V1alpha1FunctionSpec.SubscriptionPositionEnum.LATEST);
     }
 
     @Test
@@ -245,5 +247,7 @@ public class FunctionsUtilTest {
                 objectMapper.readTree(objectMapper.writeValueAsString(newFunctionConfig.getSecrets()));
         Assert.assertEquals(oldSecretsJson, newSecretsJson);
         Assert.assertEquals(functionConfig.getUserConfig(), newFunctionConfig.getUserConfig());
+        Assert.assertEquals(functionConfig.getSubName(), newFunctionConfig.getSubName());
+        Assert.assertEquals(functionConfig.getSubscriptionPosition(), newFunctionConfig.getSubscriptionPosition());
     }
 }

@@ -25,6 +25,7 @@ import io.functionmesh.compute.models.CustomRuntimeOptions;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.pulsar.client.api.SubscriptionInitialPosition;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.io.SinkConfig;
@@ -69,6 +70,8 @@ public class Generate {
         functionConfig.setParallelism(1);
         functionConfig.setCleanupSubscription(true);
         functionConfig.setOutput("persistent://public/default/count");
+        functionConfig.setSubName("test-sub");
+        functionConfig.setSubscriptionPosition(SubscriptionInitialPosition.Latest);
         Resources resources = new Resources();
         resources.setCpu(1.0);
         resources.setRam(102400L);
@@ -117,6 +120,8 @@ public class Generate {
         sinkConfig.setInputs(Collections.singletonList("persistent://public/default/input"));
         sinkConfig.setParallelism(1);
         sinkConfig.setCleanupSubscription(true);
+        sinkConfig.setSourceSubscriptionName("test-sub");
+        sinkConfig.setSourceSubscriptionPosition(SubscriptionInitialPosition.Earliest);
         Resources resources = new Resources();
         resources.setCpu(1.0);
         resources.setRam(102400L);
