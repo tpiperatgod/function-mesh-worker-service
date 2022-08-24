@@ -36,7 +36,7 @@
         <license.plugin.version>3.0</license.plugin.version>
         <mockito.version>1.10.19</mockito.version>
         <powermock.version>1.7.4</powermock.version>
-        <jetty.version>9.4.35.v20201120</jetty.version>
+        <jetty.version>9.4.48.v20220622</jetty.version>
         <nifi-nar-maven-plugin.version>1.2.0</nifi-nar-maven-plugin.version>
         <function-mesh.version>v0.5.0</function-mesh.version>
         <maven-checkstyle-plugin.version>3.1.2</maven-checkstyle-plugin.version>
@@ -84,6 +84,12 @@
             <artifactId>powermock-module-junit4</artifactId>
             <version>${powermock.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+            <version>${jetty.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-proxy</artifactId>
