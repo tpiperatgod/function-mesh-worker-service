@@ -18,7 +18,7 @@
 #
 
 ARG PULSAR_IMAGE_TAG
-FROM streamnative/pulsar-all:${PULSAR_IMAGE_TAG}
+FROM docker.cloudsmith.io/streamnative/staging/pulsar-all:${PULSAR_IMAGE_TAG}
 COPY ./target/mesh-worker-service*.nar /pulsar/mesh-worker-service.nar
 COPY ./integration-tests/docker/connectors.yaml /pulsar/conf/connectors.yaml
 RUN mkdir -p /pulsar-nar
