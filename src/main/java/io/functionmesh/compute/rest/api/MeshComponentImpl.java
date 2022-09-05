@@ -20,6 +20,7 @@ package io.functionmesh.compute.rest.api;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM;
+import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM_DEPRECATED;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
 import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -364,7 +365,10 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                     null);
 
             V1alpha1FunctionList list = executeCall(call, V1alpha1FunctionList.class);
-            list.getItems().forEach(n -> result.add(n.getMetadata().getLabels().get(COMPONENT_LABEL_CLAIM)));
+            list.getItems().forEach(n -> {
+                result.add(n.getMetadata().getLabels().get(COMPONENT_LABEL_CLAIM));
+                result.add(n.getMetadata().getLabels().get(COMPONENT_LABEL_CLAIM_DEPRECATED));
+            });
         } catch (Exception e) {
             log.error("failed to fetch functions list from namespace {}", namespace, e);
         }

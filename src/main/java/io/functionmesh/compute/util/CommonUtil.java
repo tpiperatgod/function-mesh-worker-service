@@ -75,10 +75,14 @@ public class CommonUtil {
     public static final String COMPONENT_HPA = "HorizontalPodAutoscaler";
     public static final String DEFAULT_FUNCTION_EXECUTABLE = "function-executable";
     public static final String DEFAULT_FUNCTION_DOWNLOAD_DIRECTORY = "/pulsar/";
-    public static final String CLUSTER_LABEL_CLAIM = "pulsar-cluster";
-    public static final String TENANT_LABEL_CLAIM = "pulsar-tenant";
-    public static final String NAMESPACE_LABEL_CLAIM = "pulsar-namespace";
-    public static final String COMPONENT_LABEL_CLAIM = "pulsar-component";
+    public static final String CLUSTER_LABEL_CLAIM_DEPRECATED = "pulsar-cluster";
+    public static final String CLUSTER_LABEL_CLAIM = "compute.functionmesh.io/pulsar-cluster";
+    public static final String TENANT_LABEL_CLAIM_DEPRECATED = "pulsar-tenant";
+    public static final String TENANT_LABEL_CLAIM = "compute.functionmesh.io/pulsar-tenant";
+    public static final String NAMESPACE_LABEL_CLAIM_DEPRECATED = "pulsar-namespace";
+    public static final String NAMESPACE_LABEL_CLAIM = "compute.functionmesh.io/pulsar-namespace";
+    public static final String COMPONENT_LABEL_CLAIM_DEPRECATED = "pulsar-component";
+    public static final String COMPONENT_LABEL_CLAIM = "compute.functionmesh.io/pulsar-component";
     public static final String ANNOTATION_MANAGED = "compute.functionmesh.io/managed";
     private static final String CLUSTER_NAME_ENV = "clusterName";
 
@@ -336,9 +340,13 @@ public class CommonUtil {
                                                            String compName, MeshWorkerService worker, String kind) {
         Map<String, String> customLabelClaims = Maps.newHashMap();
         customLabelClaims.put(CLUSTER_LABEL_CLAIM, clusterName);
+        customLabelClaims.put(CLUSTER_LABEL_CLAIM_DEPRECATED, clusterName);
         customLabelClaims.put(TENANT_LABEL_CLAIM, tenant);
+        customLabelClaims.put(TENANT_LABEL_CLAIM_DEPRECATED, tenant);
         customLabelClaims.put(NAMESPACE_LABEL_CLAIM, namespace);
+        customLabelClaims.put(NAMESPACE_LABEL_CLAIM_DEPRECATED, namespace);
         customLabelClaims.put(COMPONENT_LABEL_CLAIM, compName);
+        customLabelClaims.put(COMPONENT_LABEL_CLAIM_DEPRECATED, compName);
         if (worker != null) {
             if (worker.getFactoryConfig() != null && worker.getFactoryConfig().getCustomLabels() != null
                     && !worker.getFactoryConfig().getCustomLabels().isEmpty()) {
