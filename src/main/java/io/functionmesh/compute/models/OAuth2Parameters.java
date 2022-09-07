@@ -31,7 +31,7 @@ import lombok.extern.jackson.Jacksonized;
 @Data
 @Jacksonized
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class Oauth2Parameters {
+public class OAuth2Parameters {
     private String audience;
     @NonNull
     private String issuerUrl;
@@ -44,7 +44,7 @@ public class Oauth2Parameters {
     public Map<String, String> getAny() {
         Map<String, String> m = new HashMap<>();
         m.put("issuer_url", this.issuerUrl);
-        m.put("private_key", this.privateKey);
+        m.put("private_key", this.privateKey.replace("file://", ""));
         return m;
     }
 }

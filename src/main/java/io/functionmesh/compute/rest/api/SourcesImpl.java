@@ -18,10 +18,12 @@
  */
 package io.functionmesh.compute.rest.api;
 
+import static io.functionmesh.compute.util.KubernetesUtils.buildTlsConfigMap;
 import static io.functionmesh.compute.util.KubernetesUtils.validateResourceOwner;
 import static io.functionmesh.compute.util.KubernetesUtils.validateStatefulSet;
 import com.google.common.annotations.VisibleForTesting;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.auth.AuthResults;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
 import io.functionmesh.compute.sources.models.V1alpha1SourceList;
@@ -181,7 +183,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
         v1alpha1Source.getMetadata().setNamespace(worker().getJobNamespace());
         try {
             this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source,
-                    clientAuthenticationDataHttps);
+                    clientRole, clientAuthenticationDataHttps);
             extractResponse(getResourceApi().create(v1alpha1Source));
         } catch (RestException restException) {
             log.error(
@@ -253,7 +255,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
             v1alpha1Source.getMetadata().setNamespace(worker().getJobNamespace());
             v1alpha1Source.getMetadata().setResourceVersion(v1alpha1SourcePre.getMetadata().getResourceVersion());
             this.upsertSource(tenant, namespace, sourceName, sourceConfig, v1alpha1Source,
-                    clientAuthenticationDataHttps);
+                    clientRole, clientAuthenticationDataHttps);
             extractResponse(getResourceApi().update(v1alpha1Source));
         } catch (Exception e) {
             log.error("update {}/{}/{} source failed", tenant, namespace, sourceConfig, e);
@@ -443,6 +445,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                               final String sourceName,
                               SourceConfig sourceConfig,
                               V1alpha1Source v1alpha1Source,
+                              String clientRole,
                               AuthenticationDataHttps clientAuthenticationDataHttps) {
         if (worker().getWorkerConfig().isAuthenticationEnabled()) {
             if (clientAuthenticationDataHttps != null) {
@@ -453,12 +456,30 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                         v1alpha1Source.getSpec().setPod(podPolicy);
                     }
                     MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
-                    List<V1alpha1SourceSpecPodVolumes> volumesList = customConfig.asV1alpha1SourceSpecPodVolumesList();
+
+                    AuthResults results = CommonUtil.doAuth(worker(), clientRole, clientAuthenticationDataHttps, apiKind);
+                    String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
+                            v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName, results.getAuthSecretData(), worker());
+                    v1alpha1Source.getSpec().getPulsar().setAuthSecret(authSecretName);
+
+                    List<V1alpha1SourceSpecPodVolumes> volumesList = new ArrayList<>();
+                    if (results.getSourceVolumes() != null && !results.getSourceVolumes().isEmpty()) {
+                        volumesList.addAll(results.getSourceVolumes());
+                    }
+                    if (customConfig.asV1alpha1SourceSpecPodVolumesList() != null && !customConfig.asV1alpha1SourceSpecPodVolumesList().isEmpty()) {
+                        volumesList.addAll(customConfig.asV1alpha1SourceSpecPodVolumesList());
+                    }
                     if (volumesList != null && !volumesList.isEmpty()) {
                         podPolicy.setVolumes(volumesList);
                     }
-                    List<V1alpha1SourceSpecPodVolumeMounts> volumeMountsList =
-                            customConfig.asV1alpha1SourceSpecPodVolumeMountsList();
+
+                    List<V1alpha1SourceSpecPodVolumeMounts> volumeMountsList = new ArrayList<>();
+                    if (results.getSourceVolumeMounts() != null && !results.getSourceVolumeMounts().isEmpty()) {
+                        volumeMountsList.addAll(results.getSourceVolumeMounts());
+                    }
+                    if (customConfig.asV1alpha1SourceSpecPodVolumeMountsList() != null && !customConfig.asV1alpha1SourceSpecPodVolumeMountsList().isEmpty()) {
+                        volumeMountsList.addAll(customConfig.asV1alpha1SourceSpecPodVolumeMountsList());
+                    }
                     if (volumeMountsList != null && !volumeMountsList.isEmpty()) {
                         v1alpha1Source.getSpec().setVolumeMounts(volumeMountsList);
                     }
@@ -477,16 +498,9 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                             v1alpha1Source.getSpec().setJava(v1alpha1SourceSpecJava);
                         }
                     }
-                    if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
-                            && !StringUtils.isEmpty(
-                            worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
-                        String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
-                                v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName, worker());
-                        v1alpha1Source.getSpec().getPulsar().setAuthSecret(authSecretName);
-                    }
                     if (worker().getWorkerConfig().getTlsEnabled()) {
                         String tlsSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "tls",
-                                v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName, worker());
+                                v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName, buildTlsConfigMap(worker().getWorkerConfig()), worker());
                         v1alpha1Source.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
                     if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())

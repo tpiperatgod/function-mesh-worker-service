@@ -25,10 +25,17 @@ PULSAR_HOME=`cd ${BINDIR}/..;pwd`
 TLS=${TLS:-"false"}
 SYMMETRIC=${SYMMETRIC:-"false"}
 FUNCTION=${FUNCTION:-"false"}
+WITH_AUTH=${WITH_AUTH:-"false"}
 
 source ${PULSAR_HOME}/.ci/helm.sh
 
 ci::ensure_mesh_worker_service_role
 ci::ensure_function_mesh_config
-ci::verify_mesh_worker_service_pulsar_admin
-ci::verify_function_stats_api
+if [ "x${WITH_AUTH}" = "xtrue" ]; then
+  ci::ensure_function_mesh_oauth_secret
+  ci::verify_mesh_worker_service_pulsar_admin_with_auth
+  ci::verify_function_stats_api_with_auth
+else
+  ci::verify_mesh_worker_service_pulsar_admin
+  ci::verify_function_stats_api
+fi

@@ -22,41 +22,24 @@ set -e
 
 BINDIR=`dirname "$0"`
 PULSAR_HOME=`cd ${BINDIR}/..;pwd`
-VALUES_FILE=$1
 TLS=${TLS:-"false"}
 SYMMETRIC=${SYMMETRIC:-"false"}
 FUNCTION=${FUNCTION:-"false"}
-WITH_AUTH=${WITH_AUTH:-"false"}
 
 source ${PULSAR_HOME}/.ci/helm.sh
 
-# create cluster
-ci::create_cluster
+ci::upload_java_package_with_auth
+ci::verify_java_package_with_auth
 
-extra_opts=""
-if [[ "x${SYMMETRIC}" == "xtrue" ]]; then
-    extra_opts="-s"
-fi
+ci::upload_python_package_with_auth
+ci::verify_python_package_with_auth
 
-# install storage provisioner
-#ci::install_storage_provisioner
+ci::upload_go_package_with_auth
+ci::verify_go_package_with_auth
 
-# install metrics server
-#ci::install_metrics_server
+ci::create_java_function_by_upload_with_auth
 
-# install cert manager chart
-ci::install_cert_manager_charts
+ci::verify_secrets_python_package_with_auth
 
-# install pulsar chart
-ci::install_pulsar_charts "$VALUES_FILE"
-
-# install function-mesh chart
-ci::install_function_mesh_charts
-
-# test producer
-if [ "x${WITH_AUTH}" = "xtrue" ]; then
-  ci::test_pulsar_producer_with_auth
-else
-  ci::test_pulsar_producer
-fi
-
+ci::create_source_by_upload_with_auth
+ci::create_sink_by_upload_with_auth
