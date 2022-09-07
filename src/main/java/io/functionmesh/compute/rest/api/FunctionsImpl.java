@@ -18,10 +18,12 @@
  */
 package io.functionmesh.compute.rest.api;
 
+import static io.functionmesh.compute.util.KubernetesUtils.buildTlsConfigMap;
 import static io.functionmesh.compute.util.KubernetesUtils.validateResourceOwner;
 import static io.functionmesh.compute.util.KubernetesUtils.validateStatefulSet;
 import com.google.common.annotations.VisibleForTesting;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.auth.AuthResults;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecJava;
@@ -169,7 +171,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
         v1alpha1Function.getMetadata().setNamespace(worker().getJobNamespace());
         try {
             this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function,
-                    clientAuthenticationDataHttps);
+                    clientRole, clientAuthenticationDataHttps);
 
             extractResponse(getResourceApi().create(v1alpha1Function));
         } catch (RestException restException) {
@@ -245,7 +247,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
             v1alpha1Function.getMetadata().setResourceVersion(v1alpha1FunctionPre.getMetadata().getResourceVersion());
 
             this.upsertFunction(tenant, namespace, functionName, functionConfig, v1alpha1Function,
-                    clientAuthenticationDataHttps);
+                    clientRole, clientAuthenticationDataHttps);
             extractResponse(getResourceApi().update(v1alpha1Function));
         } catch (Exception e) {
             log.error("update {}/{}/{} function failed", tenant, namespace, functionName, e);
@@ -501,6 +503,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                                 final String functionName,
                                 final FunctionConfig functionConfig,
                                 V1alpha1Function v1alpha1Function,
+                                String clientRole,
                                 AuthenticationDataHttps clientAuthenticationDataHttps) {
         if (worker().getWorkerConfig().isAuthenticationEnabled()) {
             if (clientAuthenticationDataHttps != null) {
@@ -510,14 +513,31 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                         podPolicy = new V1alpha1FunctionSpecPod();
                         v1alpha1Function.getSpec().setPod(podPolicy);
                     }
+
+                    AuthResults results = CommonUtil.doAuth(worker(), clientRole, clientAuthenticationDataHttps, apiKind);
+                    String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
+                            v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, results.getAuthSecretData(), worker());
+                    v1alpha1Function.getSpec().getPulsar().setAuthSecret(authSecretName);
+
                     MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
-                    List<V1alpha1FunctionSpecPodVolumes> volumesList =
-                            customConfig.asV1alpha1FunctionSpecPodVolumesList();
+                    List<V1alpha1FunctionSpecPodVolumes> volumesList = new ArrayList<>();
+                    if (results.getFunctionVolumes() != null && !results.getFunctionVolumes().isEmpty()) {
+                        volumesList.addAll(results.getFunctionVolumes());
+                    }
+                    if (customConfig.asV1alpha1FunctionSpecPodVolumesList() != null && !customConfig.asV1alpha1FunctionSpecPodVolumesList().isEmpty()) {
+                        volumesList.addAll(customConfig.asV1alpha1FunctionSpecPodVolumesList());
+                    }
                     if (volumesList != null && !volumesList.isEmpty()) {
                         podPolicy.setVolumes(volumesList);
                     }
-                    List<V1alpha1FunctionSpecPodVolumeMounts> volumeMountsList =
-                            customConfig.asV1alpha1FunctionSpecPodVolumeMounts();
+
+                    List<V1alpha1FunctionSpecPodVolumeMounts> volumeMountsList = new ArrayList<>();
+                    if (results.getFunctionVolumeMounts() != null && !results.getFunctionVolumeMounts().isEmpty()) {
+                        volumeMountsList.addAll(results.getFunctionVolumeMounts());
+                    }
+                    if (customConfig.asV1alpha1FunctionSpecPodVolumeMounts() != null && !customConfig.asV1alpha1FunctionSpecPodVolumeMounts().isEmpty()) {
+                        volumeMountsList.addAll(customConfig.asV1alpha1FunctionSpecPodVolumeMounts());
+                    }
                     if (volumeMountsList != null && !volumeMountsList.isEmpty()) {
                         v1alpha1Function.getSpec().setVolumeMounts(volumeMountsList);
                     }
@@ -536,16 +556,9 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                             v1alpha1Function.getSpec().setJava(v1alpha1FunctionSpecJava);
                         }
                     }
-                    if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
-                            && !StringUtils.isEmpty(
-                            worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
-                        String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
-                                v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, worker());
-                        v1alpha1Function.getSpec().getPulsar().setAuthSecret(authSecretName);
-                    }
                     if (worker().getWorkerConfig().getTlsEnabled()) {
                         String tlsSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "tls",
-                                v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, worker());
+                                v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, buildTlsConfigMap(worker().getWorkerConfig()), worker());
                         v1alpha1Function.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
                     if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())

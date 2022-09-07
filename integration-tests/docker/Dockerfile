@@ -21,4 +21,5 @@ ARG PULSAR_IMAGE_TAG
 FROM streamnative/pulsar-all:${PULSAR_IMAGE_TAG}
 COPY ./target/mesh-worker-service*.nar /pulsar/mesh-worker-service.nar
 COPY ./integration-tests/docker/connectors.yaml /pulsar/conf/connectors.yaml
+COPY ./integration-tests/docker/pulsar-broker-auth-oauth2.jar /pulsar/lib/pulsar-broker-auth-oauth2.jar
 RUN mkdir -p /pulsar-nar

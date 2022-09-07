@@ -28,6 +28,9 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.gson.Gson;
 import com.google.protobuf.Empty;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.auth.AuthHandler;
+import io.functionmesh.compute.auth.AuthHandlerOauth;
+import io.functionmesh.compute.auth.AuthResults;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
@@ -38,6 +41,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -48,6 +52,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
+import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.common.functions.FunctionConfig;
@@ -70,6 +75,11 @@ public class CommonUtil {
     public static final String COMPONENT_FUNCTION = "function";
     public static final String COMPONENT_SOURCE = "source";
     public static final String COMPONENT_SINK = "sink";
+    public static final String OAUTH_PLUGIN_NAME = "org.apache.pulsar.client.impl.auth.oauth2.AuthenticationOAuth2";
+
+    public static final Map<String, AuthHandler> AUTH_HANDLERS = new HashMap<String, AuthHandler>() {{
+        put(OAUTH_PLUGIN_NAME, new AuthHandlerOauth());
+    }};
     public static final String COMPONENT_STATEFUL_SET = "StatefulSet";
     public static final String COMPONENT_SERVICE = "Service";
     public static final String COMPONENT_HPA = "HorizontalPodAutoscaler";
@@ -497,4 +507,12 @@ public class CommonUtil {
         return null;
     }
 
+    public static AuthResults doAuth(MeshWorkerService workerService, String clientRole, AuthenticationDataHttps clientAuthenticationDataHttps, String component) {
+        AuthHandler handler = AUTH_HANDLERS.get(workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin());
+        if (handler == null) {
+            throw new RestException(Response.Status.INTERNAL_SERVER_ERROR,
+                    String.format("No handler for given auth plugin: %s", workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin()));
+        }
+        return handler.handle(workerService, clientRole, clientAuthenticationDataHttps, component);
+    }
 }
