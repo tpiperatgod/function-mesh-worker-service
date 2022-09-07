@@ -18,10 +18,12 @@
  */
 package io.functionmesh.compute.rest.api;
 
+import static io.functionmesh.compute.util.KubernetesUtils.buildTlsConfigMap;
 import static io.functionmesh.compute.util.KubernetesUtils.validateResourceOwner;
 import static io.functionmesh.compute.util.KubernetesUtils.validateStatefulSet;
 import com.google.common.annotations.VisibleForTesting;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.auth.AuthResults;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1Sink;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkList;
@@ -170,7 +172,7 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
         // override namesapce by configuration
         v1alpha1Sink.getMetadata().setNamespace(worker().getJobNamespace());
         try {
-            this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientAuthenticationDataHttps);
+            this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientRole, clientAuthenticationDataHttps);
             extractResponse(getResourceApi().create(v1alpha1Sink));
         } catch (RestException restException) {
             log.error(
@@ -247,7 +249,7 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
             v1alpha1Sink.getMetadata().setNamespace(worker().getJobNamespace());
             v1alpha1Sink.getMetadata().setResourceVersion(v1alpha1Sink1Pre.getMetadata().getResourceVersion());
 
-            this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientAuthenticationDataHttps);
+            this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientRole, clientAuthenticationDataHttps);
             extractResponse(getResourceApi().update(v1alpha1Sink));
         } catch (Exception e) {
             log.error(
@@ -532,6 +534,7 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                             final String sinkName,
                             final SinkConfig sinkConfig,
                             V1alpha1Sink v1alpha1Sink,
+                            String clientRole,
                             AuthenticationDataHttps clientAuthenticationDataHttps) {
         if (worker().getWorkerConfig().isAuthenticationEnabled()) {
             if (clientAuthenticationDataHttps != null) {
@@ -557,25 +560,36 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                             v1alpha1Sink.getSpec().setJava(v1alpha1SinkSpecJava);
                         }
                     }
-                    List<V1alpha1SinkSpecPodVolumes> volumesList = customConfig.asV1alpha1SinkSpecPodVolumesList();
+
+                    AuthResults results = CommonUtil.doAuth(worker(), clientRole, clientAuthenticationDataHttps, apiKind);
+                    String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
+                            v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, results.getAuthSecretData(), worker());
+                    v1alpha1Sink.getSpec().getPulsar().setAuthSecret(authSecretName);
+
+                    List<V1alpha1SinkSpecPodVolumes> volumesList = new ArrayList<>();
+                    if (results.getSinkVolumes() != null && !results.getSinkVolumes().isEmpty()) {
+                        volumesList.addAll(results.getSinkVolumes());
+                    }
+                    if (customConfig.asV1alpha1SinkSpecPodVolumesList() != null && !customConfig.asV1alpha1SinkSpecPodVolumesList().isEmpty()) {
+                        volumesList.addAll(customConfig.asV1alpha1SinkSpecPodVolumesList());
+                    }
                     if (volumesList != null && !volumesList.isEmpty()) {
                         podPolicy.setVolumes(volumesList);
                     }
-                    List<V1alpha1SinkSpecPodVolumeMounts> volumeMountsList =
-                            customConfig.asV1alpha1SinkSpecPodVolumeMountsList();
+                    List<V1alpha1SinkSpecPodVolumeMounts> volumeMountsList = new ArrayList<>();
+                    if (results.getSinkVolumeMounts() != null && !results.getSinkVolumeMounts().isEmpty()) {
+                        volumeMountsList.addAll(results.getSinkVolumeMounts());
+                    }
+                    if (customConfig.asV1alpha1SinkSpecPodVolumeMountsList() != null && !customConfig.asV1alpha1SinkSpecPodVolumeMountsList().isEmpty()) {
+                        volumeMountsList.addAll(customConfig.asV1alpha1SinkSpecPodVolumeMountsList());
+                    }
                     if (volumeMountsList != null && !volumeMountsList.isEmpty()) {
                         v1alpha1Sink.getSpec().setVolumeMounts(volumeMountsList);
                     }
-                    if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
-                            && !StringUtils.isEmpty(
-                            worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
-                        String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
-                                v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, worker());
-                        v1alpha1Sink.getSpec().getPulsar().setAuthSecret(authSecretName);
-                    }
+
                     if (worker().getWorkerConfig().getTlsEnabled()) {
                         String tlsSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "tls",
-                                v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, worker());
+                                v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, buildTlsConfigMap(worker().getWorkerConfig()), worker());
                         v1alpha1Sink.getSpec().getPulsar().setTlsSecret(tlsSecretName);
                     }
                     if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())
