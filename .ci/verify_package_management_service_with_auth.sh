@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,15 +18,28 @@
 # under the License.
 #
 
-ARG PULSAR_IMAGE_TAG
-FROM streamnative/pulsar-all:${PULSAR_IMAGE_TAG}
-COPY ./target/mesh-worker-service*.nar /pulsar/mesh-worker-service.nar
-COPY ./integration-tests/docker/connectors.yaml /pulsar/conf/connectors.yaml
-COPY ./integration-tests/docker/pulsar-broker-auth-oauth2.jar /pulsar/lib/pulsar-broker-auth-oauth2.jar
-RUN mkdir -p /pulsar/pulsar-nar
-USER root
-RUN mkdir -p /pulsar/examples/go-examples
-RUN mkdir -p /pulsar/examples/secret-py-example
-COPY ./.ci/examples/go-examples/ /pulsar/examples/go-examples/
-COPY ./.ci/examples/secret-py-example/ /pulsar/examples/secret-py-example/
-USER 10000
+set -e
+
+BINDIR=`dirname "$0"`
+PULSAR_HOME=`cd ${BINDIR}/..;pwd`
+TLS=${TLS:-"false"}
+SYMMETRIC=${SYMMETRIC:-"false"}
+FUNCTION=${FUNCTION:-"false"}
+
+source ${PULSAR_HOME}/.ci/helm.sh
+
+ci::upload_java_package_with_auth
+ci::verify_java_package_with_auth
+
+ci::upload_python_package_with_auth
+ci::verify_python_package_with_auth
+
+ci::upload_go_package_with_auth
+ci::verify_go_package_with_auth
+
+ci::create_java_function_by_upload_with_auth
+
+ci::verify_secrets_python_package_with_auth
+
+ci::create_source_by_upload_with_auth
+ci::create_sink_by_upload_with_auth

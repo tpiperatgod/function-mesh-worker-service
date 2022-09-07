@@ -128,8 +128,9 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                         tenant, namespace, componentName);
             }
 
-            if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
-                    && !StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationParameters())) {
+            if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin()) &&
+                    CommonUtil.AUTH_HANDLERS.get(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
+                            != null) {
                 Call deleteAuthSecretCall = worker().getCoreV1Api()
                         .deleteNamespacedSecretCall(
                                 KubernetesUtils.getUniqueSecretName(

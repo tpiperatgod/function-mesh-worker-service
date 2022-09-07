@@ -26,6 +26,7 @@ VALUES_FILE=$1
 TLS=${TLS:-"false"}
 SYMMETRIC=${SYMMETRIC:-"false"}
 FUNCTION=${FUNCTION:-"false"}
+WITH_AUTH=${WITH_AUTH:-"false"}
 
 source ${PULSAR_HOME}/.ci/helm.sh
 
@@ -53,5 +54,9 @@ ci::install_pulsar_charts "$VALUES_FILE"
 ci::install_function_mesh_charts
 
 # test producer
-ci::test_pulsar_producer
+if [ "x${WITH_AUTH}" = "xtrue" ]; then
+  ci::test_pulsar_producer_with_auth
+else
+  ci::test_pulsar_producer
+fi
 

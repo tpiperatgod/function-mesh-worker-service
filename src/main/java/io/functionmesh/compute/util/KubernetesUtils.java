@@ -19,12 +19,8 @@
 package io.functionmesh.compute.util;
 
 import static java.net.HttpURLConnection.HTTP_CONFLICT;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Maps;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
-import io.functionmesh.compute.models.Oauth2Parameters;
 import io.kubernetes.client.common.KubernetesObject;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
@@ -56,10 +52,6 @@ public class KubernetesUtils {
     private static final String KUBERNETES_NAMESPACE_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/namespace";
     private static final int NUM_RETRIES = 5;
     private static final long SLEEP_BETWEEN_RETRIES_MS = 500;
-    private static final String CLIENT_AUTHENTICATION_PLUGIN_CLAIM = "clientAuthenticationPlugin";
-    private static final String CLIENT_AUTHENTICATION_PLUGIN_NAME =
-            "org.apache.pulsar.client.impl.auth.AuthenticationToken";
-    private static final String CLIENT_AUTHENTICATION_PARAMETERS_CLAIM = "clientAuthenticationParameters";
     private static final String TLS_TRUST_CERTS_FILE_PATH_CLAIM = "tlsTrustCertsFilePath";
     private static final String USE_TLS_CLAIM = "useTls";
     private static final String TLS_ALLOW_INSECURE_CONNECTION_CLAIM = "tlsAllowInsecureConnection";
@@ -114,22 +106,7 @@ public class KubernetesUtils {
         return cluster + "-" + tenant + "-" + namespace + "-" + name;
     }
 
-    private static Map<String, byte[]> buildAuthConfigMap(WorkerConfig workerConfig) {
-        Map<String, byte[]> valueMap = new HashMap<>();
-        valueMap.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM, workerConfig.getBrokerClientAuthenticationPlugin().getBytes());
-        byte[] finalParams = workerConfig.getBrokerClientAuthenticationParameters().getBytes();
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            Oauth2Parameters oauth2Parameters = mapper.readValue(workerConfig.getBrokerClientAuthenticationParameters(),
-                    Oauth2Parameters.class);
-            finalParams = mapper.writeValueAsBytes(oauth2Parameters);
-        } catch (JsonProcessingException e) { // use the original parameters when exception happens
-        }
-        valueMap.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM, finalParams);
-        return valueMap;
-    }
-
-    private static Map<String, byte[]> buildTlsConfigMap(WorkerConfig workerConfig) {
+    public static Map<String, byte[]> buildTlsConfigMap(WorkerConfig workerConfig) {
         Map<String, byte[]> valueMap = new HashMap<>();
         valueMap.put(TLS_TRUST_CERTS_FILE_PATH_CLAIM, workerConfig.getTlsCertificateFilePath().getBytes());
         valueMap.put(USE_TLS_CLAIM, String.valueOf(workerConfig.getTlsEnabled()).getBytes());
@@ -151,21 +128,12 @@ public class KubernetesUtils {
             String tenant,
             String namespace,
             String name,
+            Map<String, byte[]> secretData,
             MeshWorkerService workerService) throws ApiException, InterruptedException {
         CoreV1Api coreV1Api = workerService.getCoreV1Api();
         String combinationName = getSecretName(cluster, tenant, namespace, name);
         String hashcode = DigestUtils.sha256Hex(combinationName);
         String secretName = getUniqueSecretName(component, type, hashcode);
-        Map<String, byte[]> data = Maps.newHashMap();
-        if ("auth".equals(type)) {
-            data = buildAuthConfigMap(workerService.getWorkerConfig());
-        } else if ("tls".equals(type)) {
-            data = buildTlsConfigMap(workerService.getWorkerConfig());
-        } else {
-            throw new RuntimeException(String.format("Failed to create secret type for %s %s/%s/%s",
-                    type, tenant, namespace, name));
-        }
-        Map<String, byte[]> finalData = data;
         Actions.Action createAuthSecret = Actions.Action.builder()
                 .actionName(String.format("Creating secret for %s %s-%s/%s/%s",
                         type, cluster, tenant, namespace, name))
@@ -174,7 +142,7 @@ public class KubernetesUtils {
                 .supplier(() -> {
                     V1Secret v1Secret = new V1Secret()
                             .metadata(new V1ObjectMeta().name(secretName))
-                            .data(finalData);
+                            .data(secretData);
                     try {
                         coreV1Api.createNamespacedSecret(
                                 workerService.getJobNamespace(),
