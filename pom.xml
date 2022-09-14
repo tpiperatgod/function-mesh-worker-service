@@ -32,7 +32,7 @@
         <pulsar.version>2.9.1.2</pulsar.version>
         <lombok.version>1.18.16</lombok.version>
         <log4j2.version>2.17.1</log4j2.version>
-        <kubernetes-client.version>12.0.1</kubernetes-client.version>
+        <kubernetes-client.version>12.0.2</kubernetes-client.version>
         <license.plugin.version>3.0</license.plugin.version>
         <mockito.version>1.10.19</mockito.version>
         <powermock.version>1.7.4</powermock.version>
