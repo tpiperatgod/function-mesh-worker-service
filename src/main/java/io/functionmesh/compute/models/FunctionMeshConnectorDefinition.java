@@ -86,8 +86,15 @@ public class FunctionMeshConnectorDefinition extends ConnectorDefinition {
      */
     private String defaultSerdeClassName;
 
+    public String getImageRegistry() {
+        if (!imageRegistry.endsWith("/")) {
+            return imageRegistry + "/";
+        }
+        return imageRegistry;
+    }
+
     public String toFullImageURL() {
-        return String.format("%s%s:%s", imageRegistry != null ? imageRegistry : DEFAULT_REGISTRY,
+        return String.format("%s%s:%s", getImageRegistry() != null ? getImageRegistry() : DEFAULT_REGISTRY,
                 imageRepository, imageTag != null ? imageTag : version);
     }
 
