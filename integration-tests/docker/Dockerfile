@@ -22,4 +22,10 @@ FROM streamnative/pulsar-all:${PULSAR_IMAGE_TAG}
 COPY ./target/mesh-worker-service*.nar /pulsar/mesh-worker-service.nar
 COPY ./integration-tests/docker/connectors.yaml /pulsar/conf/connectors.yaml
 COPY ./integration-tests/docker/pulsar-broker-auth-oauth2.jar /pulsar/lib/pulsar-broker-auth-oauth2.jar
-RUN mkdir -p /pulsar-nar
+RUN mkdir -p /pulsar/pulsar-nar
+USER root
+RUN mkdir -p /pulsar/examples/go-examples
+RUN mkdir -p /pulsar/examples/secret-py-example
+COPY ./.ci/examples/go-examples/ /pulsar/examples/go-examples/
+COPY ./.ci/examples/secret-py-example/ /pulsar/examples/secret-py-example/
+USER 10000
