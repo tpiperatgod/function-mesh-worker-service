@@ -26,4 +26,5 @@
   imageRepository: streamnative/pulsar-io-data-generator
   version: 2.10.0.0-rc10
   imageTag: 2.10.0.0-rc10
+  imageRegistry: ""
   typeClassName: org.apache.pulsar.client.impl.schema.JSONSchema
