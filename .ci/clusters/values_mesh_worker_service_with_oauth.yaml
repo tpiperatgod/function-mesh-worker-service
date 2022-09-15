@@ -61,9 +61,13 @@ images:
 
 zookeeper:
   replicaCount: 1
+  securityContext:
+    runAsNonRoot: true
 
 bookkeeper:
   replicaCount: 1
+  securityContext:
+    runAsNonRoot: true
   metadata:
     image:
       repository: mesh-worker-service-integration-pulsar
@@ -115,6 +119,8 @@ functions:
 
 broker:
   replicaCount: 1
+  securityContext:
+    runAsNonRoot: true
   configData:
     ## Enable `autoSkipNonRecoverableData` since bookkeeper is running
     ## without persistence
@@ -128,6 +134,8 @@ broker:
 
 proxy:
   replicaCount: 1
+  securityContext:
+    runAsNonRoot: true
 
 auth:
   authorization:
