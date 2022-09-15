@@ -17,6 +17,11 @@ jobs:
       - name: Tune Runner VM
         uses: ./.github/actions/tune-runner-vm
 
+      - name: Setup ssh access to build runner VM
+        uses: ./.github/actions/ssh-access
+        with:
+          limit-access-to-actor: true
+
       - name: clean disk
         if: ${{ steps.check_changes.outputs.docs_only != 'true' }}
         run: |
@@ -79,7 +84,13 @@ jobs:
         run: |
           .ci/verify_package_management_service_with_auth.sh
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        if: failure()
+      #      - name: Setup tmate session
+      #        uses: mxschmitt/action-tmate@v3
+      #        if: failure()
 
+      - name: Wait for ssh connection when build fails
+        uses: ./.github/actions/ssh-access
+        if: failure()
+        continue-on-error: true
+        with:
+          action: wait
