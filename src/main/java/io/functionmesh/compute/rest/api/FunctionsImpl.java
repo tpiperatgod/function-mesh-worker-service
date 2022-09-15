@@ -58,7 +58,6 @@ import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
 import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.UpdateOptionsImpl;
@@ -132,7 +131,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                                  final String functionPkgUrl,
                                  final FunctionConfig functionConfig,
                                  final String clientRole,
-                                 AuthenticationDataHttps clientAuthenticationDataHttps) {
+                                 AuthenticationDataSource clientAuthenticationDataHttps) {
         validateFunctionEnabled();
 
         validateRegisterFunctionRequestParams(tenant, namespace, functionName, functionConfig,
@@ -197,7 +196,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                                final String functionPkgUrl,
                                final FunctionConfig functionConfig,
                                final String clientRole,
-                               AuthenticationDataHttps clientAuthenticationDataHttps,
+                               AuthenticationDataSource clientAuthenticationDataHttps,
                                UpdateOptionsImpl updateOptions) {
         validateFunctionEnabled();
 
@@ -504,7 +503,7 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                                 final FunctionConfig functionConfig,
                                 V1alpha1Function v1alpha1Function,
                                 String clientRole,
-                                AuthenticationDataHttps clientAuthenticationDataHttps) {
+                                AuthenticationDataSource clientAuthenticationDataHttps) {
         if (worker().getWorkerConfig().isAuthenticationEnabled()) {
             if (clientAuthenticationDataHttps != null) {
                 try {

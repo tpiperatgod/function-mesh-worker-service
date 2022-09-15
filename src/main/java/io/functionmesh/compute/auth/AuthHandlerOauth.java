@@ -45,7 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang.StringUtils;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
+import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 
 public class AuthHandlerOauth implements AuthHandler {
     private static final String SECRET_VOLUME_NAME = "oauth-secret";
@@ -55,7 +55,7 @@ public class AuthHandlerOauth implements AuthHandler {
 
     @Override
     public AuthResults handle(MeshWorkerService workerService, String clientRole,
-                              AuthenticationDataHttps authDataHttps, String component) {
+                              AuthenticationDataSource authDataHttps, String component) {
         if (StringUtils.isNotEmpty(clientRole)) {
             String secretName = getSecretNameFromClientRole(clientRole);
             try {

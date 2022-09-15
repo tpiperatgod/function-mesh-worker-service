@@ -52,7 +52,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
+import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.common.functions.FunctionConfig;
@@ -507,7 +507,7 @@ public class CommonUtil {
         return null;
     }
 
-    public static AuthResults doAuth(MeshWorkerService workerService, String clientRole, AuthenticationDataHttps clientAuthenticationDataHttps, String component) {
+    public static AuthResults doAuth(MeshWorkerService workerService, String clientRole, AuthenticationDataSource clientAuthenticationDataHttps, String component) {
         AuthHandler handler = AUTH_HANDLERS.get(workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin());
         if (handler == null) {
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR,

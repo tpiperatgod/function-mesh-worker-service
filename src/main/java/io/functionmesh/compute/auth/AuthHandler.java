@@ -20,12 +20,12 @@
 package io.functionmesh.compute.auth;
 
 import io.functionmesh.compute.MeshWorkerService;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
+import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 
 public interface AuthHandler {
     String CLIENT_AUTHENTICATION_PLUGIN_CLAIM = "clientAuthenticationPlugin";
     String CLIENT_AUTHENTICATION_PARAMETERS_CLAIM = "clientAuthenticationParameters";
 
     AuthResults handle(MeshWorkerService workerService, String clientRole,
-                       AuthenticationDataHttps authDataHttps, String component);
+                       AuthenticationDataSource authDataHttps, String component);
 }
