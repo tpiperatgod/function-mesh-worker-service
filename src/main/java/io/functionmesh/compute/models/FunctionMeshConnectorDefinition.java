@@ -87,7 +87,7 @@ public class FunctionMeshConnectorDefinition extends ConnectorDefinition {
     private String defaultSerdeClassName;
 
     public String getImageRegistry() {
-        if (!imageRegistry.endsWith("/")) {
+        if (StringUtils.isNotBlank(imageRegistry) && !imageRegistry.endsWith("/")) {
             return imageRegistry + "/";
         }
         return imageRegistry;
