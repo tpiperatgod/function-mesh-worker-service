@@ -38,7 +38,7 @@
         <powermock.version>1.7.4</powermock.version>
         <jetty.version>9.4.48.v20220622</jetty.version>
         <nifi-nar-maven-plugin.version>1.2.0</nifi-nar-maven-plugin.version>
-        <function-mesh.version>v0.5.0</function-mesh.version>
+        <function-mesh.version>v0.6.0</function-mesh.version>
         <maven-checkstyle-plugin.version>3.1.2</maven-checkstyle-plugin.version>
         <puppycrawl.checkstyle.version>8.37</puppycrawl.checkstyle.version>
     </properties>
@@ -190,11 +190,6 @@
             <id>central</id>
             <layout>default</layout>
             <url>https://repo1.maven.org/maven2</url>
-        </repository>
-        <repository>
-            <id>bintray-streamnative-maven</id>
-            <name>bintray</name>
-            <url>https://dl.bintray.com/streamnative/maven</url>
         </repository>
     </repositories>
 
