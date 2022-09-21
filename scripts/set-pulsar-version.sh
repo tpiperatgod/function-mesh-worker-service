@@ -26,3 +26,4 @@ mvn versions:set-property -Dproperty=pulsar.version -DnewVersion=${version}
 # bump integration tests
 sed -i.bak -E "s/${OLDVERSION}/${version}/g" integration-tests/docker/connectors.yaml
 sed -i.bak -E "s/${OLDVERSION}/${version}/g" .ci/clusters/values_mesh_worker_service.yaml
+sed -i.bak -E "s/${OLDVERSION}/${version}/g" .ci/clusters/values_mesh_worker_service_with_oauth.yaml
