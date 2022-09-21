@@ -62,6 +62,7 @@ jobs:
         run: |
           PULSAR_IMAGE_TAG=$(mvn -q -Dexec.executable=echo -Dexec.args='${pulsar.version}' --non-recursive exec:exec)
           docker build --tag mesh-worker-service-integration-pulsar:latest --build-arg PULSAR_IMAGE_TAG="$PULSAR_IMAGE_TAG" -f integration-tests/docker/Dockerfile ./
+          for img in `docker images | grep -v "mesh-worker-service" | awk '{print $3}'`; do docker rmi $img | true; done
 
       - name: Deploy k8s cluster env
         uses: nick-invision/retry@v2
