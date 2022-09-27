@@ -180,7 +180,7 @@ public class MeshWorkerServiceCustomConfig {
     protected Map<String, String> sourceEnv;
 
     @FieldContext(
-            doc = "PodInitContainers specifies the initContainers to attach to function's pod, will override the "
+            doc = "functionInitContainers specifies the initContainers to attach to function's pod, will override the "
                     + "initContainers if specified."
     )
     protected List<V1alpha1FunctionSpecPodInitContainers> functionInitContainers;
