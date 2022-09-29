@@ -21,37 +21,23 @@ package io.functionmesh.compute.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.functionmesh.compute.MeshWorkerService;
-import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodConfigMapItems;
-import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodSecret;
-import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumeMounts;
-import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumes;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsarAuthConfig;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsarAuthConfigOauth2Config;
 import io.functionmesh.compute.models.OAuth2Parameters;
-import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodConfigMapItems;
-import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodSecret;
-import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumeMounts;
-import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumes;
-import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodConfigMapItems;
-import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodSecret;
-import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumeMounts;
-import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumes;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPulsarAuthConfig;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPulsarAuthConfigOauth2Config;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPulsarAuthConfig;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPulsarAuthConfigOauth2Config;
 import io.functionmesh.compute.util.CommonUtil;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.models.V1Secret;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.commons.lang.StringUtils;
 import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
 
 public class AuthHandlerOauth implements AuthHandler {
-    private static final String SECRET_VOLUME_NAME = "oauth-secret";
-    private static final int DEFAULT_MODE = 0644;
     // the provided secret should use this to store the oauth2 parameters
-    private static final String KEY_NAME = "auth.json";
+    public static final String KEY_NAME = "auth.json";
 
     @Override
     public AuthResults handle(MeshWorkerService workerService, String clientRole,
@@ -64,102 +50,68 @@ public class AuthHandlerOauth implements AuthHandler {
 
                 // create auth secret for function-mesh
                 byte[] params = secret.getData().get(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM);
-                Map<String, byte[]> valueMap = new HashMap<>();
-                valueMap.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM, CommonUtil.OAUTH_PLUGIN_NAME.getBytes());
                 ObjectMapper mapper = new ObjectMapper();
                 OAuth2Parameters oauth2Parameters = mapper.readValue(params, OAuth2Parameters.class);
-                byte[] extendedParams = mapper.writeValueAsBytes(oauth2Parameters);
-                valueMap.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM, extendedParams);
 
-                // the private key should be an absolute path of a file with a `file://` prefix
-                // generate volume and volume mount for oauth secret
-                String privateKey = oauth2Parameters.getPrivateKey().replace("file://", "");
-                Path path = Paths.get(privateKey);
-                AuthResults results = new AuthResults().setAuthSecretData(valueMap);
+                AuthResults results = new AuthResults();
 
                 switch (component.toLowerCase()) {
                     case CommonUtil.COMPONENT_FUNCTION:
-                        List<V1alpha1FunctionSpecPodConfigMapItems> items =
-                                new ArrayList<V1alpha1FunctionSpecPodConfigMapItems>() {{
-                                    add(new V1alpha1FunctionSpecPodConfigMapItems()
-                                            .key(KEY_NAME)
-                                            .path(path.getFileName().toString()));
-                                }};
-                        List<V1alpha1FunctionSpecPodVolumes> volumes =
-                                new ArrayList<V1alpha1FunctionSpecPodVolumes>() {{
-                                    add(new V1alpha1FunctionSpecPodVolumes().name(SECRET_VOLUME_NAME)
-                                            .secret(new V1alpha1FunctionSpecPodSecret().secretName(secretName)
-                                                    .defaultMode(DEFAULT_MODE).items(items)));
-                                }};
-                        List<V1alpha1FunctionSpecPodVolumeMounts>
-                                vms =
-                                new ArrayList<V1alpha1FunctionSpecPodVolumeMounts>() {{
-                                    add(new V1alpha1FunctionSpecPodVolumeMounts().name(SECRET_VOLUME_NAME)
-                                            .mountPath(privateKey)
-                                            .subPath(path.getFileName().toString()));
-                                }};
-                        results.setFunctionVolumes(volumes).setFunctionVolumeMounts(vms);
+                        V1alpha1FunctionSpecPulsarAuthConfigOauth2Config oauth2 =
+                                new V1alpha1FunctionSpecPulsarAuthConfigOauth2Config()
+                                        .audience(oauth2Parameters.getAudience())
+                                        .issuerUrl(oauth2Parameters.getIssuerUrl())
+                                        .keySecretName(secretName)
+                                        .keySecretKey(KEY_NAME);
+                        if (StringUtils.isNotEmpty(oauth2Parameters.getScope())) {
+                            oauth2.setScope(oauth2Parameters.getScope());
+                        }
+                        results.setFunctionAuthConfig(new V1alpha1FunctionSpecPulsarAuthConfig().oauth2Config(oauth2));
                         break;
                     case CommonUtil.COMPONENT_SINK:
-                        List<V1alpha1SinkSpecPodConfigMapItems> sinkItems =
-                                new ArrayList<V1alpha1SinkSpecPodConfigMapItems>() {{
-                                    add(new V1alpha1SinkSpecPodConfigMapItems()
-                                            .key(KEY_NAME)
-                                            .path(path.getFileName().toString()));
-                                }};
-                        List<V1alpha1SinkSpecPodVolumes> sinkVolumes =
-                                new ArrayList<V1alpha1SinkSpecPodVolumes>() {{
-                                    add(new V1alpha1SinkSpecPodVolumes().name(SECRET_VOLUME_NAME)
-                                            .secret(new V1alpha1SinkSpecPodSecret().secretName(secretName)
-                                                    .defaultMode(DEFAULT_MODE).items(sinkItems)));
-                                }};
-                        List<V1alpha1SinkSpecPodVolumeMounts>
-                                sinkVms =
-                                new ArrayList<V1alpha1SinkSpecPodVolumeMounts>() {{
-                                    add(new V1alpha1SinkSpecPodVolumeMounts().name(SECRET_VOLUME_NAME)
-                                            .mountPath(privateKey)
-                                            .subPath(path.getFileName().toString()));
-                                }};
-                        results.setSinkVolumes(sinkVolumes).setSinkVolumeMounts(sinkVms);
+                        V1alpha1SinkSpecPulsarAuthConfigOauth2Config sinkOAuth2 =
+                                new V1alpha1SinkSpecPulsarAuthConfigOauth2Config()
+                                        .audience(oauth2Parameters.getAudience())
+                                        .issuerUrl(oauth2Parameters.getIssuerUrl())
+                                        .keySecretName(secretName)
+                                        .keySecretKey(KEY_NAME);
+                        if (StringUtils.isNotEmpty(oauth2Parameters.getScope())) {
+                            sinkOAuth2.setScope(oauth2Parameters.getScope());
+                        }
+                        results.setSinkAuthConfig(new V1alpha1SinkSpecPulsarAuthConfig().oauth2Config(sinkOAuth2));
                         break;
                     case CommonUtil.COMPONENT_SOURCE:
-                        List<V1alpha1SourceSpecPodConfigMapItems> sourceItems =
-                                new ArrayList<V1alpha1SourceSpecPodConfigMapItems>() {{
-                                    add(new V1alpha1SourceSpecPodConfigMapItems()
-                                            .key(KEY_NAME)
-                                            .path(path.getFileName().toString()));
-                                }};
-                        List<V1alpha1SourceSpecPodVolumes> sourceVolumes =
-                                new ArrayList<V1alpha1SourceSpecPodVolumes>() {{
-                                    add(new V1alpha1SourceSpecPodVolumes().name(SECRET_VOLUME_NAME)
-                                            .secret(new V1alpha1SourceSpecPodSecret().secretName(secretName)
-                                                    .defaultMode(DEFAULT_MODE).items(sourceItems)));
-                                }};
-                        List<V1alpha1SourceSpecPodVolumeMounts>
-                                sourceVms =
-                                new ArrayList<V1alpha1SourceSpecPodVolumeMounts>() {{
-                                    add(new V1alpha1SourceSpecPodVolumeMounts().name(SECRET_VOLUME_NAME)
-                                            .mountPath(privateKey)
-                                            .subPath(path.getFileName().toString()));
-                                }};
-                        results.setSourceVolumes(sourceVolumes).setSourceVolumeMounts(sourceVms);
+                        V1alpha1SourceSpecPulsarAuthConfigOauth2Config sourceOAuth2 =
+                                new V1alpha1SourceSpecPulsarAuthConfigOauth2Config()
+                                        .audience(oauth2Parameters.getAudience())
+                                        .issuerUrl(oauth2Parameters.getIssuerUrl())
+                                        .keySecretName(secretName)
+                                        .keySecretKey(KEY_NAME);
+                        if (StringUtils.isNotEmpty(oauth2Parameters.getScope())) {
+                            sourceOAuth2.setScope(oauth2Parameters.getScope());
+                        }
+                        results.setSourceAuthConfig(new V1alpha1SourceSpecPulsarAuthConfig().oauth2Config(sourceOAuth2));
                         break;
                     default:
                         break;
                 }
                 return results;
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to generate secret data", e);
-            } catch (ApiException e) {
-                throw new RuntimeException(
-                        "Failed to get secret " + secretName + " in namespace " + workerService.getJobNamespace(), e);
-            } catch (NullPointerException e) {
+            } catch (IOException | NullPointerException e) {
                 throw new RuntimeException(
                         "Failed to get secret data " + secretName + " in namespace " + workerService.getJobNamespace(),
                         e);
+            } catch (ApiException e) {
+                throw new RuntimeException(
+                        "Failed to get secret " + secretName + " in namespace " + workerService.getJobNamespace(), e);
             }
         }
         throw new RuntimeException("Client role is empty");
+    }
+
+    @Override
+    public void cleanUp(MeshWorkerService workerService, String clientRole, AuthenticationDataHttps authDataHttps,
+                        String component, String clusterName, String tenant, String namespace, String componentName) {
+        // Do nothing for oauth2 handler
     }
 
     /*

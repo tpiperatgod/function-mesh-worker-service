@@ -21,11 +21,13 @@ package io.functionmesh.compute.rest.api;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM;
 import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM_DEPRECATED;
+import static io.functionmesh.compute.util.CommonUtil.INSECURE_PLUGIN_NAME;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
 import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.pulsar.functions.worker.rest.RestUtils.throwUnavailableException;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.auth.AuthHandler;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
@@ -128,27 +130,15 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                         tenant, namespace, componentName);
             }
 
-            if (!StringUtils.isEmpty(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin()) &&
-                    CommonUtil.AUTH_HANDLERS.get(worker().getWorkerConfig().getBrokerClientAuthenticationPlugin())
-                            != null) {
-                Call deleteAuthSecretCall = worker().getCoreV1Api()
-                        .deleteNamespacedSecretCall(
-                                KubernetesUtils.getUniqueSecretName(
-                                        apiKind.toLowerCase(),
-                                        "auth",
-                                        DigestUtils.sha256Hex(
-                                                KubernetesUtils.getSecretName(
-                                                        clusterName, tenant, namespace, componentName))),
-                                worker().getJobNamespace(),
-                                null,
-                                null,
-                                30,
-                                false,
-                                null,
-                                null,
-                                null
-                        );
-                executeCall(deleteAuthSecretCall, null);
+            String authPluginName = worker().getWorkerConfig().getBrokerClientAuthenticationPlugin();
+            if (worker().getMeshWorkerServiceCustomConfig().isUsingInsecureAuth()) {
+                authPluginName = INSECURE_PLUGIN_NAME;
+            }
+            if (!StringUtils.isEmpty(authPluginName)) {
+                AuthHandler handler = CommonUtil.AUTH_HANDLERS.get(authPluginName);
+                if (handler != null) {
+                    handler.cleanUp(worker(), clientRole, clientAuthenticationDataHttps, apiKind, clusterName, tenant, namespace, componentName);
+                }
             }
             if (worker().getWorkerConfig().getTlsEnabled()) {
                 Call deleteTlsSecretCall = worker().getCoreV1Api()

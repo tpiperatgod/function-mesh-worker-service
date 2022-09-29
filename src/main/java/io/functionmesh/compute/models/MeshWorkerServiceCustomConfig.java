@@ -68,6 +68,11 @@ public class MeshWorkerServiceCustomConfig {
     protected boolean sourceEnabled = true;
 
     @FieldContext(
+            doc = "Use insecure authentication(get from config)"
+    )
+    protected boolean usingInsecureAuth = true;
+
+    @FieldContext(
             doc = "the directory for dropping extra function dependencies. "
     )
     protected String extraDependenciesDir = "/pulsar/lib/";
