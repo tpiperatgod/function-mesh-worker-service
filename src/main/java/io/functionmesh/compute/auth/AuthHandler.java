@@ -28,4 +28,8 @@ public interface AuthHandler {
 
     AuthResults handle(MeshWorkerService workerService, String clientRole,
                        AuthenticationDataHttps authDataHttps, String component);
+
+    void cleanUp(MeshWorkerService workerService, String clientRole,
+                 AuthenticationDataHttps authDataHttps, String component,
+                 String clusterName, String tenant, String namespace, String componentName);
 }

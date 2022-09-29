@@ -94,10 +94,8 @@ function ci::install_pulsar_charts() {
     echo "Installing the pulsar charts ..."
     values=${1:-".ci/clusters/values.yaml"}
     echo $values
-    if [[ "$values" = ".ci/clusters/values_mesh_worker_service.yaml" || "$values" = ".ci/clusters/values_mesh_worker_service_with_oauth.yaml" ]]; then
-      echo "load mesh-worker-service-integration-pulsar:latest ..."
-      kind load docker-image mesh-worker-service-integration-pulsar:latest --name sn-platform-${CLUSTER_ID}
-    fi
+    echo "load mesh-worker-service-integration-pulsar:latest ..."
+    kind load docker-image mesh-worker-service-integration-pulsar:latest --name sn-platform-${CLUSTER_ID} || true
     if [ -d "pulsar-charts" ]; then
       rm -rf pulsar-charts
     fi
