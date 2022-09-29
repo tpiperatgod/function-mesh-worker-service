@@ -64,6 +64,14 @@ jobs:
           docker build --tag mesh-worker-service-integration-pulsar:latest --build-arg PULSAR_IMAGE_TAG="$PULSAR_IMAGE_TAG" -f integration-tests/docker/Dockerfile ./
           for img in `docker images | grep -v "mesh-worker-service" | awk '{print $3}'`; do docker rmi $img | true; done
 
+      - name: Update values file
+        env:
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        run: |
+          sed -i "s/CLIENT_SECRET/${AZURE_CLIENT_SECRET}/g" .ci/clusters/values_mesh_worker_service_with_oauth.yaml
+          sed -i "s/CLIENT_ID/${AZURE_CLIENT_ID}/g" .ci/clusters/values_mesh_worker_service_with_oauth.yaml
+
       - name: Deploy k8s cluster env
         uses: nick-invision/retry@v2
         with:
