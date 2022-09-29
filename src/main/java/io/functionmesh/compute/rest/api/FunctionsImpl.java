@@ -515,9 +515,15 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                     }
 
                     AuthResults results = CommonUtil.doAuth(worker(), clientRole, clientAuthenticationDataHttps, apiKind);
-                    String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
-                            v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, results.getAuthSecretData(), worker());
-                    v1alpha1Function.getSpec().getPulsar().setAuthSecret(authSecretName);
+                    // create an auth secret when the secret data is not null
+                    if (results.getAuthSecretData() != null && !results.getAuthSecretData().isEmpty()) {
+                        String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
+                                v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, results.getAuthSecretData(), worker());
+                        v1alpha1Function.getSpec().getPulsar().setAuthSecret(authSecretName);
+                    }
+                    if (results.getFunctionAuthConfig() != null) {
+                        v1alpha1Function.getSpec().getPulsar().setAuthConfig(results.getFunctionAuthConfig());
+                    }
 
                     MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
                     List<V1alpha1FunctionSpecPodVolumes> volumesList = new ArrayList<>();

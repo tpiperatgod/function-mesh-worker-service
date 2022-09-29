@@ -21,10 +21,13 @@ package io.functionmesh.compute.auth;
 
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumeMounts;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumes;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsarAuthConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumeMounts;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVolumes;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPulsarAuthConfig;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumeMounts;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVolumes;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPulsarAuthConfig;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,9 +37,14 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 public class AuthResults {
-    // Auth providers needs to generate the secret data which contains two keys:
+    // Auth providers may need to generate the secret data which contains two keys:
     // brokerClientAuthenticationPlugin, brokerClientAuthenticationParameters
     private Map<String, byte[]> authSecretData = new HashMap<>();
+
+    // Auth providers may need to set the auth config directly
+    private V1alpha1FunctionSpecPulsarAuthConfig functionAuthConfig;
+    private V1alpha1SinkSpecPulsarAuthConfig sinkAuthConfig;
+    private V1alpha1SourceSpecPulsarAuthConfig sourceAuthConfig;
 
     // Auth providers may need to mount some files to pod for authentication
     private List<V1alpha1FunctionSpecPodVolumes> functionVolumes;

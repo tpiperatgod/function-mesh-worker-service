@@ -22,7 +22,6 @@ import static io.functionmesh.compute.auth.AuthHandler.CLIENT_AUTHENTICATION_PAR
 import static io.functionmesh.compute.auth.AuthHandler.CLIENT_AUTHENTICATION_PLUGIN_CLAIM;
 import static io.functionmesh.compute.util.CommonUtil.DEFAULT_FUNCTION_DOWNLOAD_DIRECTORY;
 import static io.functionmesh.compute.util.CommonUtil.DEFAULT_FUNCTION_EXECUTABLE;
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.powermock.api.mockito.PowerMockito.when;
@@ -96,8 +95,7 @@ public class CommonUtilTest {
 
         AuthResults results = CommonUtil.doAuth(meshWorkerService, "admin", null, "Function");
         AuthResults expectedResults = new AuthHandlerOauth().handle(meshWorkerService, "admin", null, "Function");
-        assertArrayEquals(expectedResults.getAuthSecretData().get(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM), results.getAuthSecretData().get(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM));
-        assertArrayEquals(expectedResults.getAuthSecretData().get(CLIENT_AUTHENTICATION_PLUGIN_CLAIM), results.getAuthSecretData().get(CLIENT_AUTHENTICATION_PLUGIN_CLAIM));
+        assertEquals(expectedResults.getFunctionAuthConfig(), results.getFunctionAuthConfig());
 
         when(workerConfig.getBrokerClientAuthenticationPlugin()).thenReturn("Un-Supported-Auth-Provider");
         try {
