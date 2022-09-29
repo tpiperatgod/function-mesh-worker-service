@@ -21,23 +21,19 @@ package io.functionmesh.compute.auth;
 
 import static io.functionmesh.compute.auth.AuthHandler.CLIENT_AUTHENTICATION_PARAMETERS_CLAIM;
 import static io.functionmesh.compute.auth.AuthHandler.CLIENT_AUTHENTICATION_PLUGIN_CLAIM;
-import static org.junit.Assert.assertArrayEquals;
+import static io.functionmesh.compute.auth.AuthHandlerOauth.KEY_NAME;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.powermock.api.mockito.PowerMockito.when;
 import io.functionmesh.compute.MeshWorkerService;
-import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodConfigMapItems;
-import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodSecret;
-import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumeMounts;
-import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumes;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsarAuthConfig;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsarAuthConfigOauth2Config;
 import io.functionmesh.compute.util.CommonUtil;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Secret;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.pulsar.functions.worker.WorkerConfig;
 import org.junit.Test;
@@ -70,31 +66,15 @@ public class AuthHandlerOauthTest {
                 + ",\"privateKey\":\"file:///mnt/secrets/auth.json\",\"type\":\"client_credentials\""
                 + ",\"issuer_url\":\"https://test.com/\",\"private_key\":\"/mnt/secrets/auth.json\"}";
         secretData.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM, oauth2ExtendedParameters.getBytes());
-        AuthResults expected = new AuthResults().setAuthSecretData(secretData);
-        List<V1alpha1FunctionSpecPodConfigMapItems> items =
-                new ArrayList<V1alpha1FunctionSpecPodConfigMapItems>() {{
-                    add(new V1alpha1FunctionSpecPodConfigMapItems()
-                            .key("auth.json")
-                            .path("auth.json"));
-                }};
-        List<V1alpha1FunctionSpecPodVolumes> volumes =
-                new ArrayList<V1alpha1FunctionSpecPodVolumes>() {{
-                    add(new V1alpha1FunctionSpecPodVolumes().name("oauth-secret")
-                            .secret(new V1alpha1FunctionSpecPodSecret().secretName("admin")
-                                    .defaultMode(420).items(items)));
-                }};
-        List<V1alpha1FunctionSpecPodVolumeMounts>
-                vms =
-                new ArrayList<V1alpha1FunctionSpecPodVolumeMounts>() {{
-                    add(new V1alpha1FunctionSpecPodVolumeMounts().name("oauth-secret")
-                            .mountPath("/mnt/secrets/auth.json")
-                            .subPath("auth.json"));
-                }};
-        expected.setFunctionVolumeMounts(vms).setFunctionVolumes(volumes);
+        AuthResults expected = new AuthResults();
+        V1alpha1FunctionSpecPulsarAuthConfigOauth2Config oauth2 =
+                new V1alpha1FunctionSpecPulsarAuthConfigOauth2Config()
+                        .audience("test-audience")
+                        .issuerUrl("https://test.com/")
+                        .keySecretName("admin")
+                        .keySecretKey(KEY_NAME);
+        expected.setFunctionAuthConfig(new V1alpha1FunctionSpecPulsarAuthConfig().oauth2Config(oauth2));
 
-        assertArrayEquals(expected.getAuthSecretData().get(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM), results.getAuthSecretData().get(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM));
-        assertArrayEquals(expected.getAuthSecretData().get(CLIENT_AUTHENTICATION_PLUGIN_CLAIM), results.getAuthSecretData().get(CLIENT_AUTHENTICATION_PLUGIN_CLAIM));
-        assertEquals(expected.getFunctionVolumes(), results.getFunctionVolumes());
-        assertEquals(expected.getFunctionVolumeMounts(), results.getFunctionVolumeMounts());
+        assertEquals(expected.getFunctionAuthConfig(), results.getFunctionAuthConfig());
     }
 }
