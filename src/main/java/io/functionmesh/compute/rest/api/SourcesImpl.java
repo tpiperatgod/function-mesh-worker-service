@@ -457,9 +457,15 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                     MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
 
                     AuthResults results = CommonUtil.doAuth(worker(), clientRole, clientAuthenticationDataHttps, apiKind);
-                    String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
-                            v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName, results.getAuthSecretData(), worker());
-                    v1alpha1Source.getSpec().getPulsar().setAuthSecret(authSecretName);
+                    if (results.getAuthSecretData() != null && !results.getAuthSecretData().isEmpty()) {
+                        String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
+                                v1alpha1Source.getSpec().getClusterName(), tenant, namespace, sourceName,
+                                results.getAuthSecretData(), worker());
+                        v1alpha1Source.getSpec().getPulsar().setAuthSecret(authSecretName);
+                    }
+                    if (results.getSourceAuthConfig() != null) {
+                        v1alpha1Source.getSpec().getPulsar().setAuthConfig(results.getSourceAuthConfig());
+                    }
 
                     List<V1alpha1SourceSpecPodVolumes> volumesList = new ArrayList<>();
                     if (results.getSourceVolumes() != null && !results.getSourceVolumes().isEmpty()) {

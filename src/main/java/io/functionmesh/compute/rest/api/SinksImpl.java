@@ -561,9 +561,15 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                     }
 
                     AuthResults results = CommonUtil.doAuth(worker(), clientRole, clientAuthenticationDataHttps, apiKind);
-                    String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
-                            v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, results.getAuthSecretData(), worker());
-                    v1alpha1Sink.getSpec().getPulsar().setAuthSecret(authSecretName);
+                    if (results.getAuthSecretData() != null && !results.getAuthSecretData().isEmpty()) {
+                        String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
+                                v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName,
+                                results.getAuthSecretData(), worker());
+                        v1alpha1Sink.getSpec().getPulsar().setAuthSecret(authSecretName);
+                    }
+                    if (results.getSinkAuthConfig() != null) {
+                        v1alpha1Sink.getSpec().getPulsar().setAuthConfig(results.getSinkAuthConfig());
+                    }
 
                     List<V1alpha1SinkSpecPodVolumes> volumesList = new ArrayList<>();
                     if (results.getSinkVolumes() != null && !results.getSinkVolumes().isEmpty()) {

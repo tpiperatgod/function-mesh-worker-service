@@ -29,6 +29,7 @@ import com.google.gson.Gson;
 import com.google.protobuf.Empty;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.auth.AuthHandler;
+import io.functionmesh.compute.auth.AuthHandlerInsecure;
 import io.functionmesh.compute.auth.AuthHandlerOauth;
 import io.functionmesh.compute.auth.AuthResults;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
@@ -76,9 +77,11 @@ public class CommonUtil {
     public static final String COMPONENT_SOURCE = "source";
     public static final String COMPONENT_SINK = "sink";
     public static final String OAUTH_PLUGIN_NAME = "org.apache.pulsar.client.impl.auth.oauth2.AuthenticationOAuth2";
+    public static final String INSECURE_PLUGIN_NAME = "insecure";
 
     public static final Map<String, AuthHandler> AUTH_HANDLERS = new HashMap<String, AuthHandler>() {{
         put(OAUTH_PLUGIN_NAME, new AuthHandlerOauth());
+        put(INSECURE_PLUGIN_NAME, new AuthHandlerInsecure());
     }};
     public static final String COMPONENT_STATEFUL_SET = "StatefulSet";
     public static final String COMPONENT_SERVICE = "Service";
@@ -507,11 +510,18 @@ public class CommonUtil {
         return null;
     }
 
-    public static AuthResults doAuth(MeshWorkerService workerService, String clientRole, AuthenticationDataSource clientAuthenticationDataHttps, String component) {
-        AuthHandler handler = AUTH_HANDLERS.get(workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin());
+    public static AuthResults doAuth(MeshWorkerService workerService, String clientRole,
+                                     AuthenticationDataSource clientAuthenticationDataHttps, String component) {
+        String pluginName = workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin();
+        if (workerService.getMeshWorkerServiceCustomConfig() != null) {
+            if (workerService.getMeshWorkerServiceCustomConfig().isUsingInsecureAuth())
+                pluginName = INSECURE_PLUGIN_NAME;
+        }
+        AuthHandler handler = AUTH_HANDLERS.get(pluginName);
         if (handler == null) {
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR,
-                    String.format("No handler for given auth plugin: %s", workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin()));
+                    String.format("No handler for given auth plugin: %s",
+                            workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin()));
         }
         return handler.handle(workerService, clientRole, clientAuthenticationDataHttps, component);
     }
