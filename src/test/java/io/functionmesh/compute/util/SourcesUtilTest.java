@@ -20,19 +20,21 @@ package io.functionmesh.compute.util;
 
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumeMounts;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumes;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
-import io.functionmesh.compute.sources.models.V1alpha1Source;
-import io.functionmesh.compute.sources.models.V1alpha1SourceSpec;
-import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodEnv;
+import io.functionmesh.compute.sources.models.*;
 import io.functionmesh.compute.testdata.Generate;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
@@ -109,10 +111,26 @@ public class SourcesUtilTest {
                 put("source", "source");
             }
         };
+
+        List<V1alpha1SourceSpecPodVolumes> volumeList = new ArrayList<V1alpha1SourceSpecPodVolumes>() {
+            {
+                add(new V1alpha1SourceSpecPodVolumes().name("volume1"));
+                add(new V1alpha1SourceSpecPodVolumes().name("volume2"));
+            }
+        };
+        List<V1alpha1SourceSpecPodVolumeMounts> volumeMountList = new ArrayList<V1alpha1SourceSpecPodVolumeMounts>() {
+            {
+                add(new V1alpha1SourceSpecPodVolumeMounts().name("volumeMount1"));
+                add(new V1alpha1SourceSpecPodVolumeMounts().name("volumeMount2"));
+            }
+        };
+
         MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
                 PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.getEnv()).thenReturn(env);
         PowerMockito.when(meshWorkerServiceCustomConfig.getSourceEnv()).thenReturn(sourceEnv);
+        PowerMockito.when(meshWorkerServiceCustomConfig.asV1alpha1SourceSpecPodVolumesList()).thenReturn(volumeList);
+        PowerMockito.when(meshWorkerServiceCustomConfig.asV1alpha1SourceSpecPodVolumeMountsList()).thenReturn(volumeMountList);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
                 .thenReturn(meshWorkerServiceCustomConfig);
 
@@ -140,6 +158,8 @@ public class SourcesUtilTest {
                 put("shared2", "shared2-runtime");
             }
         } );
+        Assert.assertEquals(v1alpha1SourceSpec.getPod().getVolumes(), volumeList);
+        Assert.assertEquals(v1alpha1SourceSpec.getVolumeMounts(), volumeMountList);
     }
 
     @Test

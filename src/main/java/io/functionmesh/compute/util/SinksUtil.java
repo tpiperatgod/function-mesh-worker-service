@@ -26,6 +26,8 @@ import static io.functionmesh.compute.util.CommonUtil.getClassNameFromFile;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
@@ -360,6 +362,13 @@ public class SinksUtil {
             });
         }
         specPod.setEnv(env);
+
+        try {
+            specPod.setVolumes(customConfig.asV1alpha1SinkSpecPodVolumesList());
+            v1alpha1SinkSpec.setVolumeMounts(customConfig.asV1alpha1SinkSpecPodVolumeMountsList());
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Error while converting volumes/volumeMounts resources from custom config", e);
+        }
         v1alpha1SinkSpec.setPod(specPod);
 
         if (sinkConfig.getSecrets() != null && !sinkConfig.getSecrets().isEmpty()) {

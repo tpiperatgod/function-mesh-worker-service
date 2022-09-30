@@ -25,6 +25,8 @@ import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static io.functionmesh.compute.util.CommonUtil.getClassNameFromFile;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
@@ -311,6 +313,13 @@ public class SourcesUtil {
             });
         }
         specPod.setEnv(env);
+
+        try {
+            specPod.setVolumes(customConfig.asV1alpha1SourceSpecPodVolumesList());
+            v1alpha1SourceSpec.setVolumeMounts(customConfig.asV1alpha1SourceSpecPodVolumeMountsList());
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Error while converting volumes/volumeMounts resources from custom config", e);
+        }
         v1alpha1SourceSpec.setPod(specPod);
 
         if (sourceConfig.getSecrets() != null && !sourceConfig.getSecrets().isEmpty()) {
