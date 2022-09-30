@@ -573,21 +573,21 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                     }
 
                     List<V1alpha1SinkSpecPodVolumes> volumesList = new ArrayList<>();
+                    if (podPolicy.getVolumes() != null && !podPolicy.getVolumes().isEmpty()){
+                        volumesList.addAll(podPolicy.getVolumes());
+                    }
                     if (results.getSinkVolumes() != null && !results.getSinkVolumes().isEmpty()) {
                         volumesList.addAll(results.getSinkVolumes());
-                    }
-                    if (customConfig.asV1alpha1SinkSpecPodVolumesList() != null && !customConfig.asV1alpha1SinkSpecPodVolumesList().isEmpty()) {
-                        volumesList.addAll(customConfig.asV1alpha1SinkSpecPodVolumesList());
                     }
                     if (volumesList != null && !volumesList.isEmpty()) {
                         podPolicy.setVolumes(volumesList);
                     }
                     List<V1alpha1SinkSpecPodVolumeMounts> volumeMountsList = new ArrayList<>();
+                    if (v1alpha1Sink.getSpec() != null && v1alpha1Sink.getSpec().getVolumeMounts() != null && !v1alpha1Sink.getSpec().getVolumeMounts().isEmpty()){
+                        volumeMountsList.addAll(v1alpha1Sink.getSpec().getVolumeMounts());
+                    }
                     if (results.getSinkVolumeMounts() != null && !results.getSinkVolumeMounts().isEmpty()) {
                         volumeMountsList.addAll(results.getSinkVolumeMounts());
-                    }
-                    if (customConfig.asV1alpha1SinkSpecPodVolumeMountsList() != null && !customConfig.asV1alpha1SinkSpecPodVolumeMountsList().isEmpty()) {
-                        volumeMountsList.addAll(customConfig.asV1alpha1SinkSpecPodVolumeMountsList());
                     }
                     if (volumeMountsList != null && !volumeMountsList.isEmpty()) {
                         v1alpha1Sink.getSpec().setVolumeMounts(volumeMountsList);

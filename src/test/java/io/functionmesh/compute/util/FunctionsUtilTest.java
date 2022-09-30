@@ -23,17 +23,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
-import io.functionmesh.compute.functions.models.V1alpha1Function;
-import io.functionmesh.compute.functions.models.V1alpha1FunctionSpec;
-import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodEnv;
+import io.functionmesh.compute.functions.models.*;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.testdata.Generate;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+
+import java.util.*;
 import java.util.stream.Collectors;
+
+import io.kubernetes.client.openapi.models.V1Volume;
+import io.kubernetes.client.openapi.models.V1VolumeMount;
 import okhttp3.Response;
 import okhttp3.internal.http.RealResponseBody;
 import org.apache.pulsar.client.admin.PulsarAdmin;
@@ -59,7 +59,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PowerMockIgnore({"javax.management.*"})
 public class FunctionsUtilTest {
     @Test
-    public void testCreateV1alpha1FunctionFromFunctionConfig() {
+    public void testCreateV1alpha1FunctionFromFunctionConfig() throws JsonProcessingException {
         String tenant = "public";
         String namespace = "default";
         String functionName = "word-count";
@@ -106,6 +106,19 @@ public class FunctionsUtilTest {
                 put("function", "function");
             }
         };
+
+        List<V1alpha1FunctionSpecPodVolumes> volumeList = new ArrayList<V1alpha1FunctionSpecPodVolumes>() {
+            {
+                add(new V1alpha1FunctionSpecPodVolumes().name("volume1"));
+                add(new V1alpha1FunctionSpecPodVolumes().name("volume2"));
+            }
+        };
+        List<V1alpha1FunctionSpecPodVolumeMounts> volumeMountList = new ArrayList<V1alpha1FunctionSpecPodVolumeMounts>() {
+            {
+                add(new V1alpha1FunctionSpecPodVolumeMounts().name("volumeMount1"));
+                add(new V1alpha1FunctionSpecPodVolumeMounts().name("volumeMount2"));
+            }
+        };
         MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
                 PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
@@ -113,6 +126,8 @@ public class FunctionsUtilTest {
         PowerMockito.when(meshWorkerServiceCustomConfig.isAllowUserDefinedServiceAccountName()).thenReturn(false);
         PowerMockito.when(meshWorkerServiceCustomConfig.getEnv()).thenReturn(env);
         PowerMockito.when(meshWorkerServiceCustomConfig.getFunctionEnv()).thenReturn(functionEnv);
+        PowerMockito.when(meshWorkerServiceCustomConfig.asV1alpha1FunctionSpecPodVolumesList()).thenReturn(volumeList);
+        PowerMockito.when(meshWorkerServiceCustomConfig.asV1alpha1FunctionSpecPodVolumeMounts()).thenReturn(volumeMountList);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
                 .thenReturn(meshWorkerServiceCustomConfig);
 
@@ -156,6 +171,8 @@ public class FunctionsUtilTest {
         } );
         Assert.assertEquals(v1alpha1FunctionSpec.getSubscriptionName(), "test-sub");
         Assert.assertEquals(v1alpha1FunctionSpec.getSubscriptionPosition(), V1alpha1FunctionSpec.SubscriptionPositionEnum.LATEST);
+        Assert.assertEquals(v1alpha1FunctionSpec.getPod().getVolumes(), volumeList);
+        Assert.assertEquals(v1alpha1FunctionSpec.getVolumeMounts(), volumeMountList);
     }
 
     @Test
