@@ -468,22 +468,22 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                     }
 
                     List<V1alpha1SourceSpecPodVolumes> volumesList = new ArrayList<>();
+                    if (podPolicy.getVolumes() != null && !podPolicy.getVolumes().isEmpty()){
+                        volumesList.addAll(podPolicy.getVolumes());
+                    }
                     if (results.getSourceVolumes() != null && !results.getSourceVolumes().isEmpty()) {
                         volumesList.addAll(results.getSourceVolumes());
-                    }
-                    if (customConfig.asV1alpha1SourceSpecPodVolumesList() != null && !customConfig.asV1alpha1SourceSpecPodVolumesList().isEmpty()) {
-                        volumesList.addAll(customConfig.asV1alpha1SourceSpecPodVolumesList());
                     }
                     if (volumesList != null && !volumesList.isEmpty()) {
                         podPolicy.setVolumes(volumesList);
                     }
 
                     List<V1alpha1SourceSpecPodVolumeMounts> volumeMountsList = new ArrayList<>();
+                    if (v1alpha1Source.getSpec() != null && v1alpha1Source.getSpec().getVolumeMounts() != null && !v1alpha1Source.getSpec().getVolumeMounts().isEmpty()){
+                        volumeMountsList.addAll(v1alpha1Source.getSpec().getVolumeMounts());
+                    }
                     if (results.getSourceVolumeMounts() != null && !results.getSourceVolumeMounts().isEmpty()) {
                         volumeMountsList.addAll(results.getSourceVolumeMounts());
-                    }
-                    if (customConfig.asV1alpha1SourceSpecPodVolumeMountsList() != null && !customConfig.asV1alpha1SourceSpecPodVolumeMountsList().isEmpty()) {
-                        volumeMountsList.addAll(customConfig.asV1alpha1SourceSpecPodVolumeMountsList());
                     }
                     if (volumeMountsList != null && !volumeMountsList.isEmpty()) {
                         v1alpha1Source.getSpec().setVolumeMounts(volumeMountsList);

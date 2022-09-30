@@ -526,22 +526,22 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
 
                     MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
                     List<V1alpha1FunctionSpecPodVolumes> volumesList = new ArrayList<>();
+                    if (podPolicy.getVolumes() != null && !podPolicy.getVolumes().isEmpty()){
+                        volumesList.addAll(podPolicy.getVolumes());
+                    }
                     if (results.getFunctionVolumes() != null && !results.getFunctionVolumes().isEmpty()) {
                         volumesList.addAll(results.getFunctionVolumes());
-                    }
-                    if (customConfig.asV1alpha1FunctionSpecPodVolumesList() != null && !customConfig.asV1alpha1FunctionSpecPodVolumesList().isEmpty()) {
-                        volumesList.addAll(customConfig.asV1alpha1FunctionSpecPodVolumesList());
                     }
                     if (volumesList != null && !volumesList.isEmpty()) {
                         podPolicy.setVolumes(volumesList);
                     }
 
                     List<V1alpha1FunctionSpecPodVolumeMounts> volumeMountsList = new ArrayList<>();
+                    if (v1alpha1Function.getSpec() != null && v1alpha1Function.getSpec().getVolumeMounts() != null && !v1alpha1Function.getSpec().getVolumeMounts().isEmpty()){
+                        volumeMountsList.addAll(v1alpha1Function.getSpec().getVolumeMounts());
+                    }
                     if (results.getFunctionVolumeMounts() != null && !results.getFunctionVolumeMounts().isEmpty()) {
                         volumeMountsList.addAll(results.getFunctionVolumeMounts());
-                    }
-                    if (customConfig.asV1alpha1FunctionSpecPodVolumeMounts() != null && !customConfig.asV1alpha1FunctionSpecPodVolumeMounts().isEmpty()) {
-                        volumeMountsList.addAll(customConfig.asV1alpha1FunctionSpecPodVolumeMounts());
                     }
                     if (volumeMountsList != null && !volumeMountsList.isEmpty()) {
                         v1alpha1Function.getSpec().setVolumeMounts(volumeMountsList);

@@ -21,19 +21,21 @@ package io.functionmesh.compute.util;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodEnv;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumeMounts;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVolumes;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
-import io.functionmesh.compute.sinks.models.V1alpha1Sink;
-import io.functionmesh.compute.sinks.models.V1alpha1SinkSpec;
-import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodEnv;
+import io.functionmesh.compute.sinks.models.*;
 import io.functionmesh.compute.testdata.Generate;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.pulsar.common.io.SinkConfig;
@@ -108,10 +110,25 @@ public class SinksUtilTest {
                 put("sink", "sink");
             }
         };
+
+        List<V1alpha1SinkSpecPodVolumes> volumeList = new ArrayList<V1alpha1SinkSpecPodVolumes>() {
+            {
+                add(new V1alpha1SinkSpecPodVolumes().name("volume1"));
+                add(new V1alpha1SinkSpecPodVolumes().name("volume2"));
+            }
+        };
+        List<V1alpha1SinkSpecPodVolumeMounts> volumeMountList = new ArrayList<V1alpha1SinkSpecPodVolumeMounts>() {
+            {
+                add(new V1alpha1SinkSpecPodVolumeMounts().name("volumeMount1"));
+                add(new V1alpha1SinkSpecPodVolumeMounts().name("volumeMount2"));
+            }
+        };
         MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
                 PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
         PowerMockito.when(meshWorkerServiceCustomConfig.getEnv()).thenReturn(env);
         PowerMockito.when(meshWorkerServiceCustomConfig.getSinkEnv()).thenReturn(sinkEnv);
+        PowerMockito.when(meshWorkerServiceCustomConfig.asV1alpha1SinkSpecPodVolumesList()).thenReturn(volumeList);
+        PowerMockito.when(meshWorkerServiceCustomConfig.asV1alpha1SinkSpecPodVolumeMountsList()).thenReturn(volumeMountList);
         PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
                 .thenReturn(meshWorkerServiceCustomConfig);
 
@@ -147,6 +164,8 @@ public class SinksUtilTest {
         } );
         Assert.assertEquals(v1alpha1SinkSpec.getSubscriptionName(), "test-sub");
         Assert.assertEquals(v1alpha1SinkSpec.getSubscriptionPosition(), V1alpha1SinkSpec.SubscriptionPositionEnum.EARLIEST);
+        Assert.assertEquals(v1alpha1SinkSpec.getPod().getVolumes(), volumeList);
+        Assert.assertEquals(v1alpha1SinkSpec.getVolumeMounts(), volumeMountList);
     }
 
     @Test

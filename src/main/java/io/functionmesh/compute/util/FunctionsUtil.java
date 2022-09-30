@@ -26,6 +26,8 @@ import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static io.functionmesh.compute.util.CommonUtil.downloadPackageFile;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
@@ -409,7 +411,16 @@ public class FunctionsUtil {
             });
         }
         specPod.setEnv(env);
+
+
+        try {
+            specPod.setVolumes(customConfig.asV1alpha1FunctionSpecPodVolumesList());
+            v1alpha1FunctionSpec.setVolumeMounts(customConfig.asV1alpha1FunctionSpecPodVolumeMounts());
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Error while converting volumes/volumeMounts resources from custom config", e);
+        }
         v1alpha1FunctionSpec.setPod(specPod);
+
 
         if (functionConfig.getSecrets() != null && !functionConfig.getSecrets().isEmpty()) {
             Map<String, Object> secrets = functionConfig.getSecrets();
