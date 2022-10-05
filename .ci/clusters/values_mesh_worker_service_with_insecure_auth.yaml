@@ -123,6 +123,9 @@ functions:
             secretName: sn-platform-oauth2-private-key
 
 broker:
+  extraEnv:
+    - name: "PULSAR_PREFIX_brokerDeleteInactiveTopicsEnabled"
+      value: "false"
   replicaCount: 1
   configData:
     ## Enable `autoSkipNonRecoverableData` since bookkeeper is running

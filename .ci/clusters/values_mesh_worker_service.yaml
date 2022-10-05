@@ -114,6 +114,9 @@ functions:
         "GO": streamnative/pulsar-functions-go-runner:2.9.2.14
 
 broker:
+  extraEnv:
+    - name: "PULSAR_PREFIX_brokerDeleteInactiveTopicsEnabled"
+      value: "false"
   replicaCount: 1
   configData:
     ## Enable `autoSkipNonRecoverableData` since bookkeeper is running
