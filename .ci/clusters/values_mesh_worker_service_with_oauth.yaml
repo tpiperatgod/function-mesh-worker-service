@@ -136,6 +136,9 @@ functions:
         "GO": streamnative/pulsar-functions-go-runner:2.11.0.0-rc3
 
 broker:
+  extraEnv:
+    - name: "PULSAR_PREFIX_brokerDeleteInactiveTopicsEnabled"
+      value: "false"
   replicaCount: 1
   securityContext:
     runAsNonRoot: true
