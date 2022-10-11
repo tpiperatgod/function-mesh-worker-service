@@ -33,6 +33,7 @@ import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpec;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecGolang;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecGolangLog;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecInput;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecInputCryptoConfig;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecInputSourceSpecs;
@@ -443,6 +444,19 @@ public class FunctionsUtil {
             }
         }
 
+        // handle logging configurations
+        V1alpha1FunctionSpecGolangLog logConfig = fetchFunctionLoggingConfig(customRuntimeOptions);
+        if (logConfig != null && v1alpha1FunctionSpec.getJava() != null) {
+            V1alpha1FunctionSpecJava v1alpha1FunctionSpecJava = v1alpha1FunctionSpec.getJava();
+            v1alpha1FunctionSpecJava.setLog(logConfig);
+            v1alpha1FunctionSpec.setJava(v1alpha1FunctionSpecJava);
+        }
+        if (logConfig != null && v1alpha1FunctionSpec.getPython() != null) {
+            V1alpha1FunctionSpecPython v1alpha1FunctionSpecPython = v1alpha1FunctionSpec.getPython();
+            v1alpha1FunctionSpecPython.setLog(logConfig);
+            v1alpha1FunctionSpec.setPython(v1alpha1FunctionSpecPython);
+        }
+
         v1alpha1Function.setSpec(v1alpha1FunctionSpec);
 
         return v1alpha1Function;
@@ -782,6 +796,24 @@ public class FunctionsUtil {
             currentAnnotations.put(ANNOTATION_MANAGED, "false");
             v1alpha1Function.getMetadata().setAnnotations(currentAnnotations);
         }
+    }
+
+    private static V1alpha1FunctionSpecGolangLog fetchFunctionLoggingConfig(CustomRuntimeOptions customRuntimeOptions) {
+        String logLevel = (customRuntimeOptions.getLogLevel() != null) ? customRuntimeOptions.getLogLevel() : "";
+        String logRotationPolicy = (customRuntimeOptions.getLogRotationPolicy() != null) ? customRuntimeOptions.getLogRotationPolicy() : "";
+
+        if (logLevel.equals("") && logRotationPolicy.equals("")) {
+            return null;
+        }
+
+        V1alpha1FunctionSpecGolangLog logConfig = new V1alpha1FunctionSpecGolangLog();
+        if (!logLevel.equals("")) {
+            logConfig.setLevel(V1alpha1FunctionSpecGolangLog.LevelEnum.valueOf(logLevel.toUpperCase()));
+        }
+        if (!logRotationPolicy.equals("")) {
+            logConfig.setRotatePolicy(V1alpha1FunctionSpecGolangLog.RotatePolicyEnum.valueOf(logRotationPolicy.toUpperCase()));
+        }
+        return logConfig;
     }
 
 }
