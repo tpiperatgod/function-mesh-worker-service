@@ -357,8 +357,12 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
 
             V1alpha1FunctionList list = executeCall(call, V1alpha1FunctionList.class);
             list.getItems().forEach(n -> {
-                result.add(n.getMetadata().getLabels().get(COMPONENT_LABEL_CLAIM));
-                result.add(n.getMetadata().getLabels().get(COMPONENT_LABEL_CLAIM_DEPRECATED));
+                String comp = n.getMetadata().getLabels().get(COMPONENT_LABEL_CLAIM);
+                if (StringUtils.isEmpty(comp)) {
+                    comp = n.getMetadata().getLabels().get(COMPONENT_LABEL_CLAIM_DEPRECATED);
+                }
+                if (StringUtils.isNotEmpty(comp))
+                    result.add(comp);
             });
         } catch (Exception e) {
             log.error("failed to fetch functions list from namespace {}", namespace, e);
