@@ -19,6 +19,7 @@
 
 package io.functionmesh.compute.auth;
 
+import static io.functionmesh.compute.util.CommonUtil.OAUTH_PLUGIN_NAME;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.functionmesh.compute.MeshWorkerService;
@@ -48,20 +49,42 @@ public class AuthHandlerInsecure implements AuthHandler {
         if (!StringUtils.isEmpty(workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin())
                 && !StringUtils.isEmpty(
                 workerService.getWorkerConfig().getBrokerClientAuthenticationParameters())) {
-            Map<String, byte[]> valueMap = new HashMap<>();
-            valueMap.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM,
-                    workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin().getBytes());
-            byte[] finalParams = workerService.getWorkerConfig().getBrokerClientAuthenticationParameters().getBytes();
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                OAuth2Parameters oauth2Parameters =
-                        mapper.readValue(workerService.getWorkerConfig().getBrokerClientAuthenticationParameters(),
-                                OAuth2Parameters.class);
-                finalParams = mapper.writeValueAsBytes(oauth2Parameters);
-            } catch (JsonProcessingException e) { // use the original parameters when exception happens
+            switch (workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin()) {
+                case OAUTH_PLUGIN_NAME:
+                    try {
+                        ObjectMapper mapper = new ObjectMapper();
+                        OAuth2Parameters oauth2Parameters =
+                                mapper.readValue(
+                                        workerService.getWorkerConfig().getBrokerClientAuthenticationParameters(),
+                                        OAuth2Parameters.class);
+                        String[] paths = oauth2Parameters.getPrivateKey().split("/");
+                        if (paths.length == 0 || StringUtils.isEmpty(
+                                workerService.getMeshWorkerServiceCustomConfig().getOauth2SecretName())) {
+                            throw new RuntimeException("privateKey is empty or oauth2SecretName is not set");
+                        }
+                        String secretKey = paths[paths.length - 1];
+                        AuthHandlerOauth.UpdateOAuth2Fields(component, oauth2Parameters,
+                                workerService.getMeshWorkerServiceCustomConfig().getOauth2SecretName(), secretKey,
+                                results);
+                    } catch (RuntimeException | JsonProcessingException e) { // fallback to auth secret way
+                        log.error("failed to read oauth2 parameters {}", e.getMessage());
+                        Map<String, byte[]> valueMap = new HashMap<>();
+                        valueMap.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM,
+                                workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin().getBytes());
+                        valueMap.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM,
+                                workerService.getWorkerConfig().getBrokerClientAuthenticationParameters().getBytes());
+                        results.setAuthSecretData(valueMap);
+                    }
+                    break;
+                default:
+                    Map<String, byte[]> valueMap = new HashMap<>();
+                    valueMap.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM,
+                            workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin().getBytes());
+                    valueMap.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM,
+                            workerService.getWorkerConfig().getBrokerClientAuthenticationParameters().getBytes());
+                    results.setAuthSecretData(valueMap);
+                    break;
             }
-            valueMap.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM, finalParams);
-            results.setAuthSecretData(valueMap);
         }
         return results;
     }
@@ -89,8 +112,14 @@ public class AuthHandlerInsecure implements AuthHandler {
                             null
                     );
             deleteAuthSecretCall.execute();
-        } catch (IOException | ApiException e) {
-            log.error("clean up auth for {}/{}/{} {} failed", tenant, namespace, componentName, e);
+        } catch (ApiException e) {
+            log.error("clean up auth for {}/{}/{} {} failed", tenant, namespace, componentName, e.getMessage());
+            // do nothing if auth secret doesn't exist
+            if (e.getCode() != 404) {
+                throw new RuntimeException(e);
+            }
+        } catch (IOException e) {
+            log.error("clean up auth for {}/{}/{} {} failed", tenant, namespace, componentName, e.getMessage());
             throw new RuntimeException(e);
         }
     }

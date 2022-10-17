@@ -22,9 +22,13 @@ package io.functionmesh.compute.auth;
 import static io.functionmesh.compute.auth.AuthHandler.CLIENT_AUTHENTICATION_PARAMETERS_CLAIM;
 import static io.functionmesh.compute.auth.AuthHandler.CLIENT_AUTHENTICATION_PLUGIN_CLAIM;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.powermock.api.mockito.PowerMockito.when;
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsarAuthConfig;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsarAuthConfigOauth2Config;
+import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.util.CommonUtil;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,25 +41,45 @@ public class AuthHandlerInsecureTest {
     public void testHandle() {
         MeshWorkerService meshWorkerService = mock(MeshWorkerService.class);
         WorkerConfig workerConfig = mock(WorkerConfig.class);
-        when(workerConfig.getBrokerClientAuthenticationPlugin()).thenReturn(CommonUtil.OAUTH_PLUGIN_NAME);
-        when(workerConfig.getBrokerClientAuthenticationParameters()).thenReturn(
-                "{\"audience\":\"test-audience\",\"issuerUrl\":\"https://test.com/\""
-                        + ",\"privateKey\":\"file:///mnt/secrets/auth.json\",\"type\":\"client_credentials\"}");
+        String oauth2Parameters = "{\"audience\":\"test-audience\",\"issuerUrl\":\"https://test.com/\""
+                + ",\"privateKey\":\"file:///mnt/secrets/auth.json\",\"type\":\"client_credentials\"}";
+        when(workerConfig.getBrokerClientAuthenticationPlugin()).thenReturn("fake");
+        when(workerConfig.getBrokerClientAuthenticationParameters()).thenReturn(oauth2Parameters);
         when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
 
         AuthResults results = new AuthHandlerInsecure().handle(meshWorkerService, "admin", null, "Function");
 
-        String oauth2ExtendedParameters = "{\"audience\":\"test-audience\",\"issuerUrl\":\"https://test.com/\""
-                + ",\"privateKey\":\"file:///mnt/secrets/auth.json\",\"type\":\"client_credentials\""
-                + ",\"issuer_url\":\"https://test.com/\",\"private_key\":\"/mnt/secrets/auth.json\"}";
         Map<String, byte[]> secretData = new HashMap<>();
-        secretData.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM, CommonUtil.OAUTH_PLUGIN_NAME.getBytes());
-        secretData.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM, oauth2ExtendedParameters.getBytes());
+        secretData.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM, "fake".getBytes());
+        secretData.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM, oauth2Parameters.getBytes());
         AuthResults expected = new AuthResults().setAuthSecretData(secretData);
 
         assertArrayEquals(expected.getAuthSecretData().get(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM),
                 results.getAuthSecretData().get(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM));
         assertArrayEquals(expected.getAuthSecretData().get(CLIENT_AUTHENTICATION_PLUGIN_CLAIM),
                 results.getAuthSecretData().get(CLIENT_AUTHENTICATION_PLUGIN_CLAIM));
+
+        // test oauth2 provider
+        WorkerConfig workerConfig2 = mock(WorkerConfig.class);
+        when(workerConfig2.getBrokerClientAuthenticationPlugin()).thenReturn(CommonUtil.OAUTH_PLUGIN_NAME);
+        when(workerConfig2.getBrokerClientAuthenticationParameters()).thenReturn(
+                "{\"audience\":\"test-audience\",\"issuerUrl\":\"https://test.com/\""
+                        + ",\"privateKey\":\"file:///mnt/secrets/auth.json\",\"type\":\"client_credentials\"}");
+        when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig2);
+        MeshWorkerServiceCustomConfig customConfig = mock(MeshWorkerServiceCustomConfig.class);
+        when(customConfig.getOauth2SecretName()).thenReturn("test-secret");
+        when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(customConfig);
+
+        AuthResults results2 = new AuthHandlerInsecure().handle(meshWorkerService, "admin", null, "Function");
+
+        AuthResults expected2 = new AuthResults();
+        V1alpha1FunctionSpecPulsarAuthConfigOauth2Config oauth2 =
+                new V1alpha1FunctionSpecPulsarAuthConfigOauth2Config()
+                        .audience("test-audience")
+                        .issuerUrl("https://test.com/")
+                        .keySecretName("test-secret")
+                        .keySecretKey("auth.json");
+        expected2.setFunctionAuthConfig(new V1alpha1FunctionSpecPulsarAuthConfig().oauth2Config(oauth2));
+        assertEquals(expected2.getFunctionAuthConfig(), results2.getFunctionAuthConfig());
     }
 }
