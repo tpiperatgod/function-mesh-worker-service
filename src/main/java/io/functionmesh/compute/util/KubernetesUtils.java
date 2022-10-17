@@ -64,7 +64,7 @@ public class KubernetesUtils {
             File file = new File(KUBERNETES_NAMESPACE_PATH);
             namespace = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
         } catch (java.io.IOException e) {
-            log.error("Get namespace from kubernetes path {}", KUBERNETES_NAMESPACE_PATH, e);
+            log.error("Get namespace from kubernetes path {}, error: {}", KUBERNETES_NAMESPACE_PATH, e.getMessage());
         }
         // Use the default namespace
         if (namespace == null) {
@@ -129,7 +129,7 @@ public class KubernetesUtils {
             String namespace,
             String name,
             Map<String, byte[]> secretData,
-            MeshWorkerService workerService) throws ApiException, InterruptedException {
+            MeshWorkerService workerService) throws InterruptedException {
         CoreV1Api coreV1Api = workerService.getCoreV1Api();
         String combinationName = getSecretName(cluster, tenant, namespace, name);
         String hashcode = DigestUtils.sha256Hex(combinationName);
