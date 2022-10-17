@@ -112,15 +112,7 @@ functions:
         "JAVA": streamnative/pulsar-functions-java-runner:2.9.1.2
         "PYTHON": streamnative/pulsar-functions-python-runner:2.9.1.2
         "GO": streamnative/pulsar-functions-go-runner:2.9.1.2
-      volumeMounts:
-        - mountPath: /pulsar/oauth2
-          name: secret-broker-0
-          readOnly: true
-      volumes:
-        - name: secret-broker-0
-          secret:
-            defaultMode: 420
-            secretName: sn-platform-oauth2-private-key
+      oauth2SecretName: sn-platform-oauth2-private-key
 
 broker:
   extraEnv:
@@ -152,7 +144,7 @@ auth:
       issuerUrlParam: https://sts.windows.net/06a8a086-ae6e-45b5-a22e-ad90de23013e/v2.0
       audience: api://56c1bd14-3ba7-4804-b47b-d46de6dce33e
       audienceParam: api://56c1bd14-3ba7-4804-b47b-d46de6dce33e/.default
-      brokerClientCredential: '{"client_id":"CLIENT_ID","client_secret":"CLIENT_SECRET"}'
+      brokerClientCredential: '{"client_id":"CLIENT_ID","client_secret":"CLIENT_SECRET","issuer_url":"https://sts.windows.net/06a8a086-ae6e-45b5-a22e-ad90de23013e/v2.0"}'
       subjectClaim: appid
       adminScope: appid
       adminScopeParam: api://56c1bd14-3ba7-4804-b47b-d46de6dce33e/.default

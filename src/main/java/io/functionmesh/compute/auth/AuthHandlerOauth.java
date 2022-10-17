@@ -55,46 +55,7 @@ public class AuthHandlerOauth implements AuthHandler {
 
                 AuthResults results = new AuthResults();
 
-                switch (component.toLowerCase()) {
-                    case CommonUtil.COMPONENT_FUNCTION:
-                        V1alpha1FunctionSpecPulsarAuthConfigOauth2Config oauth2 =
-                                new V1alpha1FunctionSpecPulsarAuthConfigOauth2Config()
-                                        .audience(oauth2Parameters.getAudience())
-                                        .issuerUrl(oauth2Parameters.getIssuerUrl())
-                                        .keySecretName(secretName)
-                                        .keySecretKey(KEY_NAME);
-                        if (StringUtils.isNotEmpty(oauth2Parameters.getScope())) {
-                            oauth2.setScope(oauth2Parameters.getScope());
-                        }
-                        results.setFunctionAuthConfig(new V1alpha1FunctionSpecPulsarAuthConfig().oauth2Config(oauth2));
-                        break;
-                    case CommonUtil.COMPONENT_SINK:
-                        V1alpha1SinkSpecPulsarAuthConfigOauth2Config sinkOAuth2 =
-                                new V1alpha1SinkSpecPulsarAuthConfigOauth2Config()
-                                        .audience(oauth2Parameters.getAudience())
-                                        .issuerUrl(oauth2Parameters.getIssuerUrl())
-                                        .keySecretName(secretName)
-                                        .keySecretKey(KEY_NAME);
-                        if (StringUtils.isNotEmpty(oauth2Parameters.getScope())) {
-                            sinkOAuth2.setScope(oauth2Parameters.getScope());
-                        }
-                        results.setSinkAuthConfig(new V1alpha1SinkSpecPulsarAuthConfig().oauth2Config(sinkOAuth2));
-                        break;
-                    case CommonUtil.COMPONENT_SOURCE:
-                        V1alpha1SourceSpecPulsarAuthConfigOauth2Config sourceOAuth2 =
-                                new V1alpha1SourceSpecPulsarAuthConfigOauth2Config()
-                                        .audience(oauth2Parameters.getAudience())
-                                        .issuerUrl(oauth2Parameters.getIssuerUrl())
-                                        .keySecretName(secretName)
-                                        .keySecretKey(KEY_NAME);
-                        if (StringUtils.isNotEmpty(oauth2Parameters.getScope())) {
-                            sourceOAuth2.setScope(oauth2Parameters.getScope());
-                        }
-                        results.setSourceAuthConfig(new V1alpha1SourceSpecPulsarAuthConfig().oauth2Config(sourceOAuth2));
-                        break;
-                    default:
-                        break;
-                }
+                UpdateOAuth2Fields(component, oauth2Parameters, secretName, KEY_NAME, results);
                 return results;
             } catch (IOException | NullPointerException e) {
                 throw new RuntimeException(
@@ -129,5 +90,48 @@ public class AuthHandlerOauth implements AuthHandler {
         secret = secret.replaceAll("^api://", "");
 
         return secret;
+    }
+
+    public static void UpdateOAuth2Fields(String component, OAuth2Parameters oauth2Parameters, String secretName, String secretKey, AuthResults results) {
+        switch (component.toLowerCase()) {
+            case CommonUtil.COMPONENT_FUNCTION:
+                V1alpha1FunctionSpecPulsarAuthConfigOauth2Config oauth2 =
+                        new V1alpha1FunctionSpecPulsarAuthConfigOauth2Config()
+                                .audience(oauth2Parameters.getAudience())
+                                .issuerUrl(oauth2Parameters.getIssuerUrl())
+                                .keySecretName(secretName)
+                                .keySecretKey(secretKey);
+                if (StringUtils.isNotEmpty(oauth2Parameters.getScope())) {
+                    oauth2.setScope(oauth2Parameters.getScope());
+                }
+                results.setFunctionAuthConfig(new V1alpha1FunctionSpecPulsarAuthConfig().oauth2Config(oauth2));
+                break;
+            case CommonUtil.COMPONENT_SINK:
+                V1alpha1SinkSpecPulsarAuthConfigOauth2Config sinkOAuth2 =
+                        new V1alpha1SinkSpecPulsarAuthConfigOauth2Config()
+                                .audience(oauth2Parameters.getAudience())
+                                .issuerUrl(oauth2Parameters.getIssuerUrl())
+                                .keySecretName(secretName)
+                                .keySecretKey(KEY_NAME);
+                if (StringUtils.isNotEmpty(oauth2Parameters.getScope())) {
+                    sinkOAuth2.setScope(oauth2Parameters.getScope());
+                }
+                results.setSinkAuthConfig(new V1alpha1SinkSpecPulsarAuthConfig().oauth2Config(sinkOAuth2));
+                break;
+            case CommonUtil.COMPONENT_SOURCE:
+                V1alpha1SourceSpecPulsarAuthConfigOauth2Config sourceOAuth2 =
+                        new V1alpha1SourceSpecPulsarAuthConfigOauth2Config()
+                                .audience(oauth2Parameters.getAudience())
+                                .issuerUrl(oauth2Parameters.getIssuerUrl())
+                                .keySecretName(secretName)
+                                .keySecretKey(KEY_NAME);
+                if (StringUtils.isNotEmpty(oauth2Parameters.getScope())) {
+                    sourceOAuth2.setScope(oauth2Parameters.getScope());
+                }
+                results.setSourceAuthConfig(new V1alpha1SourceSpecPulsarAuthConfig().oauth2Config(sourceOAuth2));
+                break;
+            default:
+                break;
+        }
     }
 }
