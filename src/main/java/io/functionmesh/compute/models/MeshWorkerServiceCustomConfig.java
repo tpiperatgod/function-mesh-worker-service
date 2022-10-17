@@ -73,6 +73,11 @@ public class MeshWorkerServiceCustomConfig {
     protected boolean usingInsecureAuth = true;
 
     @FieldContext(
+            doc = "the k8s secret of OAuth2 private key(if using OAuth2)"
+    )
+    protected String oauth2SecretName;
+
+    @FieldContext(
             doc = "the directory for dropping extra function dependencies. "
     )
     protected String extraDependenciesDir = "/pulsar/lib/";
