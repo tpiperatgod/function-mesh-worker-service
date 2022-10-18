@@ -39,7 +39,7 @@
         <jetty.version>9.4.48.v20220622</jetty.version>
         <nifi-nar-maven-plugin.version>1.2.0</nifi-nar-maven-plugin.version>
         <grpc.version>1.42.1</grpc.version>
-        <function-mesh.version>v0.6.0</function-mesh.version>
+        <function-mesh.version>v0.7.0</function-mesh.version>
         <maven-checkstyle-plugin.version>3.1.2</maven-checkstyle-plugin.version>
         <puppycrawl.checkstyle.version>8.37</puppycrawl.checkstyle.version>
     </properties>
