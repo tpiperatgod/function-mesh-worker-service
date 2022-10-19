@@ -110,9 +110,9 @@ functions:
       sourceEnabled: true
       usingInsecureAuth: false
       functionRunnerImages:
-        "JAVA": streamnative/pulsar-functions-java-runner:2.9.2.14
-        "PYTHON": streamnative/pulsar-functions-python-runner:2.9.2.14
-        "GO": streamnative/pulsar-functions-go-runner:2.9.2.14
+        "JAVA": docker.cloudsmith.io/streamnative/staging/pulsar-functions-java-runner:2.9.3.14
+        "PYTHON": docker.cloudsmith.io/streamnative/staging/pulsar-functions-python-runner:2.9.3.14
+        "GO": docker.cloudsmith.io/streamnative/staging/pulsar-functions-go-runner:2.9.3.14
 
 broker:
   extraEnv:
