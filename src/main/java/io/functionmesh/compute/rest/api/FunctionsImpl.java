@@ -21,6 +21,7 @@ package io.functionmesh.compute.rest.api;
 import static io.functionmesh.compute.util.KubernetesUtils.buildTlsConfigMap;
 import static io.functionmesh.compute.util.KubernetesUtils.validateResourceOwner;
 import static io.functionmesh.compute.util.KubernetesUtils.validateStatefulSet;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.auth.AuthResults;
@@ -504,92 +505,109 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
                                 V1alpha1Function v1alpha1Function,
                                 String clientRole,
                                 AuthenticationDataSource clientAuthenticationDataHttps) {
-        if (worker().getWorkerConfig().isAuthenticationEnabled()) {
-            if (clientAuthenticationDataHttps != null) {
-                try {
-                    V1alpha1FunctionSpecPod podPolicy = v1alpha1Function.getSpec().getPod();
-                    if (podPolicy == null) {
-                        podPolicy = new V1alpha1FunctionSpecPod();
-                        v1alpha1Function.getSpec().setPod(podPolicy);
-                    }
+        try {
+            V1alpha1FunctionSpecPod podPolicy = v1alpha1Function.getSpec().getPod();
+            if (podPolicy == null) {
+                podPolicy = new V1alpha1FunctionSpecPod();
+                v1alpha1Function.getSpec().setPod(podPolicy);
+            }
 
-                    AuthResults results = CommonUtil.doAuth(worker(), clientRole, clientAuthenticationDataHttps, apiKind);
+            // set volumes&volume mounts
+            List<V1alpha1FunctionSpecPodVolumes> volumesList = new ArrayList<>();
+            if (podPolicy.getVolumes() != null && !podPolicy.getVolumes().isEmpty()) {
+                volumesList.addAll(podPolicy.getVolumes());
+            }
+            List<V1alpha1FunctionSpecPodVolumeMounts> volumeMountsList = new ArrayList<>();
+            if (v1alpha1Function.getSpec() != null && v1alpha1Function.getSpec().getVolumeMounts() != null
+                    && !v1alpha1Function.getSpec().getVolumeMounts().isEmpty()) {
+                volumeMountsList.addAll(v1alpha1Function.getSpec().getVolumeMounts());
+            }
+
+            // set auth related
+            if (worker().getWorkerConfig().isAuthenticationEnabled()) {
+                if (clientAuthenticationDataHttps != null) {
+                    AuthResults results =
+                            CommonUtil.doAuth(worker(), clientRole, clientAuthenticationDataHttps, apiKind);
                     // create an auth secret when the secret data is not null
                     if (results.getAuthSecretData() != null && !results.getAuthSecretData().isEmpty()) {
                         String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
-                                v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, results.getAuthSecretData(), worker());
+                                v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName,
+                                results.getAuthSecretData(), worker());
                         v1alpha1Function.getSpec().getPulsar().setAuthSecret(authSecretName);
                     }
                     if (results.getFunctionAuthConfig() != null) {
                         v1alpha1Function.getSpec().getPulsar().setAuthConfig(results.getFunctionAuthConfig());
                     }
-
-                    MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
-                    List<V1alpha1FunctionSpecPodVolumes> volumesList = new ArrayList<>();
-                    if (podPolicy.getVolumes() != null && !podPolicy.getVolumes().isEmpty()){
-                        volumesList.addAll(podPolicy.getVolumes());
-                    }
                     if (results.getFunctionVolumes() != null && !results.getFunctionVolumes().isEmpty()) {
                         volumesList.addAll(results.getFunctionVolumes());
-                    }
-                    if (volumesList != null && !volumesList.isEmpty()) {
-                        podPolicy.setVolumes(volumesList);
-                    }
-
-                    List<V1alpha1FunctionSpecPodVolumeMounts> volumeMountsList = new ArrayList<>();
-                    if (v1alpha1Function.getSpec() != null && v1alpha1Function.getSpec().getVolumeMounts() != null && !v1alpha1Function.getSpec().getVolumeMounts().isEmpty()){
-                        volumeMountsList.addAll(v1alpha1Function.getSpec().getVolumeMounts());
                     }
                     if (results.getFunctionVolumeMounts() != null && !results.getFunctionVolumeMounts().isEmpty()) {
                         volumeMountsList.addAll(results.getFunctionVolumeMounts());
                     }
-                    if (volumeMountsList != null && !volumeMountsList.isEmpty()) {
-                        v1alpha1Function.getSpec().setVolumeMounts(volumeMountsList);
-                    }
-                    if (StringUtils.isNotEmpty(customConfig.getExtraDependenciesDir())) {
-                        V1alpha1FunctionSpecJava v1alpha1FunctionSpecJava = null;
-                        if (v1alpha1Function.getSpec() != null && v1alpha1Function.getSpec().getJava() != null) {
-                            v1alpha1FunctionSpecJava = v1alpha1Function.getSpec().getJava();
-                        } else if (v1alpha1Function.getSpec() != null && v1alpha1Function.getSpec().getJava() == null
-                                && v1alpha1Function.getSpec().getPython() == null
-                                && v1alpha1Function.getSpec().getGolang() == null) {
-                            v1alpha1FunctionSpecJava = new V1alpha1FunctionSpecJava();
-                        }
-                        if (v1alpha1FunctionSpecJava != null && StringUtils.isEmpty(
-                                v1alpha1FunctionSpecJava.getExtraDependenciesDir())) {
-                            v1alpha1FunctionSpecJava.setExtraDependenciesDir(customConfig.getExtraDependenciesDir());
-                            v1alpha1Function.getSpec().setJava(v1alpha1FunctionSpecJava);
-                        }
-                    }
-                    if (worker().getWorkerConfig().getTlsEnabled()) {
-                        String tlsSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "tls",
-                                v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName, buildTlsConfigMap(worker().getWorkerConfig()), worker());
-                        v1alpha1Function.getSpec().getPulsar().setTlsSecret(tlsSecretName);
-                    }
-                    if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())
-                            && StringUtils.isEmpty(podPolicy.getServiceAccountName())) {
-                        podPolicy.setServiceAccountName(customConfig.getDefaultServiceAccountName());
-                    }
-                    if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
-                        podPolicy.setImagePullSecrets(customConfig.asV1alpha1FunctionSpecPodImagePullSecrets());
-                    }
-                    List<V1alpha1FunctionSpecPodInitContainers> initContainersList =
-                            customConfig.asV1alpha1FunctionSpecPodInitContainers();
-                    if (initContainersList != null && !initContainersList.isEmpty()) {
-                        podPolicy.setInitContainers(initContainersList);
-                    }
-                    v1alpha1Function.getSpec().setPod(podPolicy);
-                } catch (Exception e) {
-                    log.error("Error create or update auth or tls secret for {} {}/{}/{}",
-                            ComponentTypeUtils.toString(componentType), tenant, namespace, functionName, e);
-
-
-                    throw new RestException(Response.Status.INTERNAL_SERVER_ERROR,
-                            String.format("Error create or update auth or tls secret for %s %s:- %s",
-                                    ComponentTypeUtils.toString(componentType), functionName, e.getMessage()));
                 }
             }
+            if (volumesList != null && !volumesList.isEmpty()) {
+                podPolicy.setVolumes(volumesList);
+            }
+            if (volumeMountsList != null && !volumeMountsList.isEmpty()) {
+                v1alpha1Function.getSpec().setVolumeMounts(volumeMountsList);
+            }
+
+            // set java extra dependencies dir
+            MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
+            if (StringUtils.isNotEmpty(customConfig.getExtraDependenciesDir())) {
+                V1alpha1FunctionSpecJava v1alpha1FunctionSpecJava = null;
+                if (v1alpha1Function.getSpec() != null && v1alpha1Function.getSpec().getJava() != null) {
+                    v1alpha1FunctionSpecJava = v1alpha1Function.getSpec().getJava();
+                } else if (v1alpha1Function.getSpec() != null && v1alpha1Function.getSpec().getJava() == null
+                        && v1alpha1Function.getSpec().getPython() == null
+                        && v1alpha1Function.getSpec().getGolang() == null) {
+                    v1alpha1FunctionSpecJava = new V1alpha1FunctionSpecJava();
+                }
+                if (v1alpha1FunctionSpecJava != null && StringUtils.isEmpty(
+                        v1alpha1FunctionSpecJava.getExtraDependenciesDir())) {
+                    v1alpha1FunctionSpecJava.setExtraDependenciesDir(customConfig.getExtraDependenciesDir());
+                    v1alpha1Function.getSpec().setJava(v1alpha1FunctionSpecJava);
+                }
+            }
+
+            // set tls related spec
+            if (worker().getWorkerConfig().getTlsEnabled()) {
+                String tlsSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "tls",
+                        v1alpha1Function.getSpec().getClusterName(), tenant, namespace, functionName,
+                        buildTlsConfigMap(worker().getWorkerConfig()), worker());
+                v1alpha1Function.getSpec().getPulsar().setTlsSecret(tlsSecretName);
+            }
+
+            if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())
+                    && StringUtils.isEmpty(podPolicy.getServiceAccountName())) {
+                podPolicy.setServiceAccountName(customConfig.getDefaultServiceAccountName());
+            }
+            if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
+                podPolicy.setImagePullSecrets(customConfig.asV1alpha1FunctionSpecPodImagePullSecrets());
+            }
+            List<V1alpha1FunctionSpecPodInitContainers> initContainersList =
+                    customConfig.asV1alpha1FunctionSpecPodInitContainers();
+            if (initContainersList != null && !initContainersList.isEmpty()) {
+                podPolicy.setInitContainers(initContainersList);
+            }
+            v1alpha1Function.getSpec().setPod(podPolicy);
+        } catch (InterruptedException e) {
+            log.error("Error create or update auth or tls secret for {} {}/{}/{}",
+                    ComponentTypeUtils.toString(componentType), tenant, namespace, functionName, e);
+
+            throw new RestException(Response.Status.INTERNAL_SERVER_ERROR,
+                    String.format("Error create or update auth or tls secret for %s %s:- %s",
+                            ComponentTypeUtils.toString(componentType), functionName, e.getMessage()));
+        } catch (JsonProcessingException e) {
+            log.error("Error get init container or image pull secret from custom config  {} {}/{}/{}",
+                    ComponentTypeUtils.toString(componentType), tenant, namespace, functionName, e);
+            throw new RestException(Response.Status.INTERNAL_SERVER_ERROR,
+                    String.format("Error create or update auth or tls secret for %s %s:- %s",
+                            ComponentTypeUtils.toString(componentType), functionName, e.getMessage()));
         }
+
+        // merge trusted configs
         if (worker().getMeshWorkerServiceCustomConfig().isEnableTrustedMode()) {
             FunctionsUtil.mergeTrustedConfigs(functionConfig, v1alpha1Function);
         }

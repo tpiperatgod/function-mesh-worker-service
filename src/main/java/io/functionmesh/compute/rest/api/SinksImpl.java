@@ -21,6 +21,7 @@ package io.functionmesh.compute.rest.api;
 import static io.functionmesh.compute.util.KubernetesUtils.buildTlsConfigMap;
 import static io.functionmesh.compute.util.KubernetesUtils.validateResourceOwner;
 import static io.functionmesh.compute.util.KubernetesUtils.validateStatefulSet;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.auth.AuthResults;
@@ -171,7 +172,8 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
         // override namesapce by configuration
         v1alpha1Sink.getMetadata().setNamespace(worker().getJobNamespace());
         try {
-            this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientRole, clientAuthenticationDataHttps);
+            this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientRole,
+                    clientAuthenticationDataHttps);
             extractResponse(getResourceApi().create(v1alpha1Sink));
         } catch (RestException restException) {
             log.error(
@@ -248,7 +250,8 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
             v1alpha1Sink.getMetadata().setNamespace(worker().getJobNamespace());
             v1alpha1Sink.getMetadata().setResourceVersion(v1alpha1Sink1Pre.getMetadata().getResourceVersion());
 
-            this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientRole, clientAuthenticationDataHttps);
+            this.upsertSink(tenant, namespace, sinkName, sinkConfig, v1alpha1Sink, clientRole,
+                    clientAuthenticationDataHttps);
             extractResponse(getResourceApi().update(v1alpha1Sink));
         } catch (Exception e) {
             log.error(
@@ -535,32 +538,29 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                             V1alpha1Sink v1alpha1Sink,
                             String clientRole,
                             AuthenticationDataSource clientAuthenticationDataHttps) {
-        if (worker().getWorkerConfig().isAuthenticationEnabled()) {
-            if (clientAuthenticationDataHttps != null) {
-                try {
-                    V1alpha1SinkSpecPod podPolicy = v1alpha1Sink.getSpec().getPod();
-                    if (podPolicy == null) {
-                        podPolicy = new V1alpha1SinkSpecPod();
-                        v1alpha1Sink.getSpec().setPod(podPolicy);
-                    }
-                    MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
-                    if (customConfig != null && StringUtils.isNotEmpty(customConfig.getExtraDependenciesDir())) {
-                        V1alpha1SinkSpecJava v1alpha1SinkSpecJava = null;
-                        if (v1alpha1Sink.getSpec() != null && v1alpha1Sink.getSpec().getJava() != null) {
-                            v1alpha1SinkSpecJava = v1alpha1Sink.getSpec().getJava();
-                        } else if (v1alpha1Sink.getSpec() != null && v1alpha1Sink.getSpec().getJava() == null &&
-                                v1alpha1Sink.getSpec().getPython() == null &&
-                                v1alpha1Sink.getSpec().getGolang() == null) {
-                            v1alpha1SinkSpecJava = new V1alpha1SinkSpecJava();
-                        }
-                        if (v1alpha1SinkSpecJava != null && StringUtils.isEmpty(
-                                v1alpha1SinkSpecJava.getExtraDependenciesDir())) {
-                            v1alpha1SinkSpecJava.setExtraDependenciesDir(customConfig.getExtraDependenciesDir());
-                            v1alpha1Sink.getSpec().setJava(v1alpha1SinkSpecJava);
-                        }
-                    }
+        try {
+            V1alpha1SinkSpecPod podPolicy = v1alpha1Sink.getSpec().getPod();
+            if (podPolicy == null) {
+                podPolicy = new V1alpha1SinkSpecPod();
+                v1alpha1Sink.getSpec().setPod(podPolicy);
+            }
 
-                    AuthResults results = CommonUtil.doAuth(worker(), clientRole, clientAuthenticationDataHttps, apiKind);
+            // set volumes&volume mounts
+            List<V1alpha1SinkSpecPodVolumes> volumesList = new ArrayList<>();
+            if (podPolicy.getVolumes() != null && !podPolicy.getVolumes().isEmpty()) {
+                volumesList.addAll(podPolicy.getVolumes());
+            }
+            List<V1alpha1SinkSpecPodVolumeMounts> volumeMountsList = new ArrayList<>();
+            if (v1alpha1Sink.getSpec() != null && v1alpha1Sink.getSpec().getVolumeMounts() != null
+                    && !v1alpha1Sink.getSpec().getVolumeMounts().isEmpty()) {
+                volumeMountsList.addAll(v1alpha1Sink.getSpec().getVolumeMounts());
+            }
+
+            // set auth related
+            if (worker().getWorkerConfig().isAuthenticationEnabled()) {
+                if (clientAuthenticationDataHttps != null) {
+                    AuthResults results =
+                            CommonUtil.doAuth(worker(), clientRole, clientAuthenticationDataHttps, apiKind);
                     if (results.getAuthSecretData() != null && !results.getAuthSecretData().isEmpty()) {
                         String authSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "auth",
                                 v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName,
@@ -570,57 +570,77 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                     if (results.getSinkAuthConfig() != null) {
                         v1alpha1Sink.getSpec().getPulsar().setAuthConfig(results.getSinkAuthConfig());
                     }
-
-                    List<V1alpha1SinkSpecPodVolumes> volumesList = new ArrayList<>();
-                    if (podPolicy.getVolumes() != null && !podPolicy.getVolumes().isEmpty()){
-                        volumesList.addAll(podPolicy.getVolumes());
-                    }
                     if (results.getSinkVolumes() != null && !results.getSinkVolumes().isEmpty()) {
                         volumesList.addAll(results.getSinkVolumes());
-                    }
-                    if (volumesList != null && !volumesList.isEmpty()) {
-                        podPolicy.setVolumes(volumesList);
-                    }
-                    List<V1alpha1SinkSpecPodVolumeMounts> volumeMountsList = new ArrayList<>();
-                    if (v1alpha1Sink.getSpec() != null && v1alpha1Sink.getSpec().getVolumeMounts() != null && !v1alpha1Sink.getSpec().getVolumeMounts().isEmpty()){
-                        volumeMountsList.addAll(v1alpha1Sink.getSpec().getVolumeMounts());
                     }
                     if (results.getSinkVolumeMounts() != null && !results.getSinkVolumeMounts().isEmpty()) {
                         volumeMountsList.addAll(results.getSinkVolumeMounts());
                     }
-                    if (volumeMountsList != null && !volumeMountsList.isEmpty()) {
-                        v1alpha1Sink.getSpec().setVolumeMounts(volumeMountsList);
-                    }
-
-                    if (worker().getWorkerConfig().getTlsEnabled()) {
-                        String tlsSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "tls",
-                                v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName, buildTlsConfigMap(worker().getWorkerConfig()), worker());
-                        v1alpha1Sink.getSpec().getPulsar().setTlsSecret(tlsSecretName);
-                    }
-                    if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())
-                            && StringUtils.isEmpty(podPolicy.getServiceAccountName())) {
-                        podPolicy.setServiceAccountName(customConfig.getDefaultServiceAccountName());
-                    }
-                    if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
-                        podPolicy.setImagePullSecrets(customConfig.asV1alpha1SinkSpecPodImagePullSecrets());
-                    }
-                    List<V1alpha1SinkSpecPodInitContainers> initContainersList =
-                            customConfig.asV1alpha1SinkSpecPodInitContainers();
-                    if (initContainersList != null && !initContainersList.isEmpty()) {
-                        podPolicy.setInitContainers(initContainersList);
-                    }
-                    v1alpha1Sink.getSpec().setPod(podPolicy);
-                } catch (Exception e) {
-                    log.error("Error create or update auth or tls secret data for {} {}/{}/{}",
-                            ComponentTypeUtils.toString(componentType), tenant, namespace, sinkName, e);
-
-
-                    throw new RestException(Response.Status.INTERNAL_SERVER_ERROR,
-                            String.format("Error create or update auth or tls secret for %s %s:- %s",
-                                    ComponentTypeUtils.toString(componentType), sinkName, e.getMessage()));
                 }
             }
+            if (volumesList != null && !volumesList.isEmpty()) {
+                podPolicy.setVolumes(volumesList);
+            }
+            if (volumeMountsList != null && !volumeMountsList.isEmpty()) {
+                v1alpha1Sink.getSpec().setVolumeMounts(volumeMountsList);
+            }
+
+            // set java extra dependencies dir
+            MeshWorkerServiceCustomConfig customConfig = worker().getMeshWorkerServiceCustomConfig();
+            if (customConfig != null && StringUtils.isNotEmpty(customConfig.getExtraDependenciesDir())) {
+                V1alpha1SinkSpecJava v1alpha1SinkSpecJava = null;
+                if (v1alpha1Sink.getSpec() != null && v1alpha1Sink.getSpec().getJava() != null) {
+                    v1alpha1SinkSpecJava = v1alpha1Sink.getSpec().getJava();
+                } else if (v1alpha1Sink.getSpec() != null && v1alpha1Sink.getSpec().getJava() == null &&
+                        v1alpha1Sink.getSpec().getPython() == null &&
+                        v1alpha1Sink.getSpec().getGolang() == null) {
+                    v1alpha1SinkSpecJava = new V1alpha1SinkSpecJava();
+                }
+                if (v1alpha1SinkSpecJava != null && StringUtils.isEmpty(
+                        v1alpha1SinkSpecJava.getExtraDependenciesDir())) {
+                    v1alpha1SinkSpecJava.setExtraDependenciesDir(customConfig.getExtraDependenciesDir());
+                    v1alpha1Sink.getSpec().setJava(v1alpha1SinkSpecJava);
+                }
+            }
+
+            // set tls related spec
+            if (worker().getWorkerConfig().getTlsEnabled()) {
+                String tlsSecretName = KubernetesUtils.upsertSecret(apiKind.toLowerCase(), "tls",
+                        v1alpha1Sink.getSpec().getClusterName(), tenant, namespace, sinkName,
+                        buildTlsConfigMap(worker().getWorkerConfig()), worker());
+                v1alpha1Sink.getSpec().getPulsar().setTlsSecret(tlsSecretName);
+            }
+
+            if (!StringUtils.isEmpty(customConfig.getDefaultServiceAccountName())
+                    && StringUtils.isEmpty(podPolicy.getServiceAccountName())) {
+                podPolicy.setServiceAccountName(customConfig.getDefaultServiceAccountName());
+            }
+            if (customConfig.getImagePullSecrets() != null && !customConfig.getImagePullSecrets().isEmpty()) {
+                podPolicy.setImagePullSecrets(customConfig.asV1alpha1SinkSpecPodImagePullSecrets());
+            }
+            List<V1alpha1SinkSpecPodInitContainers> initContainersList =
+                    customConfig.asV1alpha1SinkSpecPodInitContainers();
+            if (initContainersList != null && !initContainersList.isEmpty()) {
+                podPolicy.setInitContainers(initContainersList);
+            }
+            v1alpha1Sink.getSpec().setPod(podPolicy);
+        } catch (InterruptedException e) {
+            log.error("Error create or update auth or tls secret data for {} {}/{}/{}",
+                    ComponentTypeUtils.toString(componentType), tenant, namespace, sinkName, e);
+
+
+            throw new RestException(Response.Status.INTERNAL_SERVER_ERROR,
+                    String.format("Error create or update auth or tls secret for %s %s:- %s",
+                            ComponentTypeUtils.toString(componentType), sinkName, e.getMessage()));
+        } catch (JsonProcessingException e) {
+            log.error("Error get init container or image pull secret from custom config  {} {}/{}/{}",
+                    ComponentTypeUtils.toString(componentType), tenant, namespace, sinkName, e);
+            throw new RestException(Response.Status.INTERNAL_SERVER_ERROR,
+                    String.format("Error create or update auth or tls secret for %s %s:- %s",
+                            ComponentTypeUtils.toString(componentType), sinkName, e.getMessage()));
         }
+
+        // merge trusted configs
         if (worker().getMeshWorkerServiceCustomConfig().isEnableTrustedMode()) {
             SinksUtil.mergeTrustedConfigs(sinkConfig, v1alpha1Sink);
         }
