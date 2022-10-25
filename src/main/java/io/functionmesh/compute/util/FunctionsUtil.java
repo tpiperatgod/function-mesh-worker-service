@@ -46,6 +46,7 @@ import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodResources
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsar;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPython;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecSecretsMap;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecWindowConfig;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.kubernetes.client.custom.Quantity;
@@ -65,6 +66,7 @@ import org.apache.pulsar.client.api.SubscriptionInitialPosition;
 import org.apache.pulsar.common.functions.ConsumerConfig;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.ProducerConfig;
+import org.apache.pulsar.common.functions.WindowConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.functions.Utils;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
@@ -458,6 +460,22 @@ public class FunctionsUtil {
         }
 
         v1alpha1Function.setSpec(v1alpha1FunctionSpec);
+
+        // handle window function configurations
+        WindowConfig windowConfig = functionConfig.getWindowConfig();
+        if (windowConfig != null) {
+            V1alpha1FunctionSpecWindowConfig windowConfigSpec = new V1alpha1FunctionSpecWindowConfig();
+            windowConfigSpec.setLateDataTopic(windowConfig.getLateDataTopic());
+            windowConfigSpec.setMaxLagMs(windowConfig.getMaxLagMs());
+            windowConfigSpec.setWindowLengthCount(windowConfig.getWindowLengthCount());
+            windowConfigSpec.setWindowLengthDurationMs(windowConfig.getWindowLengthDurationMs());
+            windowConfigSpec.setSlidingIntervalCount(windowConfig.getSlidingIntervalCount());
+            windowConfigSpec.setSlidingIntervalDurationMs(windowConfig.getSlidingIntervalDurationMs());
+            windowConfigSpec.setTimestampExtractorClassName(windowConfig.getTimestampExtractorClassName());
+            windowConfigSpec.setWatermarkEmitIntervalMs(windowConfig.getWatermarkEmitIntervalMs());
+            v1alpha1FunctionSpec.setWindowConfig(windowConfigSpec);
+            v1alpha1Function.setSpec(v1alpha1FunctionSpec);
+        }
 
         return v1alpha1Function;
     }

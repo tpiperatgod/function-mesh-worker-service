@@ -28,6 +28,7 @@ import java.util.Map;
 import org.apache.pulsar.client.api.SubscriptionInitialPosition;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.Resources;
+import org.apache.pulsar.common.functions.WindowConfig;
 import org.apache.pulsar.common.io.SinkConfig;
 import org.apache.pulsar.common.io.SourceConfig;
 
@@ -95,6 +96,40 @@ public class Generate {
         configs.put("foo", "bar");
         functionConfig.setUserConfig(configs);
         functionConfig.setSecrets(createSecretsData());
+        return functionConfig;
+    }
+
+    public static FunctionConfig createJavaFunctionWithWindowConfig(String tenant, String namespace, String functionName) {
+        FunctionConfig functionConfig = new FunctionConfig();
+        functionConfig.setName(functionName);
+        functionConfig.setTenant(tenant);
+        functionConfig.setNamespace(namespace);
+        functionConfig.setClassName("org.example.GetInputTopicsWindowFunction");
+        functionConfig.setInputs(Collections.singletonList("persistent://public/default/sentences"));
+        functionConfig.setParallelism(1);
+        functionConfig.setCleanupSubscription(true);
+        functionConfig.setOutput("persistent://public/default/count");
+        functionConfig.setSubName("test-sub");
+        functionConfig.setSubscriptionPosition(SubscriptionInitialPosition.Latest);
+        Resources resources = new Resources();
+        resources.setCpu(1.0);
+        resources.setRam(102400L);
+        functionConfig.setResources(resources);
+        CustomRuntimeOptions customRuntimeOptions = new CustomRuntimeOptions();
+        customRuntimeOptions.setClusterName(TEST_CLUSTER_NAME);
+        customRuntimeOptions.setInputTypeClassName("java.lang.String");
+        customRuntimeOptions.setOutputTypeClassName("java.lang.String");
+
+        String customRuntimeOptionsJSON = new Gson().toJson(customRuntimeOptions, CustomRuntimeOptions.class);
+        functionConfig.setCustomRuntimeOptions(customRuntimeOptionsJSON);
+        functionConfig.setJar(String.format("function://public/default/%s@1.0", functionName));
+        functionConfig.setAutoAck(true);
+        functionConfig.setForwardSourceMessageProperty(true);
+        // add window configurations
+        WindowConfig windowConfig = new WindowConfig();
+        windowConfig.setWindowLengthCount(5);
+        windowConfig.setSlidingIntervalCount(10);
+        functionConfig.setWindowConfig(windowConfig);
         return functionConfig;
     }
 
