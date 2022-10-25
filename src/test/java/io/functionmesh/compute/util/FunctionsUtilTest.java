@@ -38,6 +38,7 @@ import okhttp3.Response;
 import okhttp3.internal.http.RealResponseBody;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.common.functions.FunctionConfig;
+import org.apache.pulsar.common.functions.WindowConfig;
 import org.apache.pulsar.functions.proto.InstanceControlGrpc;
 import org.apache.pulsar.functions.runtime.kubernetes.KubernetesRuntimeFactoryConfig;
 import org.apache.pulsar.functions.worker.WorkerConfig;
@@ -56,7 +57,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
         CommonUtil.class,
         FunctionsUtil.class,
         InstanceControlGrpc.InstanceControlFutureStub.class})
-@PowerMockIgnore({"javax.management.*"})
+@PowerMockIgnore({"javax.management.*", "jdk.internal.reflect.*"})
 public class FunctionsUtilTest {
     @Test
     public void testCreateV1alpha1FunctionFromFunctionConfig() throws JsonProcessingException {
@@ -266,5 +267,57 @@ public class FunctionsUtilTest {
         Assert.assertEquals(oldSecretsJson, newSecretsJson);
         Assert.assertEquals(functionConfig.getSubName(), newFunctionConfig.getSubName());
         Assert.assertEquals(functionConfig.getSubscriptionPosition(), newFunctionConfig.getSubscriptionPosition());
+    }
+
+    @Test
+    public void testCreateV1alpha1FunctionWithWindowConfig() throws JsonProcessingException {
+        String tenant = "public";
+        String namespace = "default";
+        String functionName = "get-input-topics";
+        String group = "compute.functionmesh.io";
+        String version = "v1alpha1";
+        String kind = "Function";
+        Integer windowLengthCount = 5;
+        Integer slidingIntervalCount = 10;
+        WindowConfig windowConfig = new WindowConfig();
+        windowConfig.setWindowLengthCount(windowLengthCount);
+        windowConfig.setSlidingIntervalCount(slidingIntervalCount);
+
+        MeshWorkerService meshWorkerService = PowerMockito.mock(MeshWorkerService.class);
+        CustomObjectsApi customObjectsApi = PowerMockito.mock(CustomObjectsApi.class);
+        PowerMockito.when(meshWorkerService.getCustomObjectsApi()).thenReturn(customObjectsApi);
+        WorkerConfig workerConfig = PowerMockito.mock(WorkerConfig.class);
+        KubernetesRuntimeFactoryConfig factoryConfig = PowerMockito.mock(KubernetesRuntimeFactoryConfig.class);
+        PowerMockito.when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
+        PowerMockito.when(meshWorkerService.getFactoryConfig()).thenReturn(factoryConfig);
+        PowerMockito.when(factoryConfig.getExtraFunctionDependenciesDir()).thenReturn("");
+        PowerMockito.when(workerConfig.isAuthorizationEnabled()).thenReturn(false);
+        PowerMockito.when(workerConfig.isAuthenticationEnabled()).thenReturn(false);
+        PowerMockito.when(workerConfig.getFunctionsWorkerServiceCustomConfigs()).thenReturn(Collections.emptyMap());
+        PulsarAdmin pulsarAdmin = PowerMockito.mock(PulsarAdmin.class);
+        PowerMockito.when(meshWorkerService.getBrokerAdmin()).thenReturn(pulsarAdmin);
+        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "downloadPackageFile")).toReturn(null);
+        PowerMockito.stub(PowerMockito.method(CommonUtil.class, "getFilenameFromPackageMetadata")).toReturn(null);
+
+        MeshWorkerServiceCustomConfig meshWorkerServiceCustomConfig =
+                PowerMockito.mock(MeshWorkerServiceCustomConfig.class);
+        PowerMockito.when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
+        PowerMockito.when(meshWorkerServiceCustomConfig.isFunctionEnabled()).thenReturn(true);
+        PowerMockito.when(meshWorkerServiceCustomConfig.isAllowUserDefinedServiceAccountName()).thenReturn(false);
+        PowerMockito.when(meshWorkerService.getMeshWorkerServiceCustomConfig())
+                .thenReturn(meshWorkerServiceCustomConfig);
+
+        FunctionConfig functionConfig =
+                Generate.createJavaFunctionWithWindowConfig(tenant, namespace, functionName);
+
+        V1alpha1Function v1alpha1Function = FunctionsUtil.createV1alpha1FunctionFromFunctionConfig(kind, group, version,
+                functionName, functionConfig.getJar(), functionConfig, null, meshWorkerService);
+
+        Assert.assertEquals(v1alpha1Function.getKind(), kind);
+
+        V1alpha1FunctionSpec v1alpha1FunctionSpec = v1alpha1Function.getSpec();
+        Assert.assertNotNull(v1alpha1FunctionSpec.getWindowConfig());
+        Assert.assertEquals(v1alpha1FunctionSpec.getWindowConfig().getWindowLengthCount(), windowLengthCount);
+        Assert.assertEquals(v1alpha1FunctionSpec.getWindowConfig().getSlidingIntervalCount(), slidingIntervalCount);
     }
 }
