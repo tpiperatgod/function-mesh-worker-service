@@ -24,7 +24,7 @@
   sourceConfigClass: org.apache.pulsar.io.datagenerator.DataGeneratorSourceConfig
   sinkClass: org.apache.pulsar.io.datagenerator.DataGeneratorPrintSink
   imageRepository: streamnative/pulsar-io-data-generator
-  version: 2.8.1.26
-  imageTag: 2.8.1.26
+  version: 2.8.4.2
+  imageTag: 2.8.4.2
   imageRegistry: ""
   typeClassName: org.apache.pulsar.client.impl.schema.JSONSchema
