@@ -59,4 +59,23 @@ public class FunctionMeshConnectorDefinitionTest {
                 "privateregistry.io/streamnative/pulsar-io-test:2.7.0");
         Assert.assertEquals(functionMeshConnectorDefinition.getJar(), "connectors/pulsar-io-test-2.7.0.nar");
     }
+    
+    @Test
+    public void testFunctionMeshConnectorDefinitionTestJarFullName() {
+        FunctionMeshConnectorDefinition functionMeshConnectorDefinition = new FunctionMeshConnectorDefinition();
+        functionMeshConnectorDefinition.setId("pulsar-io-test");
+        functionMeshConnectorDefinition.setName("test");
+        functionMeshConnectorDefinition.setVersion("2.7.0");
+        functionMeshConnectorDefinition.setImageTag("2.7.0");
+        functionMeshConnectorDefinition.setImageRepository("privateregistry.io/streamnative/pulsar-io-test");
+        functionMeshConnectorDefinition.setImageRegistry("");
+        Assert.assertEquals(functionMeshConnectorDefinition.getJar(), "connectors/pulsar-io-test-2.7.0.nar");
+
+        functionMeshConnectorDefinition.setJarFullName("");
+        Assert.assertEquals(functionMeshConnectorDefinition.getJar(), "connectors/pulsar-io-test-2.7.0.nar");
+
+        functionMeshConnectorDefinition.setJarFullName("pulsar-io-test-2.7.0.jar");
+        Assert.assertEquals(functionMeshConnectorDefinition.getJar(), "connectors/pulsar-io-test-2.7.0.jar");
+
+    }
 }
