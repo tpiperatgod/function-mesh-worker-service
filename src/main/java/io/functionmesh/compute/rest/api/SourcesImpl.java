@@ -815,4 +815,13 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
             }
         });
     }
+
+    @Override
+    public List<String> listFunctions(final String tenant,
+                                      final String namespace,
+                                      final String clientRole,
+                                      final AuthenticationDataSource clientAuthenticationDataHttps) {
+        validateSourceEnabled();
+        return super.listFunctions(tenant, namespace, clientRole, clientAuthenticationDataHttps);
+    }
 }
