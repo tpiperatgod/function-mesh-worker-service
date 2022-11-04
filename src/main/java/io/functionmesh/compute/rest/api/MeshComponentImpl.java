@@ -23,11 +23,13 @@ import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM;
 import static io.functionmesh.compute.util.CommonUtil.COMPONENT_LABEL_CLAIM_DEPRECATED;
 import static io.functionmesh.compute.util.CommonUtil.INSECURE_PLUGIN_NAME;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
+import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelectorLegacy;
 import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.pulsar.functions.worker.rest.RestUtils.throwUnavailableException;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.auth.AuthHandler;
+import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionList;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.KubernetesUtils;
@@ -355,13 +357,36 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                     null);
 
             V1alpha1FunctionList list = executeCall(call, V1alpha1FunctionList.class);
-            list.getItems().forEach(n -> {
+
+            labelSelector = getCustomLabelClaimsSelectorLegacy(cluster, tenant, namespace);
+            call = worker().getCustomObjectsApi().listNamespacedCustomObjectCall(
+                    API_GROUP,
+                    apiVersion,
+                    worker().getJobNamespace(), apiPlural,
+                    "false",
+                    null,
+                    null,
+                    labelSelector,
+                    null,
+                    null,
+                    null,
+                    false,
+                    null);
+            V1alpha1FunctionList listLegacy = executeCall(call, V1alpha1FunctionList.class);
+            List<V1alpha1Function> functions = list.getItems();
+            functions.addAll(listLegacy.getItems());
+            functions.forEach(n -> {
+                if (n.getMetadata() == null
+                        || n.getMetadata().getLabels() == null || n.getMetadata().getLabels().isEmpty()) {
+                    return;
+                }
                 String comp = n.getMetadata().getLabels().get(COMPONENT_LABEL_CLAIM);
                 if (StringUtils.isEmpty(comp)) {
                     comp = n.getMetadata().getLabels().get(COMPONENT_LABEL_CLAIM_DEPRECATED);
                 }
-                if (StringUtils.isNotEmpty(comp))
+                if (StringUtils.isNotEmpty(comp)) {
                     result.add(comp);
+                }
             });
         } catch (Exception e) {
             log.error("failed to fetch functions list from namespace {}", namespace, e);

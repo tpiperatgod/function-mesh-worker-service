@@ -396,6 +396,14 @@ public class CommonUtil {
                 NAMESPACE_LABEL_CLAIM, namespace);
     }
 
+    public static String getCustomLabelClaimsSelectorLegacy(String clusterName, String tenant, String namespace) {
+        return String.format(
+                "%s=%s,%s=%s,%s=%s",
+                CLUSTER_LABEL_CLAIM_DEPRECATED, clusterName,
+                TENANT_LABEL_CLAIM_DEPRECATED, tenant,
+                NAMESPACE_LABEL_CLAIM_DEPRECATED, namespace);
+    }
+
     public static String getRunnerImageFromConfig(String runtime, MeshWorkerService worker) {
         MeshWorkerServiceCustomConfig customConfig = worker.getMeshWorkerServiceCustomConfig();
         if (customConfig.getFunctionRunnerImages() != null && !customConfig.getFunctionRunnerImages().isEmpty()

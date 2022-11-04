@@ -805,4 +805,12 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
         });
     }
 
+    @Override
+    public List<String> listFunctions(final String tenant,
+                                      final String namespace,
+                                      final String clientRole,
+                                      final AuthenticationDataSource clientAuthenticationDataHttps) {
+        validateFunctionEnabled();
+        return super.listFunctions(tenant, namespace, clientRole, clientAuthenticationDataHttps);
+    }
 }
