@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -25,7 +25,17 @@ import static io.functionmesh.compute.util.CommonUtil.INSECURE_PLUGIN_NAME;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelector;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaimsSelectorLegacy;
 import static io.functionmesh.compute.util.PackageManagementServiceUtil.getPackageTypeFromComponentType;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static org.apache.bookkeeper.common.concurrent.FutureUtils.result;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.apache.pulsar.functions.utils.FunctionCommon.getStateNamespace;
 import static org.apache.pulsar.functions.worker.rest.RestUtils.throwUnavailableException;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.auth.AuthHandler;
@@ -39,6 +49,9 @@ import io.grpc.ManagedChannelBuilder;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.util.generic.GenericKubernetesApi;
 import io.kubernetes.client.util.generic.KubernetesApiResponse;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.Unpooled;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.HashSet;
@@ -47,12 +60,21 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javax.ws.rs.core.StreamingOutput;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import okhttp3.Response;
+import org.apache.bookkeeper.api.StorageClient;
+import org.apache.bookkeeper.api.kv.Table;
+import org.apache.bookkeeper.api.kv.result.KeyValue;
+import org.apache.bookkeeper.clients.StorageClientBuilder;
+import org.apache.bookkeeper.clients.admin.StorageAdminClient;
+import org.apache.bookkeeper.clients.config.StorageClientSettings;
+import org.apache.bookkeeper.clients.exceptions.NamespaceNotFoundException;
+import org.apache.bookkeeper.clients.exceptions.StreamNotFoundException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
@@ -87,6 +109,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
     protected String apiPlural = "functions";
     @Getter
     protected GenericKubernetesApi<T, K> resourceApi;
+
+    private final AtomicReference<StorageClient> storageClient = new AtomicReference<>();
 
     MeshComponentImpl(Supplier<MeshWorkerService> meshWorkerServiceSupplier,
                       Function.FunctionDetails.ComponentType componentType) {
@@ -138,7 +162,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             if (!StringUtils.isEmpty(authPluginName)) {
                 AuthHandler handler = CommonUtil.AUTH_HANDLERS.get(authPluginName);
                 if (handler != null) {
-                    handler.cleanUp(worker(), clientRole, clientAuthenticationDataHttps, apiKind, clusterName, tenant, namespace, componentName);
+                    handler.cleanUp(worker(), clientRole, clientAuthenticationDataHttps, apiKind, clusterName, tenant,
+                            namespace, componentName);
                 }
             }
             if (worker().getWorkerConfig().getTlsEnabled()) {
@@ -163,7 +188,9 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             }
         } catch (Exception e) {
             log.error("deregister {}/{}/{} {} failed", tenant, namespace, componentName, apiPlural, e);
-            throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new RestException(INTERNAL_SERVER_ERROR, e.getMessage());
+        } finally {
+            deleteStatestoreTableAsync(getStateNamespace(tenant, namespace), componentName);
         }
     }
 
@@ -177,14 +204,14 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             }
             return worker().getApiClient().getJSON().getGson().fromJson(data, c);
         } else if (response.code() == 409) {
-            throw new RestException(javax.ws.rs.core.Response.Status.CONFLICT,
+            throw new RestException(CONFLICT,
                     "This resource already exists, please change the name");
         } else {
             String body = response.body() != null ? response.body().string() : "";
             String err = String.format(
                     "failed to perform the request: responseCode: %s, responseMessage: %s, responseBody: %s",
                     response.code(), response.message(), body);
-            throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, err);
+            throw new RestException(BAD_REQUEST, err);
         }
     }
 
@@ -192,13 +219,13 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
         if (response.isSuccess()) {
             return response.getObject();
         } else if (response.getHttpStatusCode() == 409) {
-            throw new RestException(javax.ws.rs.core.Response.Status.CONFLICT,
+            throw new RestException(CONFLICT,
                     "This resource already exists, please change the name");
         } else {
             String err = String.format(
                     "failed to perform the request: responseCode: %s, responseMessage: %s",
                     response.getHttpStatusCode(), response.getStatus().getMessage());
-            throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, err);
+            throw new RestException(BAD_REQUEST, err);
         }
     }
 
@@ -304,7 +331,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             return functionStats.calculateOverall();
         } catch (Exception e) {
             log.error("{}/{}/{} Got Exception Getting Stats", tenant, namespace, componentName, e);
-            throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new RestException(INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
@@ -398,23 +425,149 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
     @Override
     public FunctionState getFunctionState(final String tenant,
                                           final String namespace,
-                                          final String functionName,
+                                          final String componentName,
                                           final String key,
                                           final String clientRole,
                                           final AuthenticationDataSource clientAuthenticationDataHttps) {
-        // To do
-        return new FunctionState();
+        if (!isWorkerServiceAvailable()) {
+            throwUnavailableException();
+        }
+
+        this.validatePermission(tenant,
+                namespace,
+                clientRole,
+                clientAuthenticationDataHttps,
+                ComponentTypeUtils.toString(componentType));
+        this.validateTenantIsExist(tenant, namespace, componentName, clientRole);
+        this.validateGetInfoRequestParams(tenant, namespace, componentName, ComponentTypeUtils.toString(componentType));
+
+        if (null == worker().getStateStoreAdminClient()) {
+            throwStateStoreUnvailableResponse();
+        }
+
+        // validate parameters
+        try {
+            validateFunctionStateParams(tenant, namespace, componentName, key);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid getFunctionState request @ /{}/{}/{}/{}",
+                    tenant, namespace, componentName, key, e);
+            throw new RestException(BAD_REQUEST, e.getMessage());
+        }
+
+        String tableNs = getStateNamespace(tenant, namespace);
+        String tableName = componentName;
+
+        String stateStorageServiceUrl = worker().getWorkerConfig().getStateStorageServiceUrl();
+
+        if (storageClient.get() == null) {
+            storageClient.compareAndSet(null, StorageClientBuilder.newBuilder()
+                    .withSettings(StorageClientSettings.newBuilder()
+                            .serviceUri(stateStorageServiceUrl)
+                            .clientName("functions-admin")
+                            .build())
+                    .withNamespace(tableNs)
+                    .build());
+        }
+
+        FunctionState value;
+        try (Table<ByteBuf, ByteBuf> table = result(storageClient.get().openTable(tableName))) {
+            try (KeyValue<ByteBuf, ByteBuf> kv = result(table.getKv(Unpooled.wrappedBuffer(key.getBytes(UTF_8))))) {
+                if (null == kv) {
+                    throw new RestException(NOT_FOUND, "key '" + key + "' doesn't exist.");
+                } else {
+                    if (kv.isNumber()) {
+                        value = new FunctionState(key, null, null, kv.numberValue(), kv.version());
+                    } else {
+                        try {
+                            value = new FunctionState(key, new String(
+                                    ByteBufUtil.getBytes(kv.value(), kv.value().readerIndex(),
+                                            kv.value().readableBytes()), UTF_8), null, null, kv.version());
+                        } catch (Exception e) {
+                            value = new FunctionState(key, null, ByteBufUtil.getBytes(kv.value()), null, kv.version());
+                        }
+                    }
+                }
+            }
+        } catch (RestException e) {
+            throw e;
+        } catch (NamespaceNotFoundException | StreamNotFoundException e) {
+            log.debug("State not found while processing getFunctionState request @ /{}/{}/{}/{}",
+                    tenant, namespace, componentName, key, e);
+            throw new RestException(NOT_FOUND, e.getMessage());
+        } catch (Exception e) {
+            log.error("Error while getFunctionState request @ /{}/{}/{}/{}",
+                    tenant, namespace, componentName, key, e);
+            throw new RestException(INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+        return value;
     }
 
     @Override
     public void putFunctionState(final String tenant,
                                  final String namespace,
-                                 final String functionName,
+                                 final String componentName,
                                  final String key,
                                  final FunctionState state,
                                  final String clientRole,
                                  final AuthenticationDataSource clientAuthenticationDataHttps) {
 
+        if (!isWorkerServiceAvailable()) {
+            throwUnavailableException();
+        }
+
+        this.validatePermission(tenant,
+                namespace,
+                clientRole,
+                clientAuthenticationDataHttps,
+                ComponentTypeUtils.toString(componentType));
+        this.validateTenantIsExist(tenant, namespace, componentName, clientRole);
+        this.validateGetInfoRequestParams(tenant, namespace, componentName, ComponentTypeUtils.toString(componentType));
+
+        if (null == worker().getStateStoreAdminClient()) {
+            throwStateStoreUnvailableResponse();
+        }
+
+        // validate parameters
+        try {
+            validateFunctionStateParams(tenant, namespace, componentName, key);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid getFunctionState request @ /{}/{}/{}/{}",
+                    tenant, namespace, componentName, key, e);
+            throw new RestException(BAD_REQUEST, e.getMessage());
+        }
+
+        String tableNs = getStateNamespace(tenant, namespace);
+        String tableName = componentName;
+
+        String stateStorageServiceUrl = worker().getWorkerConfig().getStateStorageServiceUrl();
+
+        if (storageClient.get() == null) {
+            storageClient.compareAndSet(null, StorageClientBuilder.newBuilder()
+                    .withSettings(StorageClientSettings.newBuilder()
+                            .serviceUri(stateStorageServiceUrl)
+                            .clientName("functions-admin")
+                            .build())
+                    .withNamespace(tableNs)
+                    .build());
+        }
+
+        ByteBuf value;
+        if (!isEmpty(state.getStringValue())) {
+            value = Unpooled.wrappedBuffer(state.getStringValue().getBytes());
+        } else {
+            value = Unpooled.wrappedBuffer(state.getByteValue());
+        }
+        try (Table<ByteBuf, ByteBuf> table = result(storageClient.get().openTable(tableName))) {
+            result(table.put(Unpooled.wrappedBuffer(key.getBytes(UTF_8)), value));
+        } catch (NamespaceNotFoundException | StreamNotFoundException e) {
+            log.debug("State not found while processing putFunctionState request @ /{}/{}/{}/{}",
+                    tenant, namespace, componentName, key, e);
+            throw new RestException(NOT_FOUND, e.getMessage());
+        } catch (Exception e) {
+            log.error("Error while putFunctionState request @ /{}/{}/{}/{}",
+                    tenant, namespace, componentName, key, e);
+            throw new RestException(INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
     @Override
@@ -465,11 +618,11 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             } catch (InterruptedException e) {
                 log.warn("Time-out {} sec while checking the role {} is a super user role ",
                         worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), clientRole);
-                throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+                throw new RestException(INTERNAL_SERVER_ERROR, e.getMessage());
             } catch (Exception e) {
                 log.warn("Admin-client with Role - failed to check the role {} is a super user role {} ", clientRole,
                         e.getMessage(), e);
-                throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+                throw new RestException(INTERNAL_SERVER_ERROR, e.getMessage());
             }
         }
         return false;
@@ -526,12 +679,12 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
         } catch (InterruptedException e) {
             log.warn("Time-out {} sec while checking function authorization on {} ",
                     worker().getWorkerConfig().getZooKeeperOperationTimeoutSeconds(), namespaceName);
-            throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new RestException(INTERNAL_SERVER_ERROR, e.getMessage());
         } catch (Exception e) {
             log.warn("Admin-client with Role - {} failed to get function permissions for namespace - {}. {}", role,
                     namespaceName,
                     e.getMessage(), e);
-            throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new RestException(INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
@@ -544,25 +697,25 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             if (!isAuthorizedRole(tenant, namespace, clientRole, clientAuthenticationDataHttps)) {
                 log.warn("{}/{}/{} Client [{}] is not authorized to get {}", tenant, namespace,
                         componentName, clientRole, ComponentTypeUtils.toString(componentType));
-                throw new RestException(javax.ws.rs.core.Response.Status.UNAUTHORIZED,
+                throw new RestException(UNAUTHORIZED,
                         "client is not authorize to perform operation");
             }
         } catch (PulsarAdminException e) {
             log.error("{}/{}/{} Failed to authorize", tenant, namespace, componentName, e);
-            throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new RestException(INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
     void validateGetInfoRequestParams(
             String tenant, String namespace, String name, String type) {
         if (tenant == null) {
-            throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, "Tenant is not provided");
+            throw new RestException(BAD_REQUEST, "Tenant is not provided");
         }
         if (namespace == null) {
-            throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, "Namespace is not provided");
+            throw new RestException(BAD_REQUEST, "Namespace is not provided");
         }
         if (name == null) {
-            throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, type + " name is not provided");
+            throw new RestException(BAD_REQUEST, type + " name is not provided");
         }
     }
 
@@ -574,14 +727,14 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
         } catch (PulsarAdminException.NotAuthorizedException e) {
             log.error("{}/{}/{} Client [{}] is not authorized to operate {} on tenant", tenant, namespace,
                     name, clientRole, ComponentTypeUtils.toString(componentType));
-            throw new RestException(javax.ws.rs.core.Response.Status.UNAUTHORIZED,
+            throw new RestException(UNAUTHORIZED,
                     "client is not authorize to perform operation");
         } catch (PulsarAdminException.NotFoundException e) {
             log.error("{}/{}/{} Tenant {} does not exist", tenant, namespace, name, tenant);
-            throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST, "Tenant does not exist");
+            throw new RestException(BAD_REQUEST, "Tenant does not exist");
         } catch (PulsarAdminException e) {
             log.error("{}/{}/{} Issues getting tenant data", tenant, namespace, name, e);
-            throw new RestException(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new RestException(INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
@@ -589,12 +742,12 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
         if (componentResources != null) {
             if (minResource != null && (componentResources.getCpu() < minResource.getCpu()
                     || componentResources.getRam() < minResource.getRam())) {
-                throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST,
+                throw new RestException(BAD_REQUEST,
                         "Resource is less than minimum requirement");
             }
             if (maxResource != null && (componentResources.getCpu() > maxResource.getCpu()
                     || componentResources.getRam() > maxResource.getRam())) {
-                throw new RestException(javax.ws.rs.core.Response.Status.BAD_REQUEST,
+                throw new RestException(BAD_REQUEST,
                         "Resource is larger than max requirement");
             }
         }
@@ -668,6 +821,50 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             }
         });
         return completableFutureSet;
+    }
+
+    private void throwStateStoreUnvailableResponse() {
+        throw new RestException(SERVICE_UNAVAILABLE,
+                "State storage client is not done initializing. " + "Please try again in a little while.");
+    }
+
+    private void validateFunctionStateParams(final String tenant,
+                                             final String namespace,
+                                             final String functionName,
+                                             final String key)
+            throws IllegalArgumentException {
+
+        if (tenant == null) {
+            throw new IllegalArgumentException("Tenant is not provided");
+        }
+        if (namespace == null) {
+            throw new IllegalArgumentException("Namespace is not provided");
+        }
+        if (functionName == null) {
+            throw new IllegalArgumentException(ComponentTypeUtils.toString(componentType) + " name is not provided");
+        }
+        if (key == null) {
+            throw new IllegalArgumentException("Key is not provided");
+        }
+    }
+
+    private void deleteStatestoreTableAsync(String namespace, String table) {
+        StorageAdminClient adminClient = worker().getStateStoreAdminClient();
+        if (adminClient != null) {
+            adminClient.deleteStream(namespace, table).whenComplete((res, throwable) -> {
+                if ((throwable == null && res)
+                        || ((throwable instanceof NamespaceNotFoundException
+                        || throwable instanceof StreamNotFoundException))) {
+                    log.info("{}/{} table deleted successfully", namespace, table);
+                } else {
+                    if (throwable != null) {
+                        log.error("{}/{} table deletion failed {}  but moving on", namespace, table, throwable);
+                    } else {
+                        log.error("{}/{} table deletion failed but moving on", namespace, table);
+                    }
+                }
+            });
+        }
     }
 }
 
