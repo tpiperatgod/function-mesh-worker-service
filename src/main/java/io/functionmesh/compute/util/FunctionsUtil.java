@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -26,7 +26,6 @@ import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static io.functionmesh.compute.util.CommonUtil.downloadPackageFile;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
@@ -46,6 +45,9 @@ import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodResources
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsar;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPython;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecSecretsMap;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecStatefulConfig;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecStatefulConfigPulsar;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecStatefulConfigPulsarJavaProvider;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecWindowConfig;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
@@ -66,9 +68,9 @@ import org.apache.pulsar.client.api.SubscriptionInitialPosition;
 import org.apache.pulsar.common.functions.ConsumerConfig;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.functions.ProducerConfig;
-import org.apache.pulsar.common.functions.WindowConfig;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.functions.Utils;
+import org.apache.pulsar.common.functions.WindowConfig;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
 import org.apache.pulsar.common.policies.data.FunctionStatus.FunctionInstanceStatus.FunctionInstanceStatusData;
 import org.apache.pulsar.common.util.ClassLoaderUtils;
@@ -420,7 +422,8 @@ public class FunctionsUtil {
             specPod.setVolumes(customConfig.asV1alpha1FunctionSpecPodVolumesList());
             v1alpha1FunctionSpec.setVolumeMounts(customConfig.asV1alpha1FunctionSpecPodVolumeMounts());
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("Error while converting volumes/volumeMounts resources from custom config", e);
+            throw new IllegalArgumentException(
+                    "Error while converting volumes/volumeMounts resources from custom config", e);
         }
         v1alpha1FunctionSpec.setPod(specPod);
 
@@ -459,8 +462,6 @@ public class FunctionsUtil {
             v1alpha1FunctionSpec.setPython(v1alpha1FunctionSpecPython);
         }
 
-        v1alpha1Function.setSpec(v1alpha1FunctionSpec);
-
         // handle window function configurations
         WindowConfig windowConfig = functionConfig.getWindowConfig();
         if (windowConfig != null) {
@@ -474,8 +475,29 @@ public class FunctionsUtil {
             windowConfigSpec.setTimestampExtractorClassName(windowConfig.getTimestampExtractorClassName());
             windowConfigSpec.setWatermarkEmitIntervalMs(windowConfig.getWatermarkEmitIntervalMs());
             v1alpha1FunctionSpec.setWindowConfig(windowConfigSpec);
-            v1alpha1Function.setSpec(v1alpha1FunctionSpec);
         }
+
+        // handle Stateful Function configurations
+        String stateStorageServiceUrl = worker.getWorkerConfig().getStateStorageServiceUrl();
+        String stateStorageProviderImplementation = worker.getWorkerConfig().getStateStorageProviderImplementation();
+        if (StringUtils.isNotBlank(stateStorageServiceUrl)) {
+            V1alpha1FunctionSpecStatefulConfigPulsar statefulConfigPulsar =
+                    new V1alpha1FunctionSpecStatefulConfigPulsar();
+            statefulConfigPulsar.setServiceUrl(stateStorageServiceUrl);
+            if (functionConfig.getRuntime() == FunctionConfig.Runtime.JAVA
+                    && StringUtils.isNotBlank(stateStorageProviderImplementation)) {
+                V1alpha1FunctionSpecStatefulConfigPulsarJavaProvider javaProvider =
+                        new V1alpha1FunctionSpecStatefulConfigPulsarJavaProvider();
+                javaProvider.className(stateStorageProviderImplementation);
+                statefulConfigPulsar.setJavaProvider(javaProvider);
+            }
+            V1alpha1FunctionSpecStatefulConfig statefulConfig = new V1alpha1FunctionSpecStatefulConfig();
+
+            statefulConfig.setPulsar(statefulConfigPulsar);
+            v1alpha1FunctionSpec.setStatefulConfig(statefulConfig);
+        }
+
+        v1alpha1Function.setSpec(v1alpha1FunctionSpec);
 
         return v1alpha1Function;
     }
@@ -818,7 +840,9 @@ public class FunctionsUtil {
 
     private static V1alpha1FunctionSpecGolangLog fetchFunctionLoggingConfig(CustomRuntimeOptions customRuntimeOptions) {
         String logLevel = (customRuntimeOptions.getLogLevel() != null) ? customRuntimeOptions.getLogLevel() : "";
-        String logRotationPolicy = (customRuntimeOptions.getLogRotationPolicy() != null) ? customRuntimeOptions.getLogRotationPolicy() : "";
+        String logRotationPolicy =
+                (customRuntimeOptions.getLogRotationPolicy() != null) ? customRuntimeOptions.getLogRotationPolicy() :
+                        "";
 
         if (logLevel.equals("") && logRotationPolicy.equals("")) {
             return null;
@@ -829,7 +853,8 @@ public class FunctionsUtil {
             logConfig.setLevel(V1alpha1FunctionSpecGolangLog.LevelEnum.valueOf(logLevel.toUpperCase()));
         }
         if (!logRotationPolicy.equals("")) {
-            logConfig.setRotatePolicy(V1alpha1FunctionSpecGolangLog.RotatePolicyEnum.valueOf(logRotationPolicy.toUpperCase()));
+            logConfig.setRotatePolicy(
+                    V1alpha1FunctionSpecGolangLog.RotatePolicyEnum.valueOf(logRotationPolicy.toUpperCase()));
         }
         return logConfig;
     }

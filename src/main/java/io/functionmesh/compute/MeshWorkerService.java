@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -35,6 +35,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.bookkeeper.clients.StorageClientBuilder;
+import org.apache.bookkeeper.clients.admin.StorageAdminClient;
+import org.apache.bookkeeper.clients.config.StorageClientSettings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.authentication.AuthenticationService;
@@ -86,6 +89,7 @@ public class MeshWorkerService implements WorkerService {
     private AuthorizationService authorizationService;
     private MeshConnectorsManager connectorsManager;
     private ServiceConfiguration brokerConfig;
+    private StorageAdminClient stateStoreAdminClient;
 
     public MeshWorkerService() {
 
@@ -196,6 +200,7 @@ public class MeshWorkerService implements WorkerService {
         this.brokerAdmin = clientCreator.newPulsarAdmin(workerConfig.getPulsarWebServiceUrl(), workerConfig);
         this.connectorsManager = new MeshConnectorsManager();
         this.validateExternalServices();
+        this.initStateStorageService();
         this.isInitialized = true;
         log.info("/** Started mesh worker service **/");
     }
@@ -203,6 +208,9 @@ public class MeshWorkerService implements WorkerService {
     public void stop() {
         if (null != getBrokerAdmin()) {
             getBrokerAdmin().close();
+        }
+        if (null != stateStoreAdminClient) {
+            stateStoreAdminClient.close();
         }
     }
 
@@ -222,5 +230,16 @@ public class MeshWorkerService implements WorkerService {
 
     public String getJobNamespace() {
         return KubernetesUtils.getNamespace(getMeshWorkerServiceCustomConfig(), this.getFactoryConfig());
+    }
+
+    private void initStateStorageService() {
+        if (workerConfig.getStateStorageServiceUrl() != null) {
+            StorageClientSettings clientSettings = StorageClientSettings.newBuilder()
+                    .serviceUri(workerConfig.getStateStorageServiceUrl())
+                    .build();
+            this.stateStoreAdminClient = StorageClientBuilder.newBuilder()
+                    .withSettings(clientSettings)
+                    .buildAdmin();
+        }
     }
 }
