@@ -1,5 +1,6 @@
 name: Precommit - Unit Tests
 on: [pull_request]
+permissions: read-all
 jobs:
   build:
     name: unit-tests
@@ -29,11 +30,11 @@ jobs:
           yq --help
 
       - name: Login to GitHub Packages Docker Registry
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ secrets.IMAGE_GITHUB_USERNAME }}
-          password: ${{ secrets.IMAGE_GITHUB_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Auto generate crd model
         run: ./scripts/generate-crd.sh
@@ -43,3 +44,15 @@ jobs:
 
       - name: Run mesh worker service unit test
         run: mvn clean install
+
+      - name: Save PR sha
+        run: |
+          mkdir -p ./pr
+          echo ${{ github.event.number }} > ./pr/NR
+          echo ${{ github.event.pull_request.head.repo.full_name }} > ./pr/repo
+          echo ${{ github.event.pull_request.head.sha }} > ./pr/sha
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: pr
+          path: pr/
