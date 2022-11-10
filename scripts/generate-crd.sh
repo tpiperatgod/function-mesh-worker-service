@@ -43,8 +43,9 @@ yq eval "del(.spec.versions.[].schema.openAPIV3Schema.x-kubernetes-preserve-unkn
 yq eval "del(.spec.versions.[].schema.openAPIV3Schema.x-kubernetes-preserve-unknown-fields)" -i $CRD_SOURCES_FILE
 yq eval "del(.spec.versions.[].schema.openAPIV3Schema.x-kubernetes-preserve-unknown-fields)" -i $CRD_SINKS_FILE
 
-DEFAULT_IMAGE_NAME=ghcr.io/kubernetes-client/java/crd-model-gen
+DEFAULT_IMAGE_NAME=crd-model-gen
 DEFAULT_IMAGE_TAG=v1.0.4
+docker build --tag ${DEFAULT_IMAGE_NAME}:${DEFAULT_IMAGE_TAG} "${DEST_DIR}/scripts/crd-model-gen"
 IMAGE_NAME=${IMAGE_NAME:=$DEFAULT_IMAGE_NAME}
 IMAGE_TAG=${IMAGE_TAG:=$DEFAULT_IMAGE_TAG}
 
