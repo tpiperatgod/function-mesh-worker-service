@@ -110,9 +110,10 @@ functions:
       sourceEnabled: true
       usingInsecureAuth: false
       functionRunnerImages:
-        "JAVA": streamnative/pulsar-functions-java-runner:2.10.0.0-rc10
-        "PYTHON": streamnative/pulsar-functions-python-runner:2.10.0.0-rc10
-        "GO": streamnative/pulsar-functions-go-runner:2.10.0.0-rc10
+        "JAVA": streamnative/pulsar-functions-java-runner:2.9.1.2
+        "PYTHON": streamnative/pulsar-functions-python-runner:2.9.1.2
+        "GO": streamnative/pulsar-functions-go-runner:2.9.1.2
+      oauth2SecretAnnotationKey: login.microsoft.com/service-account.name
 
 broker:
   extraEnv:
