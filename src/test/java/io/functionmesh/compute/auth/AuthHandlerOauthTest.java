@@ -19,8 +19,6 @@
 
 package io.functionmesh.compute.auth;
 
-import static io.functionmesh.compute.auth.AuthHandler.CLIENT_AUTHENTICATION_PARAMETERS_CLAIM;
-import static io.functionmesh.compute.auth.AuthHandler.CLIENT_AUTHENTICATION_PLUGIN_CLAIM;
 import static io.functionmesh.compute.auth.AuthHandlerOauth.KEY_NAME;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -28,13 +26,13 @@ import static org.powermock.api.mockito.PowerMockito.when;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsarAuthConfig;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsarAuthConfigOauth2Config;
+import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.util.CommonUtil;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Secret;
-import java.util.HashMap;
-import java.util.Map;
+import io.kubernetes.client.openapi.models.V1SecretList;
 import org.apache.pulsar.functions.worker.WorkerConfig;
 import org.junit.Test;
 
@@ -42,36 +40,40 @@ public class AuthHandlerOauthTest {
 
     @Test
     public void testHandle() throws ApiException {
+        String annotationKey = "cloud.streamnative.io/service-account.email";
+        String secretName = "admin-secret";
         MeshWorkerService meshWorkerService = mock(MeshWorkerService.class);
         WorkerConfig workerConfig = mock(WorkerConfig.class);
-        when(workerConfig.getBrokerClientAuthenticationPlugin()).thenReturn(CommonUtil.OAUTH_PLUGIN_NAME);
-        CoreV1Api coreV1Api = mock(CoreV1Api.class);
-        Map<String, byte[]> secretData = new HashMap<>();
-        secretData.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM, CommonUtil.OAUTH_PLUGIN_NAME.getBytes());
         String oauth2Parameters = "{\"audience\":\"test-audience\",\"issuerUrl\":\"https://test.com/\""
                 + ",\"privateKey\":\"file:///mnt/secrets/auth.json\",\"type\":\"client_credentials\"}";
-        secretData.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM, oauth2Parameters.getBytes());
+        when(workerConfig.getBrokerClientAuthenticationPlugin()).thenReturn(CommonUtil.OAUTH_PLUGIN_NAME);
+        when(workerConfig.getBrokerClientAuthenticationParameters()).thenReturn(oauth2Parameters);
+
+        MeshWorkerServiceCustomConfig customConfig = mock(MeshWorkerServiceCustomConfig.class);
+        when(customConfig.getOauth2SecretAnnotationKey()).thenReturn(annotationKey);
+        when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(customConfig);
+
+        CoreV1Api coreV1Api = mock(CoreV1Api.class);
         V1Secret v1Secret = new V1Secret()
-                .metadata(new V1ObjectMeta().name("admin-secret"))
-                .data(secretData);
-        when(coreV1Api.readNamespacedSecret("admin", "default", null, null, null)).thenReturn(v1Secret);
+                .metadata(new V1ObjectMeta().name(secretName).annotations(
+                        java.util.Collections.singletonMap(annotationKey, "admin")));
+        V1SecretList secrets = new V1SecretList().items(java.util.Collections.singletonList(v1Secret));
 
         when(meshWorkerService.getCoreV1Api()).thenReturn(coreV1Api);
+        when(coreV1Api.listNamespacedSecret("default", null, null, null, null, null, null, null, null, null, null)).thenReturn(secrets);
+        when(meshWorkerService.getCoreV1Api()).thenReturn(coreV1Api);
+
         when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
         when(meshWorkerService.getJobNamespace()).thenReturn("default");
 
         AuthResults results = new AuthHandlerOauth().handle(meshWorkerService, "admin", null, "Function");
 
-        String oauth2ExtendedParameters = "{\"audience\":\"test-audience\",\"issuerUrl\":\"https://test.com/\""
-                + ",\"privateKey\":\"file:///mnt/secrets/auth.json\",\"type\":\"client_credentials\""
-                + ",\"issuer_url\":\"https://test.com/\",\"private_key\":\"/mnt/secrets/auth.json\"}";
-        secretData.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM, oauth2ExtendedParameters.getBytes());
         AuthResults expected = new AuthResults();
         V1alpha1FunctionSpecPulsarAuthConfigOauth2Config oauth2 =
                 new V1alpha1FunctionSpecPulsarAuthConfigOauth2Config()
                         .audience("test-audience")
                         .issuerUrl("https://test.com/")
-                        .keySecretName("admin")
+                        .keySecretName(secretName)
                         .keySecretKey(KEY_NAME);
         expected.setFunctionAuthConfig(new V1alpha1FunctionSpecPulsarAuthConfig().oauth2Config(oauth2));
 
