@@ -19,6 +19,7 @@
 
 package io.functionmesh.compute.auth;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPulsarAuthConfig;
@@ -29,12 +30,12 @@ import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPulsarAuthConfigOaut
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPulsarAuthConfig;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPulsarAuthConfigOauth2Config;
 import io.functionmesh.compute.util.CommonUtil;
-import io.kubernetes.client.openapi.ApiException;
-import io.kubernetes.client.openapi.models.V1Secret;
-import java.io.IOException;
+import io.kubernetes.client.openapi.models.V1SecretList;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 
+@Slf4j
 public class AuthHandlerOauth implements AuthHandler {
     // the provided secret should use this to store the oauth2 parameters
     public static final String KEY_NAME = "auth.json";
@@ -43,27 +44,32 @@ public class AuthHandlerOauth implements AuthHandler {
     public AuthResults handle(MeshWorkerService workerService, String clientRole,
                               AuthenticationDataSource authDataHttps, String component) {
         if (StringUtils.isNotEmpty(clientRole)) {
-            String secretName = getSecretNameFromClientRole(clientRole);
+            String secretName;
             try {
-                V1Secret secret = workerService.getCoreV1Api()
-                        .readNamespacedSecret(secretName, workerService.getJobNamespace(), null, null, null);
-
-                // create auth secret for function-mesh
-                byte[] params = secret.getData().get(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM);
+                String annotationKey = workerService.getMeshWorkerServiceCustomConfig().getOauth2SecretAnnotationKey();
+                log.info("get secret from namespace: {}, using annotation key to filter: {}, clientRole is: {}",
+                        workerService.getJobNamespace(), annotationKey, clientRole);
+                V1SecretList secrets =
+                        workerService.getCoreV1Api().listNamespacedSecret(workerService.getJobNamespace(), null, null,
+                                null, null, null, null, null, null, null, null);
+                secretName = secrets.getItems().stream().filter(secret ->
+                                clientRole.equals(secret.getMetadata().getAnnotations().get(annotationKey)))
+                        .findFirst().get().getMetadata().getName();
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to get oauth2 private key secret", e);
+            }
+            try {
                 ObjectMapper mapper = new ObjectMapper();
-                OAuth2Parameters oauth2Parameters = mapper.readValue(params, OAuth2Parameters.class);
-
+                OAuth2Parameters oauth2Parameters =
+                        mapper.readValue(
+                                workerService.getWorkerConfig().getBrokerClientAuthenticationParameters(),
+                                OAuth2Parameters.class);
                 AuthResults results = new AuthResults();
 
                 UpdateOAuth2Fields(component, oauth2Parameters, secretName, KEY_NAME, results);
                 return results;
-            } catch (IOException | NullPointerException e) {
-                throw new RuntimeException(
-                        "Failed to get secret data " + secretName + " in namespace " + workerService.getJobNamespace(),
-                        e);
-            } catch (ApiException e) {
-                throw new RuntimeException(
-                        "Failed to get secret " + secretName + " in namespace " + workerService.getJobNamespace(), e);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Failed to parse oauth2 parameters", e);
             }
         }
         throw new RuntimeException("Client role is empty");
@@ -75,24 +81,8 @@ public class AuthHandlerOauth implements AuthHandler {
         // Do nothing for oauth2 handler
     }
 
-    /*
-     * Get secret name from the client role.
-     */
-    private String getSecretNameFromClientRole(String clientRole) {
-        if (clientRole == null) {
-            return "";
-        }
-
-        // for Google Cloud
-        String secret = clientRole.split("@")[0];
-
-        // for Azure Active Directory
-        secret = secret.replaceAll("^api://", "");
-
-        return secret;
-    }
-
-    public static void UpdateOAuth2Fields(String component, OAuth2Parameters oauth2Parameters, String secretName, String secretKey, AuthResults results) {
+    public static void UpdateOAuth2Fields(String component, OAuth2Parameters oauth2Parameters, String secretName,
+                                          String secretKey, AuthResults results) {
         switch (component.toLowerCase()) {
             case CommonUtil.COMPONENT_FUNCTION:
                 V1alpha1FunctionSpecPulsarAuthConfigOauth2Config oauth2 =
