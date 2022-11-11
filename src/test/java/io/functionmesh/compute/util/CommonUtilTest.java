@@ -18,8 +18,6 @@
  */
 package io.functionmesh.compute.util;
 
-import static io.functionmesh.compute.auth.AuthHandler.CLIENT_AUTHENTICATION_PARAMETERS_CLAIM;
-import static io.functionmesh.compute.auth.AuthHandler.CLIENT_AUTHENTICATION_PLUGIN_CLAIM;
 import static io.functionmesh.compute.util.CommonUtil.DEFAULT_FUNCTION_DOWNLOAD_DIRECTORY;
 import static io.functionmesh.compute.util.CommonUtil.DEFAULT_FUNCTION_EXECUTABLE;
 import static org.junit.Assert.assertEquals;
@@ -28,12 +26,12 @@ import static org.powermock.api.mockito.PowerMockito.when;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.auth.AuthHandlerOauth;
 import io.functionmesh.compute.auth.AuthResults;
+import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Secret;
-import java.util.HashMap;
-import java.util.Map;
+import io.kubernetes.client.openapi.models.V1SecretList;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.worker.WorkerConfig;
 import org.junit.Assert;
@@ -75,23 +73,31 @@ public class CommonUtilTest {
 
     @Test
     public void testDoAuth() throws ApiException {
+        String annotationKey = "cloud.streamnative.io/service-account.email";
+        String secretName = "admin-secret";
         MeshWorkerService meshWorkerService = mock(MeshWorkerService.class);
         WorkerConfig workerConfig = mock(WorkerConfig.class);
-        when(workerConfig.getBrokerClientAuthenticationPlugin()).thenReturn(CommonUtil.OAUTH_PLUGIN_NAME);
-        CoreV1Api coreV1Api = mock(CoreV1Api.class);
-        Map<String, byte[]> secretData = new HashMap<>();
-        secretData.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM, CommonUtil.OAUTH_PLUGIN_NAME.getBytes());
         String oauth2Parameters = "{\"audience\":\"test-audience\",\"issuerUrl\":\"https://test.com/\""
                 + ",\"privateKey\":\"file:///mnt/secrets/auth.json\",\"type\":\"client_credentials\"}";
-        secretData.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM, oauth2Parameters.getBytes());
-        V1Secret v1Secret = new V1Secret()
-                .metadata(new V1ObjectMeta().name("admin-secret"))
-                .data(secretData);
-        when(coreV1Api.readNamespacedSecret("admin", "default", null, null, null)).thenReturn(v1Secret);
+        when(workerConfig.getBrokerClientAuthenticationPlugin()).thenReturn(CommonUtil.OAUTH_PLUGIN_NAME);
+        when(workerConfig.getBrokerClientAuthenticationParameters()).thenReturn(oauth2Parameters);
 
-        when(meshWorkerService.getCoreV1Api()).thenReturn(coreV1Api);
         when(meshWorkerService.getWorkerConfig()).thenReturn(workerConfig);
         when(meshWorkerService.getJobNamespace()).thenReturn("default");
+
+        MeshWorkerServiceCustomConfig customConfig = mock(MeshWorkerServiceCustomConfig.class);
+        when(customConfig.getOauth2SecretAnnotationKey()).thenReturn(annotationKey);
+        when(meshWorkerService.getMeshWorkerServiceCustomConfig()).thenReturn(customConfig);
+
+        CoreV1Api coreV1Api = mock(CoreV1Api.class);
+        V1Secret v1Secret = new V1Secret()
+                .metadata(new V1ObjectMeta().name(secretName).annotations(
+                        java.util.Collections.singletonMap(annotationKey, "admin")));
+        V1SecretList secrets = new V1SecretList().items(java.util.Collections.singletonList(v1Secret));
+
+        when(meshWorkerService.getCoreV1Api()).thenReturn(coreV1Api);
+        when(coreV1Api.listNamespacedSecret("default", null, null, null, null, null, null, null, null, null, null)).thenReturn(secrets);
+        when(meshWorkerService.getCoreV1Api()).thenReturn(coreV1Api);
 
         AuthResults results = CommonUtil.doAuth(meshWorkerService, "admin", null, "Function");
         AuthResults expectedResults = new AuthHandlerOauth().handle(meshWorkerService, "admin", null, "Function");
