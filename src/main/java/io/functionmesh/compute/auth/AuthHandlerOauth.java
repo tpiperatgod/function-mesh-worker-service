@@ -52,9 +52,12 @@ public class AuthHandlerOauth implements AuthHandler {
                 V1SecretList secrets =
                         workerService.getCoreV1Api().listNamespacedSecret(workerService.getJobNamespace(), null, null,
                                 null, null, null, null, null, null, null, null);
-                secretName = secrets.getItems().stream().filter(secret ->
-                                clientRole.equals(secret.getMetadata().getAnnotations().get(annotationKey)))
-                        .findFirst().get().getMetadata().getName();
+                secretName = secrets.getItems().stream().filter(secret -> {
+                    if (secret.getMetadata() != null && secret.getMetadata().getAnnotations() != null) {
+                        return clientRole.equals(secret.getMetadata().getAnnotations().get(annotationKey));
+                    }
+                    return false;
+                }).findFirst().get().getMetadata().getName();
             } catch (Exception e) {
                 throw new RuntimeException("Failed to get oauth2 private key secret", e);
             }
