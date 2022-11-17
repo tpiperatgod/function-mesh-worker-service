@@ -60,13 +60,19 @@ public class AuthHandlerInsecure implements AuthHandler {
                         String[] paths = oauth2Parameters.getPrivateKey().split("/");
                         if (paths.length == 0 || StringUtils.isEmpty(
                                 workerService.getMeshWorkerServiceCustomConfig().getOauth2SecretName())) {
-                            throw new RuntimeException("privateKey is empty or oauth2SecretName is not set");
+                            Map<String, byte[]> valueMap = new HashMap<>();
+                            valueMap.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM,
+                                    workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin().getBytes());
+                            valueMap.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM,
+                                    mapper.writeValueAsBytes(oauth2Parameters));
+                            results.setAuthSecretData(valueMap);
+                        } else {
+                            String secretKey = paths[paths.length - 1];
+                            AuthHandlerOauth.UpdateOAuth2Fields(component, oauth2Parameters,
+                                    workerService.getMeshWorkerServiceCustomConfig().getOauth2SecretName(), secretKey,
+                                    results);
                         }
-                        String secretKey = paths[paths.length - 1];
-                        AuthHandlerOauth.UpdateOAuth2Fields(component, oauth2Parameters,
-                                workerService.getMeshWorkerServiceCustomConfig().getOauth2SecretName(), secretKey,
-                                results);
-                    } catch (RuntimeException | JsonProcessingException e) { // fallback to auth secret way
+                    } catch (JsonProcessingException e) { // fallback to auth secret way
                         log.error("failed to read oauth2 parameters {}", e.getMessage());
                         Map<String, byte[]> valueMap = new HashMap<>();
                         valueMap.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM,
