@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -54,8 +54,8 @@ import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -364,7 +364,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                                       final String namespace,
                                       final String clientRole,
                                       final AuthenticationDataSource clientAuthenticationDataHttps) {
-        List<String> result = new LinkedList<>();
+        Set<String> result = new HashSet<>();
         try {
             String labelSelector;
             String cluster = worker().getWorkerConfig().getPulsarFunctionsCluster();
@@ -419,7 +419,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             log.error("failed to fetch functions list from namespace {}", namespace, e);
         }
 
-        return result;
+        return new ArrayList<>(result);
     }
 
     @Override
@@ -454,8 +454,10 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             throw new RestException(BAD_REQUEST, e.getMessage());
         }
 
+        String clusterName = worker().getWorkerConfig().getPulsarFunctionsCluster();
         String tableNs = getStateNamespace(tenant, namespace);
-        String tableName = componentName;
+        String tableName = CommonUtil.createObjectName(clusterName, tenant, namespace, componentName);
+        ;
 
         String stateStorageServiceUrl = worker().getWorkerConfig().getStateStorageServiceUrl();
 
@@ -536,8 +538,10 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             throw new RestException(BAD_REQUEST, e.getMessage());
         }
 
+        String clusterName = worker().getWorkerConfig().getPulsarFunctionsCluster();
         String tableNs = getStateNamespace(tenant, namespace);
-        String tableName = componentName;
+        String tableName = CommonUtil.createObjectName(clusterName, tenant, namespace, componentName);
+        ;
 
         String stateStorageServiceUrl = worker().getWorkerConfig().getStateStorageServiceUrl();
 
