@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -64,6 +64,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.distributedlog.api.namespace.Namespace;
 import org.apache.pulsar.client.admin.Namespaces;
 import org.apache.pulsar.client.admin.PulsarAdmin;
@@ -114,8 +115,9 @@ public class FunctionImplV2Test {
     private static final String API_GROUP = "compute.functionmesh.io";
     private static final String apiVersion = "v1alpha1";
     private static final String apiFunctionKind = "Function";
-    private static final String runnerImage = "custom-image";
+    private static final String runnerImage = "custom-image:latest";
     private static final String serviceAccountName = "custom-account-name";
+    private static final String newImageTag = "new";
 
     private MeshWorkerService meshWorkerService;
     private PulsarAdmin mockedPulsarAdmin;
@@ -232,6 +234,11 @@ public class FunctionImplV2Test {
         when(meshWorkerServiceCustomConfig.isUploadEnabled()).thenReturn(true);
         when(meshWorkerServiceCustomConfig.isFunctionEnabled()).thenReturn(true);
         when(meshWorkerServiceCustomConfig.isEnableTrustedMode()).thenReturn(true);
+        Map<String, String> functionRunnerImages = new HashMap<>();
+        functionRunnerImages.put("JAVA", "pulsar-mesh-function-runner-java:latest");
+        functionRunnerImages.put("PYTHON", "pulsar-mesh-function-runner-python:latest");
+        functionRunnerImages.put("GO", "pulsar-mesh-function-runner-go:latest");
+        when(meshWorkerServiceCustomConfig.getFunctionRunnerImages()).thenReturn(functionRunnerImages);
         return meshWorkerServiceCustomConfig;
     }
 
@@ -294,7 +301,7 @@ public class FunctionImplV2Test {
         verify(mockedKubernetesApi).create(v1alpha1FunctionArgumentCaptor.capture());
         V1alpha1Function v1alpha1FunctionFinal = v1alpha1FunctionArgumentCaptor.getValue();
 
-        verifyParameterForCreate(v1alpha1FunctionOrigin, v1alpha1FunctionFinal);
+        verifyParameterForCreate(functionConfig, meshWorkerService, v1alpha1FunctionFinal);
     }
 
     @Test
@@ -416,7 +423,8 @@ public class FunctionImplV2Test {
         CustomRuntimeOptions customRuntimeOptions = new CustomRuntimeOptions();
         customRuntimeOptions.setRunnerImage(runnerImage);
         customRuntimeOptions.setServiceAccountName(serviceAccountName);
-        customRuntimeOptions.setEnv(env.stream().collect(Collectors.toMap(V1alpha1FunctionSpecPodEnv::getName, V1alpha1FunctionSpecPodEnv::getValue)));
+        customRuntimeOptions.setEnv(env.stream()
+                .collect(Collectors.toMap(V1alpha1FunctionSpecPodEnv::getName, V1alpha1FunctionSpecPodEnv::getValue)));
         when(functionConfig.getCustomRuntimeOptions()).thenReturn(new Gson().toJson(customRuntimeOptions));
 
         return functionConfig;
@@ -432,11 +440,53 @@ public class FunctionImplV2Test {
 
     private void verifyParameterForCreate(V1alpha1Function v1alpha1FunctionOrigin,
                                           V1alpha1Function v1alpha1FunctionFinal) {
-        v1alpha1FunctionOrigin.getSpec().setImage(runnerImage);
-        v1alpha1FunctionOrigin.getSpec().getPod().setServiceAccountName(serviceAccountName);
-        //if authenticationEnabled=true,v1alpha1FunctionOrigin should set pod policy
 
         Assert.assertEquals(v1alpha1FunctionOrigin, v1alpha1FunctionFinal);
+    }
+
+    private void verifyParameterForCreate(FunctionConfig functionConfig,
+                                          MeshWorkerService workerService,
+                                          V1alpha1Function v1alpha1FunctionFinal) {
+        Map<String, String> labelClaims =
+                CommonUtil.getCustomLabelClaims(workerService.getWorkerConfig().getPulsarFunctionsCluster(),
+                        functionConfig.getTenant(), functionConfig.getNamespace(), functionConfig.getName(),
+                        meshWorkerService, "Function");
+        Assert.assertEquals(v1alpha1FunctionFinal.getMetadata().getLabels().size(), labelClaims.size());
+
+        Assert.assertEquals(CommonUtil.createObjectName(
+                workerService.getWorkerConfig().getPulsarFunctionsCluster(),
+                functionConfig.getTenant(),
+                functionConfig.getNamespace(),
+                functionConfig.getName()), v1alpha1FunctionFinal.getMetadata().getName());
+
+        Assert.assertEquals(functionConfig.getClassName(), v1alpha1FunctionFinal.getSpec().getClassName());
+        Assert.assertEquals(functionConfig.getLogTopic(), v1alpha1FunctionFinal.getSpec().getLogTopic());
+        Assert.assertEquals(functionConfig.getOutput(), v1alpha1FunctionFinal.getSpec().getOutput().getTopic());
+
+        if (workerService.getMeshWorkerServiceCustomConfig().isEnableTrustedMode()) {
+            if (functionConfig.getCustomRuntimeOptions() != null) {
+                CustomRuntimeOptions customRuntimeOptions =
+                        new Gson().fromJson(functionConfig.getCustomRuntimeOptions(), CustomRuntimeOptions.class);
+                if (StringUtils.isNotEmpty(customRuntimeOptions.getRunnerImage())) {
+                    Assert.assertEquals(customRuntimeOptions.getRunnerImage(),
+                            v1alpha1FunctionFinal.getSpec().getImage());
+                }
+                Assert.assertEquals(customRuntimeOptions.getServiceAccountName(),
+                        v1alpha1FunctionFinal.getSpec().getPod().getServiceAccountName());
+                Assert.assertEquals(customRuntimeOptions.getEnv().size(),
+                        v1alpha1FunctionFinal.getSpec().getPod().getEnv().size());
+                if (!workerService.getMeshWorkerServiceCustomConfig().getFunctionRunnerImages().isEmpty()
+                        && StringUtils.isNotEmpty(
+                        workerService.getMeshWorkerServiceCustomConfig().getFunctionRunnerImages().get("JAVA"))
+                        && StringUtils.isNotEmpty(customRuntimeOptions.getRunnerImageTag())) {
+                    Assert.assertEquals(
+                            workerService.getMeshWorkerServiceCustomConfig().getFunctionRunnerImages().get("JAVA")
+                                    .replace("latest", customRuntimeOptions.getRunnerImageTag()),
+                            v1alpha1FunctionFinal.getSpec().getImage());
+                }
+            }
+        }
+
     }
 
     private void verifyParameterForUpdate(V1alpha1Function v1alpha1FunctionOrigin,
@@ -543,5 +593,47 @@ public class FunctionImplV2Test {
                 .resources(resourcesExpect)
                 .customRuntimeOptions(customRuntimeOptionsJSON)
                 .build();
+    }
+
+    @Test
+    public void registerFunctionWithImageTagOptionTest() {
+        FunctionConfig functionConfig = mockFunctionConfig();
+
+        CustomRuntimeOptions customRuntimeOptions = new CustomRuntimeOptions();
+        customRuntimeOptions.setRunnerImageTag(newImageTag);
+        customRuntimeOptions.setEnv(env.stream()
+                .collect(Collectors.toMap(V1alpha1FunctionSpecPodEnv::getName, V1alpha1FunctionSpecPodEnv::getValue)));
+        when(functionConfig.getCustomRuntimeOptions()).thenReturn(new Gson().toJson(customRuntimeOptions));
+
+        V1alpha1Function functionResource = mock(V1alpha1Function.class);
+        when(mockedKubernetesApiResponse.getObject()).thenReturn(functionResource);
+        try {
+            this.resource.registerFunction(tenant, namespace, function, null, null, functionConfig.getJar(),
+                    functionConfig, null, null);
+        } catch (
+                RestException restException) {
+            Assert.fail(String.format(
+                    "register {}/{}/{} function failed, error message: {}",
+                    tenant,
+                    namespace,
+                    function,
+                    restException.getMessage()));
+        }
+
+        V1alpha1Function v1alpha1FunctionOrigin =
+                FunctionsUtil.createV1alpha1FunctionFromFunctionConfig(apiFunctionKind, API_GROUP, apiVersion, function,
+                        functionConfig.getJar(), functionConfig,
+                        meshWorkerService.getWorkerConfig().getPulsarFunctionsCluster(), meshWorkerService);
+
+        ArgumentCaptor<V1alpha1Function> v1alpha1FunctionArgumentCaptor =
+                ArgumentCaptor.forClass(V1alpha1Function.class);
+        verify(mockedKubernetesApi).create(v1alpha1FunctionArgumentCaptor.capture());
+        V1alpha1Function v1alpha1FunctionFinal = v1alpha1FunctionArgumentCaptor.getValue();
+
+        verifyParameterForCreate(functionConfig, meshWorkerService, v1alpha1FunctionFinal);
+        assertEquals(
+                meshWorkerService.getMeshWorkerServiceCustomConfig().getFunctionRunnerImages()
+                        .get("JAVA").replace("latest", customRuntimeOptions.getRunnerImageTag()),
+                v1alpha1FunctionFinal.getSpec().getImage());
     }
 }
