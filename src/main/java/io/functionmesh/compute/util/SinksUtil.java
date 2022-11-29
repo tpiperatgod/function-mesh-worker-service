@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -26,7 +26,6 @@ import static io.functionmesh.compute.util.CommonUtil.getClassNameFromFile;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
@@ -180,6 +179,16 @@ public class SinksUtil {
         if (CommonUtil.getRunnerImageFromConfig("JAVA", worker) != null
                 && StringUtils.isEmpty(v1alpha1SinkSpec.getImage())) {
             v1alpha1SinkSpec.setImage(CommonUtil.getRunnerImageFromConfig("JAVA", worker));
+            if (StringUtils.isNotEmpty(v1alpha1SinkSpec.getImage())
+                    && StringUtils.isNotEmpty(customRuntimeOptions.getRunnerImageTag())) {
+                if (v1alpha1SinkSpec.getImage().contains(":")) {
+                    // replace the image tag
+                    String[] parts = v1alpha1SinkSpec.getImage().split(":");
+                    if (parts.length == 2) {
+                        v1alpha1SinkSpec.setImage(parts[0] + ":" + customRuntimeOptions.getRunnerImageTag());
+                    }
+                }
+            }
         }
 
         V1alpha1SinkSpecInput v1alpha1SinkSpecInput = new V1alpha1SinkSpecInput();
@@ -367,7 +376,8 @@ public class SinksUtil {
             specPod.setVolumes(customConfig.asV1alpha1SinkSpecPodVolumesList());
             v1alpha1SinkSpec.setVolumeMounts(customConfig.asV1alpha1SinkSpecPodVolumeMountsList());
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("Error while converting volumes/volumeMounts resources from custom config", e);
+            throw new IllegalArgumentException(
+                    "Error while converting volumes/volumeMounts resources from custom config", e);
         }
         v1alpha1SinkSpec.setPod(specPod);
 

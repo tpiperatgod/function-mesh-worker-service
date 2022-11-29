@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -377,6 +377,17 @@ public class FunctionsUtil {
             v1alpha1FunctionSpec.setGolang(v1alpha1FunctionSpecGolang);
             if (CommonUtil.getRunnerImageFromConfig("GO", worker) != null) {
                 v1alpha1FunctionSpec.setImage(CommonUtil.getRunnerImageFromConfig("GO", worker));
+            }
+        }
+
+        if (StringUtils.isNotEmpty(v1alpha1FunctionSpec.getImage())
+                && StringUtils.isNotEmpty(customRuntimeOptions.getRunnerImageTag())) {
+            if (v1alpha1FunctionSpec.getImage().contains(":")) {
+                // replace the image tag
+                String[] parts = v1alpha1FunctionSpec.getImage().split(":");
+                if (parts.length == 2) {
+                    v1alpha1FunctionSpec.setImage(parts[0] + ":" + customRuntimeOptions.getRunnerImageTag());
+                }
             }
         }
 
