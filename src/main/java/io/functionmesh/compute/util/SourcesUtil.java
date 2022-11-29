@@ -33,6 +33,7 @@ import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpec;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecBatchSourceConfig;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecJava;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecOutput;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecOutputProducerConf;
@@ -58,6 +59,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.apache.pulsar.common.functions.ProducerConfig;
 import org.apache.pulsar.common.functions.Resources;
+import org.apache.pulsar.common.io.BatchSourceConfig;
 import org.apache.pulsar.common.io.SourceConfig;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
 import org.apache.pulsar.common.policies.data.SourceStatus.SourceInstanceStatus.SourceInstanceStatusData;
@@ -351,6 +353,21 @@ public class SourcesUtil {
             if (!secretsMapMap.isEmpty()) {
                 v1alpha1SourceSpec.setSecretsMap(secretsMapMap);
             }
+        }
+
+        BatchSourceConfig batchSourceConfig = sourceConfig.getBatchSourceConfig();
+        if (batchSourceConfig != null) {
+            V1alpha1SourceSpecBatchSourceConfig v1alpha1SourceSpecBatchSourceConfig =
+                    new V1alpha1SourceSpecBatchSourceConfig().discoveryTriggererClassName(
+                            batchSourceConfig.getDiscoveryTriggererClassName());
+            if (batchSourceConfig.getDiscoveryTriggererConfig() != null
+                    && !batchSourceConfig.getDiscoveryTriggererConfig().isEmpty()) {
+                v1alpha1SourceSpecBatchSourceConfig.setDiscoveryTriggererConfig(
+                        batchSourceConfig.getDiscoveryTriggererConfig());
+            } else {
+                v1alpha1SourceSpecBatchSourceConfig.setDiscoveryTriggererConfig(new HashMap<>());
+            }
+            v1alpha1SourceSpec.setBatchSourceConfig(v1alpha1SourceSpecBatchSourceConfig);
         }
 
         if (StringUtils.isEmpty(v1alpha1SourceSpec.getClassName())) {
