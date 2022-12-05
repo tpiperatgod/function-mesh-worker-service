@@ -83,6 +83,11 @@ public class MeshWorkerServiceCustomConfig {
     protected String oauth2SecretAnnotationKey = "cloud.streamnative.io/service-account.email";
 
     @FieldContext(
+            doc = "the jvm options of function worker"
+    )
+    protected List<String> javaOPTs;
+
+    @FieldContext(
             doc = "the directory for dropping extra function dependencies. "
     )
     protected String extraDependenciesDir = "/pulsar/lib/";
