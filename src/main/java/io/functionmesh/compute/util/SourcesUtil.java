@@ -127,6 +127,7 @@ public class SourcesUtil {
         v1alpha1SourceSpec.setClassName(sourceConfig.getClassName());
 
         V1alpha1SourceSpecJava v1alpha1SourceSpecJava = new V1alpha1SourceSpecJava();
+        v1alpha1SourceSpecJava.setJavaOpts(customConfig.getJavaOPTs());
         String extraDependenciesDir = "";
         if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(
                 worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {

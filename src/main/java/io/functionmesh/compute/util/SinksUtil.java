@@ -130,6 +130,7 @@ public class SinksUtil {
         v1alpha1SinkSpec.setReplicas(parallelism);
 
         V1alpha1SinkSpecJava v1alpha1SinkSpecJava = new V1alpha1SinkSpecJava();
+        v1alpha1SinkSpecJava.setJavaOpts(customConfig.getJavaOPTs());
         String extraDependenciesDir = "";
         if (worker.getFactoryConfig() != null && StringUtils.isNotEmpty(
                 worker.getFactoryConfig().getExtraFunctionDependenciesDir())) {
