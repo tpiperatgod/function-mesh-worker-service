@@ -462,6 +462,16 @@ public class SourcesUtil {
 
         CommonUtil.setManaged(customRuntimeOptions, v1alpha1Source.getMetadata());
 
+        if (v1alpha1SourceSpec.getBatchSourceConfig() != null) {
+            BatchSourceConfig batchSourceConfig = new BatchSourceConfig();
+            batchSourceConfig.setDiscoveryTriggererClassName(
+                    v1alpha1SourceSpec.getBatchSourceConfig().getDiscoveryTriggererClassName());
+            if (v1alpha1SourceSpec.getBatchSourceConfig().getDiscoveryTriggererConfig() != null) {
+                batchSourceConfig.setDiscoveryTriggererConfig(
+                        (Map<String, Object>) v1alpha1SourceSpec.getBatchSourceConfig().getDiscoveryTriggererConfig());
+            }
+            sourceConfig.setBatchSourceConfig(batchSourceConfig);
+        }
         if (v1alpha1SourceSpec.getPod() != null) {
             if (Strings.isNotEmpty(v1alpha1SourceSpec.getPod().getServiceAccountName())) {
                 customRuntimeOptions.setServiceAccountName(v1alpha1SourceSpec.getPod().getServiceAccountName());
