@@ -321,6 +321,7 @@ public class FunctionsUtil {
         }
         if (StringUtils.isNotEmpty(functionConfig.getJar())) {
             V1alpha1FunctionSpecJava v1alpha1FunctionSpecJava = new V1alpha1FunctionSpecJava();
+            v1alpha1FunctionSpecJava.setJavaOpts(customConfig.getJavaOPTs());
             v1alpha1FunctionSpecJava.setJar(
                     buildDownloadPath(worker.getWorkerConfig().getDownloadDirectory(), fileName));
             if (isPkgUrlProvided) {
