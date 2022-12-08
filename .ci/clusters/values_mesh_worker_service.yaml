@@ -30,6 +30,7 @@ components:
   autorecovery: false
   pulsar_manager: false
   sql_worker: false
+  proxy: false
 
 ## disable monitoring stack
 monitoring:

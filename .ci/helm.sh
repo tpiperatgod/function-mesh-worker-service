@@ -642,8 +642,6 @@ function ci::verify_python_package_with_auth() {
 }
 
 function ci::upload_go_package() {
-  ${KUBECTL} cp "${FUNCTION_MESH_HOME}/.ci/examples/go-examples" "${NAMESPACE}/${CLUSTER}-pulsar-broker-0:/pulsar/examples"
-  sleep 1
   ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- ls -l /pulsar/examples/go-examples
   sleep 1
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin packages upload function://public/default/go-function@1.0 --path /pulsar/examples/go-examples/exclamationFunc --description go-function@1.0)
@@ -654,8 +652,6 @@ function ci::upload_go_package() {
 }
 
 function ci::upload_go_package_with_auth() {
-  ${KUBECTL} cp "${FUNCTION_MESH_HOME}/.ci/examples/go-examples" "${NAMESPACE}/${CLUSTER}-pulsar-broker-0:/pulsar/examples"
-  sleep 1
   ${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- ls -l /pulsar/examples/go-examples
   sleep 1
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- sh -c 'bin/pulsar-admin --auth-plugin $brokerClientAuthenticationPlugin --auth-params $brokerClientAuthenticationParameters packages upload function://public/default/go-function@1.0 --path /pulsar/examples/go-examples/exclamationFunc --description go-function@1.0')
@@ -769,9 +765,6 @@ function ci::verify_secrets_python_package() {
   ${KUBECTL} apply -f ${FUNCTION_MESH_HOME}/.ci/examples/secret-py-example/secrets_python_secret.yaml
   sleep 10
 
-  ${KUBECTL} cp "${FUNCTION_MESH_HOME}/.ci/examples/secret-py-example" "${NAMESPACE}/${CLUSTER}-pulsar-broker-0:/pulsar/examples/secret-py-example"
-  sleep 10
-
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- bin/pulsar-admin functions create --py /pulsar/examples/secret-py-example/secretsfunction.py --name package-python-secret-fn --classname secretsfunction.SecretsFunction --inputs persistent://public/default/package-python-secret-fn-input --output persistent://public/default/package-python-secret-fn-output --subs-position "Earliest" --cpu 0.1 --secrets '{"APPEND_VALUE":{"path":"test-python-secret","key":"append_value"}}')
   if [[ $RET != *"successfully"* ]]; then
     echo "${RET}"
@@ -804,9 +797,6 @@ function ci::verify_secrets_python_package() {
 
 function ci::verify_secrets_python_package_with_auth() {
   ${KUBECTL} apply -f ${FUNCTION_MESH_HOME}/.ci/examples/secret-py-example/secrets_python_secret.yaml
-  sleep 10
-
-  ${KUBECTL} cp "${FUNCTION_MESH_HOME}/.ci/examples/secret-py-example" "${NAMESPACE}/${CLUSTER}-pulsar-broker-0:/pulsar/examples/secret-py-example"
   sleep 10
 
   RET=$(${KUBECTL} exec -n ${NAMESPACE} ${CLUSTER}-pulsar-broker-0 -- sh -c 'bin/pulsar-admin --auth-plugin $brokerClientAuthenticationPlugin --auth-params $brokerClientAuthenticationParameters functions create --py /pulsar/examples/secret-py-example/secretsfunction.py --name package-python-secret-fn --classname secretsfunction.SecretsFunction --inputs persistent://public/default/package-python-secret-fn-input --output persistent://public/default/package-python-secret-fn-output --subs-position "Earliest" --cpu 0.1 --secrets "{\"APPEND_VALUE\":{\"path\":\"test-python-secret\",\"key\":\"append_value\"}}"')
