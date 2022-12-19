@@ -162,8 +162,12 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
             if (!StringUtils.isEmpty(authPluginName)) {
                 AuthHandler handler = CommonUtil.AUTH_HANDLERS.get(authPluginName);
                 if (handler != null) {
-                    handler.cleanUp(worker(), clientRole, clientAuthenticationDataHttps, apiKind, clusterName, tenant,
-                            namespace, componentName);
+                    try {
+                        handler.cleanUp(worker(), clientRole, clientAuthenticationDataHttps, apiKind, clusterName, tenant,
+                                namespace, componentName);
+                    } catch (RuntimeException e) {
+                        log.error("clean up auth for {}/{}/{} {} failed", tenant, namespace, componentName, e.getMessage());
+                    }
                 }
             }
             if (worker().getWorkerConfig().getTlsEnabled()) {
