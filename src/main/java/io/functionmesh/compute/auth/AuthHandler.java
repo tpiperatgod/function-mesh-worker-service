@@ -20,6 +20,11 @@
 package io.functionmesh.compute.auth;
 
 import io.functionmesh.compute.MeshWorkerService;
+import io.functionmesh.compute.util.KubernetesUtils;
+import io.kubernetes.client.openapi.ApiException;
+import java.io.IOException;
+import okhttp3.Call;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
 
 public interface AuthHandler {
@@ -29,7 +34,36 @@ public interface AuthHandler {
     AuthResults handle(MeshWorkerService workerService, String clientRole,
                        AuthenticationDataHttps authDataHttps, String component);
 
-    void cleanUp(MeshWorkerService workerService, String clientRole,
+    default void cleanUp(MeshWorkerService workerService, String clientRole,
                  AuthenticationDataHttps authDataHttps, String component,
-                 String clusterName, String tenant, String namespace, String componentName);
+                 String clusterName, String tenant, String namespace, String componentName) {
+
+        try {
+            Call deleteAuthSecretCall = workerService.getCoreV1Api()
+                    .deleteNamespacedSecretCall(
+                            KubernetesUtils.getUniqueSecretName(
+                                    component.toLowerCase(),
+                                    "auth",
+                                    DigestUtils.sha256Hex(
+                                            KubernetesUtils.getSecretName(
+                                                    clusterName, tenant, namespace, componentName))),
+                            workerService.getJobNamespace(),
+                            null,
+                            null,
+                            30,
+                            false,
+                            null,
+                            null,
+                            null
+                    );
+            deleteAuthSecretCall.execute();
+        } catch (ApiException e) {
+            // do nothing if auth secret doesn't exist
+            if (e.getCode() != 404) {
+                throw new RuntimeException(e.getMessage());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
 }
