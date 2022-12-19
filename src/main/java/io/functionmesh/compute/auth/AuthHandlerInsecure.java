@@ -24,14 +24,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.OAuth2Parameters;
-import io.functionmesh.compute.util.KubernetesUtils;
-import io.kubernetes.client.openapi.ApiException;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.Call;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
 
@@ -93,40 +88,5 @@ public class AuthHandlerInsecure implements AuthHandler {
             }
         }
         return results;
-    }
-
-    @Override
-    public void cleanUp(MeshWorkerService workerService, String clientRole, AuthenticationDataHttps authDataHttps,
-                        String component, String clusterName, String tenant, String namespace, String componentName) {
-
-        try {
-            Call deleteAuthSecretCall = workerService.getCoreV1Api()
-                    .deleteNamespacedSecretCall(
-                            KubernetesUtils.getUniqueSecretName(
-                                    component.toLowerCase(),
-                                    "auth",
-                                    DigestUtils.sha256Hex(
-                                            KubernetesUtils.getSecretName(
-                                                    clusterName, tenant, namespace, componentName))),
-                            workerService.getJobNamespace(),
-                            null,
-                            null,
-                            30,
-                            false,
-                            null,
-                            null,
-                            null
-                    );
-            deleteAuthSecretCall.execute();
-        } catch (ApiException e) {
-            log.error("clean up auth for {}/{}/{} {} failed", tenant, namespace, componentName, e.getMessage());
-            // do nothing if auth secret doesn't exist
-            if (e.getCode() != 404) {
-                throw new RuntimeException(e);
-            }
-        } catch (IOException e) {
-            log.error("clean up auth for {}/{}/{} {} failed", tenant, namespace, componentName, e.getMessage());
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -30,6 +30,7 @@ import com.google.protobuf.Empty;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.auth.AuthHandler;
 import io.functionmesh.compute.auth.AuthHandlerInsecure;
+import io.functionmesh.compute.auth.AuthHandlerJWTToken;
 import io.functionmesh.compute.auth.AuthHandlerOauth;
 import io.functionmesh.compute.auth.AuthResults;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
@@ -77,10 +78,12 @@ public class CommonUtil {
     public static final String COMPONENT_SOURCE = "source";
     public static final String COMPONENT_SINK = "sink";
     public static final String OAUTH_PLUGIN_NAME = "org.apache.pulsar.client.impl.auth.oauth2.AuthenticationOAuth2";
+    public static final String JWT_PLUGIN_NAME = "org.apache.pulsar.client.impl.auth.AuthenticationToken";
     public static final String INSECURE_PLUGIN_NAME = "insecure";
 
     public static final Map<String, AuthHandler> AUTH_HANDLERS = new HashMap<String, AuthHandler>() {{
         put(OAUTH_PLUGIN_NAME, new AuthHandlerOauth());
+        put(JWT_PLUGIN_NAME, new AuthHandlerJWTToken());
         put(INSECURE_PLUGIN_NAME, new AuthHandlerInsecure());
     }};
     public static final String COMPONENT_STATEFUL_SET = "StatefulSet";
