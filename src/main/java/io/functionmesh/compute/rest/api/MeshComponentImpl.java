@@ -167,7 +167,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                         handler.cleanUp(worker(), clientRole, clientAuthenticationDataHttps, apiKind, clusterName, tenant,
                                 namespace, componentName);
                     } catch (RuntimeException e) {
-                        log.error("clean up auth for {}/{}/{} {} failed", tenant, namespace, componentName, e.getMessage());
+                        log.error("clean up auth for {}/{}/{} failed", tenant, namespace, componentName, e);
                     }
                 }
             }
