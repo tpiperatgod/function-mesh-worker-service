@@ -22,11 +22,9 @@ package io.functionmesh.compute.auth;
 import io.functionmesh.compute.MeshWorkerService;
 import java.util.HashMap;
 import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
 
-@Slf4j
 public class AuthHandlerJWTToken implements AuthHandler {
 
     private static final String HEADER_NAME = "Authorization";
@@ -41,7 +39,6 @@ public class AuthHandlerJWTToken implements AuthHandler {
         if (StringUtils.isEmpty(token)) {
             throw new RuntimeException("Failed to get token from Authorization header");
         }
-        log.info("Start function instance with token: {}", token);
         valueMap.put(CLIENT_AUTHENTICATION_PLUGIN_CLAIM,
                 workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin().getBytes());
         valueMap.put(CLIENT_AUTHENTICATION_PARAMETERS_CLAIM, token.getBytes());
