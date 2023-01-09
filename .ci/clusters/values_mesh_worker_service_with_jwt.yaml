@@ -114,9 +114,9 @@ functions:
       sourceEnabled: true
       usingInsecureAuth: false
       functionRunnerImages:
-        "JAVA": streamnative/pulsar-functions-java-runner:2.9.3.19
-        "PYTHON": streamnative/pulsar-functions-python-runner:2.9.3.19
-        "GO": streamnative/pulsar-functions-go-runner:2.9.3.19
+        "JAVA": docker.cloudsmith.io/streamnative/staging/pulsar-functions-java-runner:2.9.4.1
+        "PYTHON": docker.cloudsmith.io/streamnative/staging/pulsar-functions-python-runner:2.9.4.1
+        "GO": docker.cloudsmith.io/streamnative/staging/pulsar-functions-go-runner:2.9.4.1
       oauth2SecretAnnotationKey: login.microsoft.com/service-account.name
 
 broker:
