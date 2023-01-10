@@ -47,11 +47,11 @@ fi
 # install cert manager chart
 ci::install_cert_manager_charts
 
-# install pulsar chart
-ci::install_pulsar_charts "$VALUES_FILE"
-
 # install function-mesh chart
 ci::install_function_mesh_charts
+
+# install pulsar chart
+ci::install_pulsar_charts "$VALUES_FILE"
 
 # test producer
 if [ "x${WITH_AUTH}" = "xtrue" ]; then
