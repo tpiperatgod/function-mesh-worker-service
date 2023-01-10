@@ -18,6 +18,7 @@
  */
 package io.functionmesh.compute;
 
+import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.rest.api.FunctionsImpl;
 import io.functionmesh.compute.rest.api.SinksImpl;
@@ -25,6 +26,7 @@ import io.functionmesh.compute.rest.api.SourcesImpl;
 import io.functionmesh.compute.util.KubernetesUtils;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.openapi.ApiClient;
+import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
@@ -69,6 +71,9 @@ import org.apache.pulsar.functions.worker.service.api.Workers;
 public class MeshWorkerService implements WorkerService {
 
     private static final String KUBE_CONFIG_ENV = "KUBE_CONFIG";
+    private static final String API_GROUP = "compute.functionmesh.io";
+    private static final String API_VERSION = "v1alpha1";
+    private static final String API_PLURAL = "functions";
     final PulsarWorkerService.PulsarClientCreator clientCreator;
     private volatile boolean isInitialized = false;
     private WorkerConfig workerConfig;
@@ -186,9 +191,15 @@ public class MeshWorkerService implements WorkerService {
             coreV1Api = new CoreV1Api(apiClient);
             appsV1Api = new AppsV1Api(apiClient);
             customObjectsApi = new CustomObjectsApi(apiClient);
+            // check whether FunctionMesh is installed
+            customObjectsApi.listNamespacedCustomObject(API_GROUP, API_VERSION, getJobNamespace(), API_PLURAL, "false", null, null, null, null, null, null, null);
         } catch (java.io.IOException e) {
             log.error("Initialization kubernetes client failed", e);
             throw e;
+        } catch (ApiException e) {
+            if (e.getCode() == HTTP_NOT_FOUND) {
+                throw new RuntimeException("FunctionMesh is required, please install it first");
+            }
         }
     }
 
