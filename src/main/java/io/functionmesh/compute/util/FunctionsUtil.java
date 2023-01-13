@@ -28,10 +28,12 @@ import static io.functionmesh.compute.util.CommonUtil.ANNOTATION_MANAGED;
 import static io.functionmesh.compute.util.CommonUtil.DEFAULT_FUNCTION_EXECUTABLE;
 import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static io.functionmesh.compute.util.CommonUtil.downloadPackageFile;
+import static io.functionmesh.compute.util.CommonUtil.fetchBuiltinAutoscaler;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.functions.models.V1alpha1Function;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpec;
@@ -44,6 +46,8 @@ import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecJava;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecOutput;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecOutputProducerConf;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPod;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodAutoScalingBehavior;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodAutoScalingMetrics;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodEnv;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodResources;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodVpa;
@@ -58,14 +62,18 @@ import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecStatefulConf
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecStatefulConfigPulsarJavaProvider;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecWindowConfig;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
+import io.functionmesh.compute.models.HPASpec;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.models.VPAContainerPolicy;
 import io.functionmesh.compute.models.VPASpec;
 import io.functionmesh.compute.models.VPAUpdatePolicy;
 import io.kubernetes.client.custom.Quantity;
+import io.kubernetes.client.openapi.models.V2beta2HorizontalPodAutoscalerBehavior;
+import io.kubernetes.client.openapi.models.V2beta2MetricSpec;
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -446,6 +454,20 @@ public class FunctionsUtil {
         }
         specPod.setEnv(env);
 
+        // Handle HPA Configurations
+        if (customRuntimeOptions.getHpaSpec() != null && customRuntimeOptions.getMaxReplicas() > 1) {
+            HPASpec hpaSpec = customRuntimeOptions.getHpaSpec();
+            if (fetchBuiltinAutoscaler(hpaSpec) != null) {
+                specPod.setBuiltinAutoscaler(fetchBuiltinAutoscaler(hpaSpec));
+            } else {
+                if (fetchAutoScalingMetricsFromHPA(hpaSpec) != null) {
+                    specPod.setAutoScalingMetrics(fetchAutoScalingMetricsFromHPA(hpaSpec));
+                }
+                if (fetchAutoScalingBehaviorFromHPA(hpaSpec) != null) {
+                    specPod.setAutoScalingBehavior(fetchAutoScalingBehaviorFromHPA(hpaSpec));
+                }
+            }
+        }
 
         try {
             specPod.setVolumes(customConfig.asV1alpha1FunctionSpecPodVolumesList());
@@ -596,6 +618,12 @@ public class FunctionsUtil {
                         );
                 customRuntimeOptions.setEnv(runtimeEnv);
             }
+
+            HPASpec hpaSpec = generateHPASpecFromFunctionConfig(v1alpha1FunctionSpec);
+            if (hpaSpec != null) {
+                customRuntimeOptions.setHpaSpec(hpaSpec);
+            }
+
             V1alpha1FunctionSpecPodVpa vpaSpec = v1alpha1FunctionSpec.getPod().getVpa();
             if (vpaSpec != null) {
                 VPASpec configVPASpec = generateVPASpecFromFunctionConfig(vpaSpec);
@@ -891,6 +919,100 @@ public class FunctionsUtil {
                     V1alpha1FunctionSpecGolangLog.RotatePolicyEnum.valueOf(logRotationPolicy.toUpperCase()));
         }
         return logConfig;
+    }
+
+    private static HPASpec generateHPASpecFromFunctionConfig(
+            V1alpha1FunctionSpec v1alpha1FunctionSpec) {
+        if (v1alpha1FunctionSpec.getPod() != null) {
+            HPASpec hpaSpec = new HPASpec();
+            if (v1alpha1FunctionSpec.getPod().getBuiltinAutoscaler() != null) {
+                v1alpha1FunctionSpec.getPod().getBuiltinAutoscaler().forEach(rule -> {
+                    if (rule.contains("CPU")) {
+                        hpaSpec.setBuiltinCPURule(rule);
+                    }
+                    if (rule.contains("Memory")) {
+                        hpaSpec.setBuiltinMemoryRule(rule);
+                    }
+                });
+                return hpaSpec;
+            }
+            if (v1alpha1FunctionSpec.getPod().getAutoScalingMetrics() == null &&
+                    v1alpha1FunctionSpec.getPod().getAutoScalingBehavior() == null) {
+                return null;
+            }
+            if (v1alpha1FunctionSpec.getPod().getAutoScalingMetrics() != null) {
+                hpaSpec.setAutoScalingMetrics(fetchAutoScalingMetricsFromFunction(
+                        v1alpha1FunctionSpec.getPod().getAutoScalingMetrics()
+                ));
+            }
+            if (v1alpha1FunctionSpec.getPod().getAutoScalingBehavior() != null) {
+                hpaSpec.setAutoScalingBehavior(fetchAutoScalingBehaviorFromFunction(
+                        v1alpha1FunctionSpec.getPod().getAutoScalingBehavior()
+                ));
+            }
+            return hpaSpec;
+        }
+        return null;
+    }
+
+    private static List<V1alpha1FunctionSpecPodAutoScalingMetrics> fetchAutoScalingMetricsFromHPA(HPASpec hpaSpec) {
+        if (hpaSpec.getAutoScalingMetrics() != null) {
+            String autoScalingMetricsJSON = new Gson().toJson(hpaSpec.getAutoScalingMetrics());
+            try {
+                return Arrays.asList(
+                        new Gson().fromJson(autoScalingMetricsJSON,
+                                V1alpha1FunctionSpecPodAutoScalingMetrics[].class));
+            } catch (JsonSyntaxException e) {
+                throw new IllegalArgumentException(
+                        "Error while converting autoScalingMetrics from hpa config", e);
+            }
+        }
+        return null;
+    }
+
+    private static List<V2beta2MetricSpec> fetchAutoScalingMetricsFromFunction(
+            List<V1alpha1FunctionSpecPodAutoScalingMetrics> autoScalingMetrics) {
+        if (autoScalingMetrics != null) {
+            String autoScalingMetricsJSON = new Gson().toJson(autoScalingMetrics);
+            try {
+                return Arrays.asList(
+                        new Gson().fromJson(autoScalingMetricsJSON,
+                                V2beta2MetricSpec[].class));
+            } catch (JsonSyntaxException e) {
+                throw new IllegalArgumentException(
+                        "Error while converting autoScalingMetrics from function", e);
+            }
+        }
+        return null;
+    }
+
+    private static V1alpha1FunctionSpecPodAutoScalingBehavior fetchAutoScalingBehaviorFromHPA(HPASpec hpaSpec) {
+        if (hpaSpec.getAutoScalingBehavior() != null) {
+            String autoScalingBehaviorJSON = new Gson().toJson(hpaSpec.getAutoScalingBehavior());
+            try {
+                return new Gson().fromJson(
+                        autoScalingBehaviorJSON, V1alpha1FunctionSpecPodAutoScalingBehavior.class);
+            } catch (JsonSyntaxException e) {
+                throw new IllegalArgumentException(
+                        "Error while converting autoScalingBehavior from hpa config", e);
+            }
+        }
+        return null;
+    }
+
+    private static V2beta2HorizontalPodAutoscalerBehavior fetchAutoScalingBehaviorFromFunction(
+            V1alpha1FunctionSpecPodAutoScalingBehavior autoScalingBehavior) {
+        if (autoScalingBehavior != null) {
+            String autoScalingBehaviorJSON = new Gson().toJson(autoScalingBehavior);
+            try {
+                return new Gson().fromJson(
+                        autoScalingBehaviorJSON, V2beta2HorizontalPodAutoscalerBehavior.class);
+            } catch (JsonSyntaxException e) {
+                throw new IllegalArgumentException(
+                        "Error while converting autoScalingBehavior from function", e);
+            }
+        }
+        return null;
     }
 
     private static V1alpha1FunctionSpecPodVpa generateVPASpecFromCustomRuntimeOptions(

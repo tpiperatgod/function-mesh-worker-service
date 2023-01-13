@@ -40,11 +40,8 @@ public class CustomRuntimeOptions {
     @TrustedModeOnly
     private String runnerImage;
 
-    @TrustedModeOnly
     private String logLevel;
-
-    @TrustedModeOnly
     private String logRotationPolicy;
-
     private String runnerImageTag;
+    private HPASpec hpaSpec;
 }

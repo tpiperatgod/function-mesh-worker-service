@@ -41,6 +41,7 @@ import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodEnv;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionSpecPodResources;
 import io.functionmesh.compute.functions.models.V1alpha1FunctionStatus;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
+import io.functionmesh.compute.models.HPASpec;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.util.CommonUtil;
 import io.functionmesh.compute.util.FunctionsUtil;
@@ -109,6 +110,11 @@ public class FunctionImplV2Test {
     private static final List<V1alpha1FunctionSpecPodEnv> env = new ArrayList<V1alpha1FunctionSpecPodEnv>() {
         {
             add(new V1alpha1FunctionSpecPodEnv().name("test-env-name").value("test-env-value"));
+        }
+    };
+    private static final List<String> builtinAutoscaler = new ArrayList<String>() {
+        {
+            add("AverageUtilizationCPUPercent80");
         }
     };
 
@@ -522,6 +528,7 @@ public class FunctionImplV2Test {
         when(functionSpec.getPod()).thenReturn(functionSpecPod);
         when(functionSpecPod.getServiceAccountName()).thenReturn(serviceAccount);
         when(functionSpecPod.getEnv()).thenReturn(env);
+        when(functionSpecPod.getBuiltinAutoscaler()).thenReturn(builtinAutoscaler);
 
         when(functionSpec.getSubscriptionName()).thenReturn(outputTopic);
         when(functionSpec.getRetainKeyOrdering()).thenReturn(false);
@@ -560,6 +567,9 @@ public class FunctionImplV2Test {
         customRuntimeOptionsExpect.setServiceAccountName(serviceAccount);
         customRuntimeOptionsExpect.setEnv(env.stream().collect(
                 Collectors.toMap(V1alpha1FunctionSpecPodEnv::getName, V1alpha1FunctionSpecPodEnv::getValue)));
+        HPASpec hpaSpec = new HPASpec();
+        hpaSpec.setBuiltinCPURule("AverageUtilizationCPUPercent80");
+        customRuntimeOptionsExpect.setHpaSpec(hpaSpec);
         String customRuntimeOptionsJSON = new Gson().toJson(customRuntimeOptionsExpect, CustomRuntimeOptions.class);
 
         Resources resourcesExpect = new Resources();

@@ -30,7 +30,7 @@
 
     <properties>
         <pulsar.version>2.9.3.19</pulsar.version>
-        <lombok.version>1.18.16</lombok.version>
+        <lombok.version>1.18.24</lombok.version>
         <log4j2.version>2.17.1</log4j2.version>
         <kubernetes-client.version>12.0.2</kubernetes-client.version>
         <license.plugin.version>3.0</license.plugin.version>
