@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
+import io.functionmesh.compute.models.HPASpec;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1Sink;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkList;
@@ -99,6 +100,11 @@ public class SinksImplV2Test {
     private static final List<V1alpha1SinkSpecPodEnv> env = new ArrayList<V1alpha1SinkSpecPodEnv>() {
         {
             add(new V1alpha1SinkSpecPodEnv().name("test-env-name").value("test-env-value"));
+        }
+    };
+    private static final List<String> builtinAutoscaler = new ArrayList<String>() {
+        {
+            add("AverageUtilizationCPUPercent80");
         }
     };
 
@@ -354,6 +360,7 @@ public class SinksImplV2Test {
         when(mockSinkSpec.getPod()).thenReturn(mockSinkSpecPod);
         when(mockSinkSpecPod.getServiceAccountName()).thenReturn(serviceAccount);
         when(mockSinkSpecPod.getEnv()).thenReturn(env);
+        when(mockSinkSpecPod.getBuiltinAutoscaler()).thenReturn(builtinAutoscaler);
 
         when(mockSinkSpec.getSubscriptionName()).thenReturn(outputTopic);
         when(mockSinkSpec.getRetainOrdering()).thenReturn(false);
@@ -419,6 +426,9 @@ public class SinksImplV2Test {
         customRuntimeOptionsExpect.setServiceAccountName(serviceAccount);
         customRuntimeOptionsExpect.setEnv(env.stream().collect(
                 Collectors.toMap(V1alpha1SinkSpecPodEnv::getName, V1alpha1SinkSpecPodEnv::getValue)));
+        HPASpec hpaSpec = new HPASpec();
+        hpaSpec.setBuiltinCPURule("AverageUtilizationCPUPercent80");
+        customRuntimeOptionsExpect.setHpaSpec(hpaSpec);
         String customRuntimeOptionsJSON = new Gson().toJson(customRuntimeOptionsExpect, CustomRuntimeOptions.class);
 
         Resources resourcesExpect = new Resources();
