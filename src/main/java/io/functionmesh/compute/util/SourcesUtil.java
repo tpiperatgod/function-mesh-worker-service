@@ -20,6 +20,10 @@ package io.functionmesh.compute.util;
 
 import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
+import static io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVpaUpdatePolicy.UpdateModeEnum.AUTO;
+import static io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVpaUpdatePolicy.UpdateModeEnum.INITIAL;
+import static io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVpaUpdatePolicy.UpdateModeEnum.OFF;
+import static io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVpaUpdatePolicy.UpdateModeEnum.RECREATE;
 import static io.functionmesh.compute.util.CommonUtil.ANNOTATION_MANAGED;
 import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static io.functionmesh.compute.util.CommonUtil.getClassNameFromFile;
@@ -31,6 +35,9 @@ import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
+import io.functionmesh.compute.models.VPAContainerPolicy;
+import io.functionmesh.compute.models.VPASpec;
+import io.functionmesh.compute.models.VPAUpdatePolicy;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpec;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecBatchSourceConfig;
@@ -41,6 +48,10 @@ import io.functionmesh.compute.sources.models.V1alpha1SourceSpecOutputProducerCo
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPod;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodEnv;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodResources;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVpa;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVpaResourcePolicy;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVpaResourcePolicyContainerPolicies;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVpaUpdatePolicy;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecPulsar;
 import io.functionmesh.compute.sources.models.V1alpha1SourceSpecSecretsMap;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
@@ -324,6 +335,12 @@ public class SourcesUtil {
                 env.add(podEnv);
             });
         }
+        
+        if (customRuntimeOptions.getVpaSpec() != null ) {
+            V1alpha1SourceSpecPodVpa vpaSpec = generateVPASpecFromCustomRuntimeOptions(customRuntimeOptions.getVpaSpec());
+            specPod.setVpa(vpaSpec);
+        }
+        
         specPod.setEnv(env);
 
         try {
@@ -487,6 +504,11 @@ public class SourcesUtil {
                         );
                 customRuntimeOptions.setEnv(runtimeEnv);
             }
+            V1alpha1SourceSpecPodVpa vpaSpec = v1alpha1SourceSpec.getPod().getVpa();
+            if (vpaSpec != null) {
+                VPASpec configVPASpec = generateVPASpecFromSourceConfig(vpaSpec);
+                customRuntimeOptions.setVpaSpec(configVPASpec);
+            }
         }
 
         if (v1alpha1SourceSpec.getSourceConfig() != null) {
@@ -600,5 +622,118 @@ public class SourcesUtil {
             currentAnnotations.put(ANNOTATION_MANAGED, "false");
             v1alpha1Source.getMetadata().setAnnotations(currentAnnotations);
         }
+    }
+
+    private static V1alpha1SourceSpecPodVpa generateVPASpecFromCustomRuntimeOptions(
+            VPASpec configVPASpec) {
+        V1alpha1SourceSpecPodVpa vpaSpec = new V1alpha1SourceSpecPodVpa();
+        VPAUpdatePolicy updatePolicy = configVPASpec.getUpdatePolicy();
+        if (updatePolicy != null) {
+            V1alpha1SourceSpecPodVpaUpdatePolicy functionUpdatePolicy = new V1alpha1SourceSpecPodVpaUpdatePolicy();
+            if (updatePolicy.getMinReplicas() > 0) {
+                functionUpdatePolicy.setMinReplicas(updatePolicy.getMinReplicas());
+            }
+            switch (updatePolicy.getUpdateMode().toLowerCase()) {
+                case "off":
+                    functionUpdatePolicy.setUpdateMode(OFF);
+                    break;
+                case "initial":
+                    functionUpdatePolicy.setUpdateMode(INITIAL);
+                    break;
+                case "recreate":
+                    functionUpdatePolicy.setUpdateMode(RECREATE);
+                    break;
+                case "auto":
+                    functionUpdatePolicy.setUpdateMode(AUTO);
+                    break;
+                default:
+                    break;
+            }
+            vpaSpec.setUpdatePolicy(functionUpdatePolicy);
+        }
+
+        List<VPAContainerPolicy> containerPolicies = configVPASpec.getResourcePolicy();
+        if (containerPolicies != null) {
+            V1alpha1SourceSpecPodVpaResourcePolicy functionResourcePolicy =
+                    new V1alpha1SourceSpecPodVpaResourcePolicy();
+            List<V1alpha1SourceSpecPodVpaResourcePolicyContainerPolicies> functionContainerPolicies =
+                    new ArrayList<>();
+            for (VPAContainerPolicy containerPolicy : containerPolicies) {
+                V1alpha1SourceSpecPodVpaResourcePolicyContainerPolicies functionContainerPolicy =
+                        new V1alpha1SourceSpecPodVpaResourcePolicyContainerPolicies();
+                functionContainerPolicy.containerName(containerPolicy.getContainerName())
+                        .maxAllowed(containerPolicy.getMaxAllowed()).minAllowed(containerPolicy.getMinAllowed());
+                switch (containerPolicy.getMode().toLowerCase()) {
+                    case "off":
+                        functionContainerPolicy.mode(
+                                V1alpha1SourceSpecPodVpaResourcePolicyContainerPolicies.ModeEnum.OFF);
+                        break;
+                    case "auto":
+                        functionContainerPolicy.mode(
+                                V1alpha1SourceSpecPodVpaResourcePolicyContainerPolicies.ModeEnum.AUTO);
+                        break;
+                    default:
+                        break;
+                }
+                if (containerPolicy.getControlledResources().size() > 0) {
+                    functionContainerPolicy.controlledResources(containerPolicy.getControlledResources());
+                }
+                switch (containerPolicy.getControlledValues().toLowerCase()) {
+                    case "requestsonly":
+                        functionContainerPolicy.setControlledValues(
+                                V1alpha1SourceSpecPodVpaResourcePolicyContainerPolicies.ControlledValuesEnum.REQUESTSONLY);
+                        break;
+                    case "requestsandlimits":
+                        functionContainerPolicy.setControlledValues(
+                                V1alpha1SourceSpecPodVpaResourcePolicyContainerPolicies.ControlledValuesEnum.REQUESTSANDLIMITS);
+                        break;
+                    default:
+                        break;
+                }
+                functionContainerPolicies.add(functionContainerPolicy);
+            }
+            functionResourcePolicy.containerPolicies(functionContainerPolicies);
+            vpaSpec.resourcePolicy(functionResourcePolicy);
+        }
+        return vpaSpec;
+    }
+
+    private static VPASpec generateVPASpecFromSourceConfig(V1alpha1SourceSpecPodVpa vpaSpec) {
+        VPASpec configVPASpec = new VPASpec();
+        V1alpha1SourceSpecPodVpaUpdatePolicy updatePolicy = vpaSpec.getUpdatePolicy();
+        if (updatePolicy != null) {
+            VPAUpdatePolicy vpaUpdatePolicy = new VPAUpdatePolicy();
+            if (updatePolicy.getUpdateMode() != null) {
+                vpaUpdatePolicy.setUpdateMode(updatePolicy.getUpdateMode().getValue());
+            }
+            if (updatePolicy.getMinReplicas() != null && updatePolicy.getMinReplicas() > 0) {
+                vpaUpdatePolicy.setMinReplicas(updatePolicy.getMinReplicas());
+            }
+            configVPASpec.setUpdatePolicy(vpaUpdatePolicy);
+        }
+        V1alpha1SourceSpecPodVpaResourcePolicy resourcePolicy = vpaSpec.getResourcePolicy();
+        if (resourcePolicy != null && resourcePolicy.getContainerPolicies() != null) {
+            List<VPAContainerPolicy> vpaContainerPolicies = new ArrayList<>();
+            for (V1alpha1SourceSpecPodVpaResourcePolicyContainerPolicies containerPolicy :
+                    resourcePolicy.getContainerPolicies()) {
+                if (containerPolicy == null) {
+                    continue;
+                }
+                VPAContainerPolicy vpaContainerPolicy = new VPAContainerPolicy();
+                vpaContainerPolicy.setContainerName(containerPolicy.getContainerName());
+                if (containerPolicy.getMode() != null) {
+                    vpaContainerPolicy.setMode(containerPolicy.getMode().getValue());
+                }
+                vpaContainerPolicy.setMinAllowed(containerPolicy.getMinAllowed());
+                vpaContainerPolicy.setMaxAllowed(containerPolicy.getMaxAllowed());
+                if (containerPolicy.getControlledValues() != null) {
+                    vpaContainerPolicy.setControlledValues(containerPolicy.getControlledValues().getValue());
+                }
+                vpaContainerPolicy.setControlledResources(containerPolicy.getControlledResources());
+                vpaContainerPolicies.add(vpaContainerPolicy);
+            }
+            configVPASpec.setResourcePolicy(vpaContainerPolicies);
+        }
+        return configVPASpec;
     }
 }
