@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,33 +18,11 @@
  */
 package io.functionmesh.compute.models;
 
-import io.functionmesh.compute.annotation.TrustedModeOnly;
-import java.util.Map;
+import java.util.List;
 import lombok.Data;
 
 @Data
-public class CustomRuntimeOptions {
-    private String clusterName;
-    private String inputTypeClassName;
-    private String outputTypeClassName;
-    private int maxReplicas;
-    private Map<String, String> env;
-    private VPASpec vpaSpec;
-
-    @TrustedModeOnly
-    private boolean managed = true;
-
-    @TrustedModeOnly
-    private String serviceAccountName;
-
-    @TrustedModeOnly
-    private String runnerImage;
-
-    @TrustedModeOnly
-    private String logLevel;
-
-    @TrustedModeOnly
-    private String logRotationPolicy;
-
-    private String runnerImageTag;
+public class VPASpec {
+    VPAUpdatePolicy updatePolicy;
+    List<VPAContainerPolicy> resourcePolicy;
 }

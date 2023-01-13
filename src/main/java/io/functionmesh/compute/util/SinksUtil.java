@@ -20,6 +20,10 @@ package io.functionmesh.compute.util;
 
 import static io.functionmesh.compute.models.SecretRef.KEY_KEY;
 import static io.functionmesh.compute.models.SecretRef.PATH_KEY;
+import static io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpaUpdatePolicy.UpdateModeEnum.AUTO;
+import static io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpaUpdatePolicy.UpdateModeEnum.INITIAL;
+import static io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpaUpdatePolicy.UpdateModeEnum.OFF;
+import static io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpaUpdatePolicy.UpdateModeEnum.RECREATE;
 import static io.functionmesh.compute.util.CommonUtil.ANNOTATION_MANAGED;
 import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static io.functionmesh.compute.util.CommonUtil.getClassNameFromFile;
@@ -32,6 +36,9 @@ import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
+import io.functionmesh.compute.models.VPAContainerPolicy;
+import io.functionmesh.compute.models.VPASpec;
+import io.functionmesh.compute.models.VPAUpdatePolicy;
 import io.functionmesh.compute.sinks.models.V1alpha1Sink;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpec;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecInput;
@@ -41,6 +48,10 @@ import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecJava;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPod;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodEnv;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodResources;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpa;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpaResourcePolicy;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpaResourcePolicyContainerPolicies;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpaUpdatePolicy;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPulsar;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecSecretsMap;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
@@ -380,6 +391,12 @@ public class SinksUtil {
             throw new IllegalArgumentException(
                     "Error while converting volumes/volumeMounts resources from custom config", e);
         }
+
+        if (customRuntimeOptions.getVpaSpec() != null) {
+            V1alpha1SinkSpecPodVpa vpaSpec = generateVPASpecFromCustomRuntimeOptions(customRuntimeOptions.getVpaSpec());
+            specPod.setVpa(vpaSpec);
+        }
+
         v1alpha1SinkSpec.setPod(specPod);
 
         if (sinkConfig.getSecrets() != null && !sinkConfig.getSecrets().isEmpty()) {
@@ -480,6 +497,11 @@ public class SinksUtil {
                                 Collectors.toMap(V1alpha1SinkSpecPodEnv::getName, V1alpha1SinkSpecPodEnv::getValue))
                         );
                 customRuntimeOptions.setEnv(runtimeEnv);
+            }
+            V1alpha1SinkSpecPodVpa vpaSpec = v1alpha1SinkSpec.getPod().getVpa();
+            if (vpaSpec != null) {
+                VPASpec configVPASpec = generateVPASpecFromSinkConfig(vpaSpec);
+                customRuntimeOptions.setVpaSpec(configVPASpec);
             }
         }
 
@@ -666,4 +688,116 @@ public class SinksUtil {
         }
     }
 
+    private static V1alpha1SinkSpecPodVpa generateVPASpecFromCustomRuntimeOptions(
+            VPASpec configVPASpec) {
+        V1alpha1SinkSpecPodVpa vpaSpec = new V1alpha1SinkSpecPodVpa();
+        VPAUpdatePolicy updatePolicy = configVPASpec.getUpdatePolicy();
+        if (updatePolicy != null) {
+            V1alpha1SinkSpecPodVpaUpdatePolicy functionUpdatePolicy = new V1alpha1SinkSpecPodVpaUpdatePolicy();
+            if (updatePolicy.getMinReplicas() > 0) {
+                functionUpdatePolicy.setMinReplicas(updatePolicy.getMinReplicas());
+            }
+            switch (updatePolicy.getUpdateMode().toLowerCase()) {
+                case "off":
+                    functionUpdatePolicy.setUpdateMode(OFF);
+                    break;
+                case "initial":
+                    functionUpdatePolicy.setUpdateMode(INITIAL);
+                    break;
+                case "recreate":
+                    functionUpdatePolicy.setUpdateMode(RECREATE);
+                    break;
+                case "auto":
+                    functionUpdatePolicy.setUpdateMode(AUTO);
+                    break;
+                default:
+                    break;
+            }
+            vpaSpec.setUpdatePolicy(functionUpdatePolicy);
+        }
+
+        List<VPAContainerPolicy> containerPolicies = configVPASpec.getResourcePolicy();
+        if (containerPolicies != null) {
+            V1alpha1SinkSpecPodVpaResourcePolicy functionResourcePolicy =
+                    new V1alpha1SinkSpecPodVpaResourcePolicy();
+            List<V1alpha1SinkSpecPodVpaResourcePolicyContainerPolicies> functionContainerPolicies =
+                    new ArrayList<>();
+            for (VPAContainerPolicy containerPolicy : containerPolicies) {
+                V1alpha1SinkSpecPodVpaResourcePolicyContainerPolicies functionContainerPolicy =
+                        new V1alpha1SinkSpecPodVpaResourcePolicyContainerPolicies();
+                functionContainerPolicy.containerName(containerPolicy.getContainerName())
+                        .maxAllowed(containerPolicy.getMaxAllowed()).minAllowed(containerPolicy.getMinAllowed());
+                switch (containerPolicy.getMode().toLowerCase()) {
+                    case "off":
+                        functionContainerPolicy.mode(
+                                V1alpha1SinkSpecPodVpaResourcePolicyContainerPolicies.ModeEnum.OFF);
+                        break;
+                    case "auto":
+                        functionContainerPolicy.mode(
+                                V1alpha1SinkSpecPodVpaResourcePolicyContainerPolicies.ModeEnum.AUTO);
+                        break;
+                    default:
+                        break;
+                }
+                if (containerPolicy.getControlledResources().size() > 0) {
+                    functionContainerPolicy.controlledResources(containerPolicy.getControlledResources());
+                }
+                switch (containerPolicy.getControlledValues().toLowerCase()) {
+                    case "requestsonly":
+                        functionContainerPolicy.setControlledValues(
+                                V1alpha1SinkSpecPodVpaResourcePolicyContainerPolicies.ControlledValuesEnum.REQUESTSONLY);
+                        break;
+                    case "requestsandlimits":
+                        functionContainerPolicy.setControlledValues(
+                                V1alpha1SinkSpecPodVpaResourcePolicyContainerPolicies.ControlledValuesEnum.REQUESTSANDLIMITS);
+                        break;
+                    default:
+                        break;
+                }
+                functionContainerPolicies.add(functionContainerPolicy);
+            }
+            functionResourcePolicy.containerPolicies(functionContainerPolicies);
+            vpaSpec.resourcePolicy(functionResourcePolicy);
+        }
+        return vpaSpec;
+    }
+
+    private static VPASpec generateVPASpecFromSinkConfig(V1alpha1SinkSpecPodVpa vpaSpec) {
+        VPASpec configVPASpec = new VPASpec();
+        V1alpha1SinkSpecPodVpaUpdatePolicy updatePolicy = vpaSpec.getUpdatePolicy();
+        if (updatePolicy != null) {
+            VPAUpdatePolicy vpaUpdatePolicy = new VPAUpdatePolicy();
+            if (updatePolicy.getUpdateMode() != null) {
+                vpaUpdatePolicy.setUpdateMode(updatePolicy.getUpdateMode().getValue());
+            }
+            if (updatePolicy.getMinReplicas() != null && updatePolicy.getMinReplicas() > 0) {
+                vpaUpdatePolicy.setMinReplicas(updatePolicy.getMinReplicas());
+            }
+            configVPASpec.setUpdatePolicy(vpaUpdatePolicy);
+        }
+        V1alpha1SinkSpecPodVpaResourcePolicy resourcePolicy = vpaSpec.getResourcePolicy();
+        if (resourcePolicy != null && resourcePolicy.getContainerPolicies() != null) {
+            List<VPAContainerPolicy> vpaContainerPolicies = new ArrayList<>();
+            for (V1alpha1SinkSpecPodVpaResourcePolicyContainerPolicies containerPolicy :
+                    resourcePolicy.getContainerPolicies()) {
+                if (containerPolicy == null) {
+                    continue;
+                }
+                VPAContainerPolicy vpaContainerPolicy = new VPAContainerPolicy();
+                vpaContainerPolicy.setContainerName(containerPolicy.getContainerName());
+                if (containerPolicy.getMode() != null) {
+                    vpaContainerPolicy.setMode(containerPolicy.getMode().getValue());
+                }
+                vpaContainerPolicy.setMinAllowed(containerPolicy.getMinAllowed());
+                vpaContainerPolicy.setMaxAllowed(containerPolicy.getMaxAllowed());
+                if (containerPolicy.getControlledValues() != null) {
+                    vpaContainerPolicy.setControlledValues(containerPolicy.getControlledValues().getValue());
+                }
+                vpaContainerPolicy.setControlledResources(containerPolicy.getControlledResources());
+                vpaContainerPolicies.add(vpaContainerPolicy);
+            }
+            configVPASpec.setResourcePolicy(vpaContainerPolicies);
+        }
+        return configVPASpec;
+    }
 }
