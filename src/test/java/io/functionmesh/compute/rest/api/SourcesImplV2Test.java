@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 import com.google.gson.Gson;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
+import io.functionmesh.compute.models.HPASpec;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.sources.models.V1alpha1Source;
 import io.functionmesh.compute.sources.models.V1alpha1SourceList;
@@ -98,6 +99,11 @@ public class SourcesImplV2Test {
     private static final List<V1alpha1SourceSpecPodEnv> env = new ArrayList<V1alpha1SourceSpecPodEnv>() {
         {
             add(new V1alpha1SourceSpecPodEnv().name("test-env-name").value("test-env-value"));
+        }
+    };
+    private static final List<String> builtinAutoscaler = new ArrayList<String>() {
+        {
+            add("AverageUtilizationCPUPercent80");
         }
     };
 
@@ -351,6 +357,7 @@ public class SourcesImplV2Test {
         when(mockSourceSpec.getPod()).thenReturn(mockSourceSpecPod);
         when(mockSourceSpecPod.getServiceAccountName()).thenReturn(serviceAccount);
         when(mockSourceSpecPod.getEnv()).thenReturn(env);
+        when(mockSourceSpecPod.getBuiltinAutoscaler()).thenReturn(builtinAutoscaler);
 
         when(mockSourceSpec.getJava()).thenReturn(mockSourceSpecJava);
         when(mockSourceSpecJava.getJar()).thenReturn("test.jar");
@@ -409,6 +416,9 @@ public class SourcesImplV2Test {
         customRuntimeOptionsExpect.setServiceAccountName(serviceAccount);
         customRuntimeOptionsExpect.setEnv(env.stream().collect(
                 Collectors.toMap(V1alpha1SourceSpecPodEnv::getName, V1alpha1SourceSpecPodEnv::getValue)));
+        HPASpec hpaSpec = new HPASpec();
+        hpaSpec.setBuiltinCPURule("AverageUtilizationCPUPercent80");
+        customRuntimeOptionsExpect.setHpaSpec(hpaSpec);
         String customRuntimeOptionsJSON = new Gson().toJson(customRuntimeOptionsExpect, CustomRuntimeOptions.class);
 
         Resources resourcesExpect = new Resources();

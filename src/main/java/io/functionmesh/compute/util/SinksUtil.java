@@ -26,15 +26,18 @@ import static io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpaUpdateP
 import static io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpaUpdatePolicy.UpdateModeEnum.RECREATE;
 import static io.functionmesh.compute.util.CommonUtil.ANNOTATION_MANAGED;
 import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
+import static io.functionmesh.compute.util.CommonUtil.fetchBuiltinAutoscaler;
 import static io.functionmesh.compute.util.CommonUtil.getClassNameFromFile;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import io.functionmesh.compute.MeshWorkerService;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.FunctionMeshConnectorDefinition;
+import io.functionmesh.compute.models.HPASpec;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.functionmesh.compute.models.VPAContainerPolicy;
 import io.functionmesh.compute.models.VPASpec;
@@ -46,6 +49,8 @@ import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecInputCryptoConfig;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecInputSourceSpecs;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecJava;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPod;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodAutoScalingBehavior;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodAutoScalingMetrics;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodEnv;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodResources;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpa;
@@ -56,9 +61,12 @@ import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPulsar;
 import io.functionmesh.compute.sinks.models.V1alpha1SinkSpecSecretsMap;
 import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.custom.Quantity;
+import io.kubernetes.client.openapi.models.V2beta2HorizontalPodAutoscalerBehavior;
+import io.kubernetes.client.openapi.models.V2beta2MetricSpec;
 import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -384,6 +392,21 @@ public class SinksUtil {
         }
         specPod.setEnv(env);
 
+        // Handle HPA Configurations
+        if (customRuntimeOptions.getHpaSpec() != null && customRuntimeOptions.getMaxReplicas() > 1) {
+            HPASpec hpaSpec = customRuntimeOptions.getHpaSpec();
+            if (fetchBuiltinAutoscaler(hpaSpec) != null) {
+                specPod.setBuiltinAutoscaler(fetchBuiltinAutoscaler(hpaSpec));
+            } else {
+                if (fetchAutoScalingMetricsFromHPA(hpaSpec) != null) {
+                    specPod.setAutoScalingMetrics(fetchAutoScalingMetricsFromHPA(hpaSpec));
+                }
+                if (fetchAutoScalingBehaviorFromHPA(hpaSpec) != null) {
+                    specPod.setAutoScalingBehavior(fetchAutoScalingBehaviorFromHPA(hpaSpec));
+                }
+            }
+        }
+
         try {
             specPod.setVolumes(customConfig.asV1alpha1SinkSpecPodVolumesList());
             v1alpha1SinkSpec.setVolumeMounts(customConfig.asV1alpha1SinkSpecPodVolumeMountsList());
@@ -498,6 +521,12 @@ public class SinksUtil {
                         );
                 customRuntimeOptions.setEnv(runtimeEnv);
             }
+
+            HPASpec hpaSpec = generateHPASpecFromSinkConfig(v1alpha1SinkSpec);
+            if (hpaSpec != null) {
+                customRuntimeOptions.setHpaSpec(hpaSpec);
+            }
+
             V1alpha1SinkSpecPodVpa vpaSpec = v1alpha1SinkSpec.getPod().getVpa();
             if (vpaSpec != null) {
                 VPASpec configVPASpec = generateVPASpecFromSinkConfig(vpaSpec);
@@ -686,6 +715,100 @@ public class SinksUtil {
             currentAnnotations.put(ANNOTATION_MANAGED, "false");
             v1alpha1Sink.getMetadata().setAnnotations(currentAnnotations);
         }
+    }
+
+    private static HPASpec generateHPASpecFromSinkConfig(
+            V1alpha1SinkSpec v1alpha1SinkSpec) {
+        if (v1alpha1SinkSpec.getPod() != null) {
+            HPASpec hpaSpec = new HPASpec();
+            if (v1alpha1SinkSpec.getPod().getBuiltinAutoscaler() != null) {
+                v1alpha1SinkSpec.getPod().getBuiltinAutoscaler().forEach(rule -> {
+                    if (rule.contains("CPU")) {
+                        hpaSpec.setBuiltinCPURule(rule);
+                    }
+                    if (rule.contains("Memory")) {
+                        hpaSpec.setBuiltinMemoryRule(rule);
+                    }
+                });
+                return hpaSpec;
+            }
+            if (v1alpha1SinkSpec.getPod().getAutoScalingMetrics() == null &&
+                    v1alpha1SinkSpec.getPod().getAutoScalingBehavior() == null) {
+                return null;
+            }
+            if (v1alpha1SinkSpec.getPod().getAutoScalingMetrics() != null) {
+                hpaSpec.setAutoScalingMetrics(fetchAutoScalingMetricsFromSink(
+                        v1alpha1SinkSpec.getPod().getAutoScalingMetrics()
+                ));
+            }
+            if (v1alpha1SinkSpec.getPod().getAutoScalingBehavior() != null) {
+                hpaSpec.setAutoScalingBehavior(fetchAutoScalingBehaviorFromSink(
+                        v1alpha1SinkSpec.getPod().getAutoScalingBehavior()
+                ));
+            }
+            return hpaSpec;
+        }
+        return null;
+    }
+
+    private static List<V1alpha1SinkSpecPodAutoScalingMetrics> fetchAutoScalingMetricsFromHPA(HPASpec hpaSpec) {
+        if (hpaSpec.getAutoScalingMetrics() != null) {
+            String autoScalingMetricsJSON = new Gson().toJson(hpaSpec.getAutoScalingMetrics());
+            try {
+                return Arrays.asList(
+                        new Gson().fromJson(autoScalingMetricsJSON,
+                                V1alpha1SinkSpecPodAutoScalingMetrics[].class));
+            } catch (JsonSyntaxException e) {
+                throw new IllegalArgumentException(
+                        "Error while converting autoScalingMetrics from hpa config", e);
+            }
+        }
+        return null;
+    }
+
+    private static List<V2beta2MetricSpec> fetchAutoScalingMetricsFromSink(
+            List<V1alpha1SinkSpecPodAutoScalingMetrics> autoScalingMetrics) {
+        if (autoScalingMetrics != null) {
+            String autoScalingMetricsJSON = new Gson().toJson(autoScalingMetrics);
+            try {
+                return Arrays.asList(
+                        new Gson().fromJson(autoScalingMetricsJSON,
+                                V2beta2MetricSpec[].class));
+            } catch (JsonSyntaxException e) {
+                throw new IllegalArgumentException(
+                        "Error while converting autoScalingMetrics from sink", e);
+            }
+        }
+        return null;
+    }
+
+    private static V1alpha1SinkSpecPodAutoScalingBehavior fetchAutoScalingBehaviorFromHPA(HPASpec hpaSpec) {
+        if (hpaSpec.getAutoScalingBehavior() != null) {
+            String autoScalingBehaviorJSON = new Gson().toJson(hpaSpec.getAutoScalingBehavior());
+            try {
+                return new Gson().fromJson(
+                        autoScalingBehaviorJSON, V1alpha1SinkSpecPodAutoScalingBehavior.class);
+            } catch (JsonSyntaxException e) {
+                throw new IllegalArgumentException(
+                        "Error while converting autoScalingBehavior from hpa config", e);
+            }
+        }
+        return null;
+    }
+
+    private static V2beta2HorizontalPodAutoscalerBehavior fetchAutoScalingBehaviorFromSink(
+            V1alpha1SinkSpecPodAutoScalingBehavior autoScalingBehavior) {
+        if (autoScalingBehavior != null) {
+            String autoScalingBehaviorJSON = new Gson().toJson(autoScalingBehavior);
+            try {
+                return new Gson().fromJson(
+                        autoScalingBehaviorJSON, V2beta2HorizontalPodAutoscalerBehavior.class);
+            } catch (JsonSyntaxException e) {
+                throw new IllegalArgumentException(
+                        "Error while converting autoScalingBehavior from sink", e);
+            }
+        }
+        return null;
     }
 
     private static V1alpha1SinkSpecPodVpa generateVPASpecFromCustomRuntimeOptions(
