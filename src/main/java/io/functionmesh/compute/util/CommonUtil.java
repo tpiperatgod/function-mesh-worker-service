@@ -34,6 +34,7 @@ import io.functionmesh.compute.auth.AuthHandlerJWTToken;
 import io.functionmesh.compute.auth.AuthHandlerOauth;
 import io.functionmesh.compute.auth.AuthResults;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
+import io.functionmesh.compute.models.HPASpec;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1OwnerReference;
@@ -42,8 +43,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -534,4 +537,19 @@ public class CommonUtil {
         }
         return handler.handle(workerService, clientRole, clientAuthenticationDataHttps, component);
     }
+
+    public static List<String> fetchBuiltinAutoscaler(HPASpec hpaSpec) {
+        if (hpaSpec.getBuiltinCPURule() != null || hpaSpec.getBuiltinMemoryRule() != null) {
+            List<String> builtinAutoscaler = new ArrayList<>();
+            if (hpaSpec.getBuiltinCPURule() != null && HPASpec.builtinCPUAutoscalerRules.contains(hpaSpec.getBuiltinCPURule())) {
+                builtinAutoscaler.add(hpaSpec.getBuiltinCPURule());
+            }
+            if (hpaSpec.getBuiltinMemoryRule() != null && HPASpec.builtinMemoryAutoscalerRules.contains(hpaSpec.getBuiltinMemoryRule())) {
+                builtinAutoscaler.add(hpaSpec.getBuiltinMemoryRule());
+            }
+            return builtinAutoscaler;
+        }
+        return null;
+    }
+
 }
