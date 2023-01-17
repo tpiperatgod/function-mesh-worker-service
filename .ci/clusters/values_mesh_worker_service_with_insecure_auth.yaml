@@ -113,9 +113,9 @@ functions:
       sinkEnabled: true
       sourceEnabled: true
       functionRunnerImages:
-        "JAVA": streamnative/pulsar-functions-java-runner:2.9.3.19
-        "PYTHON": streamnative/pulsar-functions-python-runner:2.9.3.19
-        "GO": streamnative/pulsar-functions-go-runner:2.9.3.19
+        "JAVA": docker.cloudsmith.io/streamnative/staging/pulsar-functions-java-runner:2.9.4.2
+        "PYTHON": docker.cloudsmith.io/streamnative/staging/pulsar-functions-python-runner:2.9.4.2
+        "GO": docker.cloudsmith.io/streamnative/staging/pulsar-functions-go-runner:2.9.4.2
       oauth2SecretName: sn-platform-oauth2-private-key
 
 broker:
