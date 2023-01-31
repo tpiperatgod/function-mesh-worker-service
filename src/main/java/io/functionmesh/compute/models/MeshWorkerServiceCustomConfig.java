@@ -239,6 +239,16 @@ public class MeshWorkerServiceCustomConfig {
     )
     protected boolean enableTrustedMode = false;
 
+    @FieldContext(
+            doc = "The interval in which the mesh worker service reloads the built-in connectors. By default it is 60."
+    )
+    protected long connectorSearchIntervalSeconds = 60;
+
+    @FieldContext(
+            doc = "The path to the connector metadata YAML file for customizing the builtin-connectors."
+    )
+    protected String connectorDefinitionsFilePath = "conf/connectors.yaml";
+
     public List<V1alpha1SinkSpecPodVolumes> asV1alpha1SinkSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SinkSpecPodVolumes>> typeRef =
