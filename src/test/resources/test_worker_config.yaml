@@ -106,4 +106,5 @@ functionsWorkerServiceCustomConfigs:
     cpu: 2
     ram: 17179869184
 
-
+  connectorSearchIntervalSeconds: 120
+  connectorDefinitionsFilePath: connector-definitions/conf.yaml

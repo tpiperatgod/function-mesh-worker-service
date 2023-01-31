@@ -143,5 +143,8 @@ public class WorkerConfigTest {
         Resources resources = customConfig.getDefaultResources();
         assertEquals(2, resources.getCpu(), 0.1);
         assertEquals(17179869184L, resources.getRam().longValue());
+
+        assertEquals(120L, customConfig.getConnectorSearchIntervalSeconds());
+        assertEquals("connector-definitions/conf.yaml", customConfig.getConnectorDefinitionsFilePath());
     }
 }
