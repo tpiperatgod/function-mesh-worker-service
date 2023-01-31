@@ -209,7 +209,7 @@ public class MeshWorkerService implements WorkerService {
         this.authenticationService = authenticationService;
         this.authorizationService = authorizationService;
         this.brokerAdmin = clientCreator.newPulsarAdmin(workerConfig.getPulsarWebServiceUrl(), workerConfig);
-        this.connectorsManager = new MeshConnectorsManager();
+        this.connectorsManager = new MeshConnectorsManager(meshWorkerServiceCustomConfig);
         this.validateExternalServices();
         this.initStateStorageService();
         this.isInitialized = true;
