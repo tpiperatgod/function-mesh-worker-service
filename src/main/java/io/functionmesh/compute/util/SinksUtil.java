@@ -27,7 +27,7 @@ import static io.functionmesh.compute.sinks.models.V1alpha1SinkSpecPodVpaUpdateP
 import static io.functionmesh.compute.util.CommonUtil.ANNOTATION_MANAGED;
 import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static io.functionmesh.compute.util.CommonUtil.fetchBuiltinAutoscaler;
-import static io.functionmesh.compute.util.CommonUtil.getClassNameFromFile;
+import static io.functionmesh.compute.util.CommonUtil.downloadPackageFile;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static io.functionmesh.compute.util.CommonUtil.getExceptionInformation;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
@@ -63,6 +63,7 @@ import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.models.V2beta2HorizontalPodAutoscalerBehavior;
 import io.kubernetes.client.openapi.models.V2beta2MetricSpec;
+import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -74,18 +75,24 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.typetools.TypeResolver;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.apache.pulsar.client.api.SubscriptionInitialPosition;
 import org.apache.pulsar.common.functions.ConsumerConfig;
 import org.apache.pulsar.common.functions.Resources;
+import org.apache.pulsar.common.functions.Utils;
 import org.apache.pulsar.common.io.SinkConfig;
+import org.apache.pulsar.common.nar.NarClassLoader;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
 import org.apache.pulsar.common.policies.data.SinkStatus.SinkInstanceStatus.SinkInstanceStatusData;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.Function;
 import org.apache.pulsar.functions.proto.InstanceCommunication;
+import org.apache.pulsar.functions.utils.FunctionCommon;
 import org.apache.pulsar.functions.utils.SinkConfigUtils;
+import org.apache.pulsar.functions.utils.io.ConnectorUtils;
+import org.apache.pulsar.io.core.Sink;
 
 @Slf4j
 public class SinksUtil {
@@ -443,23 +450,47 @@ public class SinksUtil {
             }
         }
 
-        if (StringUtils.isEmpty(v1alpha1SinkSpec.getClassName())) {
+        String inferredClassName = null;
+        // infer className and typeClassName
+        if (StringUtils.isEmpty(v1alpha1SinkSpec.getClassName()) ||
+                v1alpha1SinkSpecInput.getTypeClassName() == "[B") {
             boolean isPkgUrlProvided = StringUtils.isNotEmpty(sinkPkgUrl);
+            File componentPackageFile;
             if (isPkgUrlProvided) {
                 try {
-                    String className = getClassNameFromFile(worker, sinkPkgUrl,
-                            Function.FunctionDetails.ComponentType.SINK);
-                    if (StringUtils.isNotEmpty(className)) {
-                        v1alpha1SinkSpec.setClassName(className);
+                    if (Utils.hasPackageTypePrefix(sinkPkgUrl)) {
+                        componentPackageFile = downloadPackageFile(worker, sinkPkgUrl);
+                    } else {
+                        log.warn("get unsupported function package url {}", sinkPkgUrl);
+                        throw new IllegalArgumentException(
+                                "Function Package url is not valid. supported url (function/sink/source)");
                     }
-                } catch (Exception e) {
+                } catch (Exception e){
                     log.error("Invalid register sink request {}", sinkName, e);
                     throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
                 }
-            } else {
-                log.error("Invalid register sink request {}: not provide className", sinkName);
-                throw new RestException(Response.Status.BAD_REQUEST, "no className provided");
+                if (componentPackageFile != null) {
+                    try {
+                        ClassLoader clsLoader = FunctionCommon.getClassLoaderFromPackage(Function.FunctionDetails.ComponentType.SINK,
+                                null, componentPackageFile, worker.getWorkerConfig().getNarExtractionDirectory());
+                        inferredClassName = ConnectorUtils.getIOSinkClass((NarClassLoader) clsLoader);
+                        if (StringUtils.isNotEmpty(inferredClassName)) {
+                            v1alpha1SinkSpec.setClassName(inferredClassName);
+                            Class sinkClass = clsLoader.loadClass(inferredClassName);
+                            Class<?> typeArg = TypeResolver.resolveRawArgument(Sink.class, sinkClass);
+                            v1alpha1SinkSpecInput.setTypeClassName(typeArg.getName());
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to infer sink class name or type class name: {}", sinkName);
+                    } finally {
+                        componentPackageFile.delete();
+                    }
+                }
             }
+        }
+        if (StringUtils.isEmpty(v1alpha1SinkSpec.getClassName()) && StringUtils.isEmpty(inferredClassName)) {
+            log.error("Invalid register sink request {}: not provide className", sinkName);
+            throw new RestException(Response.Status.BAD_REQUEST, "no className provided");
         }
 
         v1alpha1Sink.setSpec(v1alpha1SinkSpec);
