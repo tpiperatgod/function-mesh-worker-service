@@ -27,7 +27,7 @@ import static io.functionmesh.compute.sources.models.V1alpha1SourceSpecPodVpaUpd
 import static io.functionmesh.compute.util.CommonUtil.ANNOTATION_MANAGED;
 import static io.functionmesh.compute.util.CommonUtil.buildDownloadPath;
 import static io.functionmesh.compute.util.CommonUtil.fetchBuiltinAutoscaler;
-import static io.functionmesh.compute.util.CommonUtil.getClassNameFromFile;
+import static io.functionmesh.compute.util.CommonUtil.downloadPackageFile;
 import static io.functionmesh.compute.util.CommonUtil.getCustomLabelClaims;
 import static org.apache.pulsar.common.functions.Utils.BUILTIN;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -63,6 +63,7 @@ import io.functionmesh.compute.worker.MeshConnectorsManager;
 import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.models.V2beta2HorizontalPodAutoscalerBehavior;
 import io.kubernetes.client.openapi.models.V2beta2MetricSpec;
+import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -74,18 +75,24 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.typetools.TypeResolver;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.apache.pulsar.common.functions.ProducerConfig;
 import org.apache.pulsar.common.functions.Resources;
+import org.apache.pulsar.common.functions.Utils;
 import org.apache.pulsar.common.io.BatchSourceConfig;
 import org.apache.pulsar.common.io.SourceConfig;
+import org.apache.pulsar.common.nar.NarClassLoader;
 import org.apache.pulsar.common.policies.data.ExceptionInformation;
 import org.apache.pulsar.common.policies.data.SourceStatus.SourceInstanceStatus.SourceInstanceStatusData;
 import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.functions.proto.Function;
 import org.apache.pulsar.functions.proto.InstanceCommunication;
+import org.apache.pulsar.functions.utils.FunctionCommon;
 import org.apache.pulsar.functions.utils.SourceConfigUtils;
+import org.apache.pulsar.functions.utils.io.ConnectorUtils;
+import org.apache.pulsar.io.core.Source;
 
 @Slf4j
 public class SourcesUtil {
@@ -411,23 +418,47 @@ public class SourcesUtil {
             v1alpha1SourceSpec.setBatchSourceConfig(v1alpha1SourceSpecBatchSourceConfig);
         }
 
-        if (StringUtils.isEmpty(v1alpha1SourceSpec.getClassName())) {
+        String inferredClassName = null;
+        // infer className and typeClassName
+        if (StringUtils.isEmpty(v1alpha1SourceSpec.getClassName()) ||
+                v1alpha1SourceSpecOutput.getTypeClassName() == "[B") {
             boolean isPkgUrlProvided = StringUtils.isNotEmpty(sourcePkgUrl);
+            File componentPackageFile;
             if (isPkgUrlProvided) {
                 try {
-                    String className = getClassNameFromFile(worker, sourcePkgUrl,
-                            Function.FunctionDetails.ComponentType.SOURCE);
-                    if (StringUtils.isNotEmpty(className)) {
-                        v1alpha1SourceSpec.setClassName(className);
+                    if (Utils.hasPackageTypePrefix(sourcePkgUrl)) {
+                        componentPackageFile = downloadPackageFile(worker, sourcePkgUrl);
+                    } else {
+                        log.warn("get unsupported function package url {}", sourcePkgUrl);
+                        throw new IllegalArgumentException(
+                                "Function Package url is not valid. supported url (function/sink/source)");
                     }
-                } catch (Exception e) {
+                } catch (Exception e){
                     log.error("Invalid register source request {}", sourceName, e);
                     throw new RestException(Response.Status.BAD_REQUEST, e.getMessage());
                 }
-            } else {
-                log.error("Invalid register source request {}: not provide className", sourceName);
-                throw new RestException(Response.Status.BAD_REQUEST, "no className provided");
+                if (componentPackageFile != null) {
+                    try {
+                        ClassLoader clsLoader = FunctionCommon.getClassLoaderFromPackage(Function.FunctionDetails.ComponentType.SINK,
+                                null, componentPackageFile, worker.getWorkerConfig().getNarExtractionDirectory());
+                        inferredClassName = ConnectorUtils.getIOSinkClass((NarClassLoader) clsLoader);
+                        if (StringUtils.isNotEmpty(inferredClassName)) {
+                            v1alpha1SourceSpec.setClassName(inferredClassName);
+                            Class sourceClass = clsLoader.loadClass(inferredClassName);
+                            Class<?> typeArg = TypeResolver.resolveRawArgument(Source.class, sourceClass);
+                            v1alpha1SourceSpecOutput.setTypeClassName(typeArg.getName());
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to infer source class name or type class name: {}", sourceName);
+                    } finally {
+                        componentPackageFile.delete();
+                    }
+                }
             }
+        }
+        if (StringUtils.isEmpty(v1alpha1SourceSpec.getClassName()) && StringUtils.isEmpty(inferredClassName)) {
+            log.error("Invalid register source request {}: not provide className", sourceName);
+            throw new RestException(Response.Status.BAD_REQUEST, "no className provided");
         }
 
         v1alpha1Source.setSpec(v1alpha1SourceSpec);
