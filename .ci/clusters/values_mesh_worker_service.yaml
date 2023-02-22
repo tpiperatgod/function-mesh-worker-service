@@ -131,9 +131,9 @@ functions:
       sinkEnabled: true
       sourceEnabled: true
       functionRunnerImages:
-        "JAVA": streamnative/pulsar-functions-java-runner:2.11.0.0-rc3
-        "PYTHON": streamnative/pulsar-functions-python-runner:2.11.0.0-rc3
-        "GO": streamnative/pulsar-functions-go-runner:2.11.0.0-rc3
+        "JAVA": docker.cloudsmith.io/streamnative/staging/pulsar-functions-java-runner:2.11.0.0-rc5
+        "PYTHON": docker.cloudsmith.io/streamnative/staging/pulsar-functions-python-runner:2.11.0.0-rc5
+        "GO": docker.cloudsmith.io/streamnative/staging/pulsar-functions-go-runner:2.11.0.0-rc5
 
 broker:
   extraEnv:
