@@ -44,7 +44,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.authentication.AuthenticationService;
 import org.apache.pulsar.broker.authorization.AuthorizationService;
-import org.apache.pulsar.broker.cache.ConfigurationCacheService;
 import org.apache.pulsar.broker.resources.PulsarResources;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.PulsarClient;
@@ -109,9 +108,17 @@ public class MeshWorkerService implements WorkerService {
                             workerConfig.getBrokerClientAuthenticationParameters(),
                             workerConfig.getBrokerClientTrustCertsFilePath(),
                             workerConfig.isTlsAllowInsecureConnection(),
-                            workerConfig.isTlsEnableHostnameVerification());
+                            workerConfig.isTlsEnableHostnameVerification(),
+                            workerConfig);
                 } else {
-                    return WorkerUtils.getPulsarAdminClient(pulsarServiceUrl);
+                    return WorkerUtils.getPulsarAdminClient(
+                            pulsarServiceUrl,
+                            "",
+                            "",
+                            "",
+                            null,
+                            null,
+                            workerConfig);
                 }
             }
 
@@ -128,7 +135,14 @@ public class MeshWorkerService implements WorkerService {
                             workerConfig.isTlsAllowInsecureConnection(),
                             workerConfig.isTlsEnableHostnameVerification());
                 } else {
-                    return WorkerUtils.getPulsarClient(pulsarServiceUrl);
+                    return WorkerUtils.getPulsarClient(
+                            pulsarServiceUrl,
+                            "",
+                            "",
+                            null,
+                            "",
+                            null,
+                            null);
                 }
             }
         };
@@ -143,14 +157,6 @@ public class MeshWorkerService implements WorkerService {
     public void initInBroker(ServiceConfiguration brokerConfig,
                              WorkerConfig workerConfig, PulsarResources pulsarResources,
                              InternalConfigurationData internalConf) throws Exception {
-        this.brokerConfig = brokerConfig;
-        this.init(workerConfig);
-    }
-
-    public void initInBroker(ServiceConfiguration brokerConfig,
-                             WorkerConfig workerConfig, PulsarResources pulsarResources,
-                             ConfigurationCacheService configurationCacheService,
-                             InternalConfigurationData internalConfigurationData) throws Exception {
         this.brokerConfig = brokerConfig;
         this.init(workerConfig);
     }

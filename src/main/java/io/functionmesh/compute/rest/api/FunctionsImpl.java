@@ -47,6 +47,7 @@ import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1StatefulSet;
 import io.kubernetes.client.util.generic.GenericKubernetesApi;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
@@ -61,6 +62,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 import org.apache.pulsar.common.functions.FunctionConfig;
+import org.apache.pulsar.common.functions.FunctionDefinition;
 import org.apache.pulsar.common.functions.UpdateOptionsImpl;
 import org.apache.pulsar.common.policies.data.FunctionInstanceStatsImpl;
 import org.apache.pulsar.common.policies.data.FunctionStatus;
@@ -369,6 +371,18 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
             final AuthenticationDataSource clientAuthenticationDataHttps) {
 
         throw new RestException(Response.Status.BAD_REQUEST, "Unsupported Operation");
+    }
+
+    @Override
+    public void reloadBuiltinFunctions(String clientRole, AuthenticationDataSource clientAuthenticationDataHttps)
+            throws IOException {
+
+    }
+
+    @Override
+    public List<FunctionDefinition> getBuiltinFunctions(String clientRole,
+                                                        AuthenticationDataSource clientAuthenticationDataHttps) {
+        return null;
     }
 
     @Override

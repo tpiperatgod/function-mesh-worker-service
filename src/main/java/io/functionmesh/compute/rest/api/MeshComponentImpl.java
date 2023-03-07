@@ -599,7 +599,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                                             String namespace,
                                             String componentName,
                                             String clientRole,
-                                            AuthenticationDataSource clientAuthenticationDataHttps) {
+                                            AuthenticationDataSource clientAuthenticationDataHttps,
+                                            boolean transformFunction) {
         // To do
         return null;
     }
