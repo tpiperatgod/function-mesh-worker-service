@@ -1,5 +1,5 @@
 name: Precommit - Integration Tests With Insecure Auth - Mesh Worker Service
-on: pull_request_target
+on: [pull_request]
 permissions: read-all
 jobs:
   integration:
