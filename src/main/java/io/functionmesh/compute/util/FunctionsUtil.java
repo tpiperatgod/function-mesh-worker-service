@@ -119,7 +119,7 @@ public class FunctionsUtil {
                         functionConfig.getName(), worker, kind);
         Function.FunctionDetails functionDetails;
         try {
-            functionDetails = FunctionConfigUtils.convert(functionConfig, null);
+            functionDetails = FunctionConfigUtils.convert(functionConfig, (ClassLoader) null);
         } catch (IllegalArgumentException ex) {
             log.error("cannot convert FunctionConfig to FunctionDetails", ex);
             throw new RestException(Response.Status.BAD_REQUEST,
