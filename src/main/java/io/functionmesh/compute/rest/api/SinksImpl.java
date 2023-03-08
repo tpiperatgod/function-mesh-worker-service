@@ -59,7 +59,6 @@ import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
 import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 import org.apache.pulsar.common.functions.Resources;
 import org.apache.pulsar.common.functions.UpdateOptionsImpl;
@@ -137,7 +136,7 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
             final String sinkPkgUrl,
             final SinkConfig sinkConfig,
             final String clientRole,
-            AuthenticationDataHttps clientAuthenticationDataHttps) {
+            AuthenticationDataSource clientAuthenticationDataHttps) {
         validateSinkEnabled();
         validateRegisterSinkRequestParams(tenant, namespace, sinkName, sinkConfig, uploadedInputStream != null);
         this.validatePermission(tenant,
@@ -205,7 +204,7 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
             final String sinkPkgUrl,
             final SinkConfig sinkConfig,
             final String clientRole,
-            AuthenticationDataHttps clientAuthenticationDataHttps,
+            AuthenticationDataSource clientAuthenticationDataHttps,
             UpdateOptionsImpl updateOptions) {
         validateSinkEnabled();
         validateUpdateSinkRequestParams(tenant, namespace, sinkName, sinkConfig, uploadedInputStream != null);
@@ -538,7 +537,7 @@ public class SinksImpl extends MeshComponentImpl<V1alpha1Sink, V1alpha1SinkList>
                             final SinkConfig sinkConfig,
                             V1alpha1Sink v1alpha1Sink,
                             String clientRole,
-                            AuthenticationDataHttps clientAuthenticationDataHttps) {
+                            AuthenticationDataSource clientAuthenticationDataHttps) {
         try {
             V1alpha1SinkSpecPod podPolicy = v1alpha1Sink.getSpec().getPod();
             if (podPolicy == null) {

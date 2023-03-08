@@ -33,7 +33,7 @@ import io.functionmesh.compute.util.CommonUtil;
 import io.kubernetes.client.openapi.models.V1SecretList;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
+import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 
 @Slf4j
 public class AuthHandlerOauth implements AuthHandler {
@@ -42,7 +42,7 @@ public class AuthHandlerOauth implements AuthHandler {
 
     @Override
     public AuthResults handle(MeshWorkerService workerService, String clientRole,
-                              AuthenticationDataHttps authDataHttps, String component) {
+                              AuthenticationDataSource authDataHttps, String component) {
         if (StringUtils.isNotEmpty(clientRole)) {
             String secretName;
             try {
@@ -79,7 +79,7 @@ public class AuthHandlerOauth implements AuthHandler {
     }
 
     @Override
-    public void cleanUp(MeshWorkerService workerService, String clientRole, AuthenticationDataHttps authDataHttps,
+    public void cleanUp(MeshWorkerService workerService, String clientRole, AuthenticationDataSource authDataHttps,
                         String component, String clusterName, String tenant, String namespace, String componentName) {
         // Do nothing for oauth2 handler
     }

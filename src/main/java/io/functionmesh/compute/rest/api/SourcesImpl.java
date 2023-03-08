@@ -59,7 +59,6 @@ import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
 import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 import org.apache.pulsar.common.functions.UpdateOptionsImpl;
 import org.apache.pulsar.common.io.ConfigFieldDefinition;
@@ -147,7 +146,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                                final String sourcePkgUrl,
                                final SourceConfig sourceConfig,
                                final String clientRole,
-                               AuthenticationDataHttps clientAuthenticationDataHttps) {
+                               AuthenticationDataSource clientAuthenticationDataHttps) {
         validateSourceEnabled();
         validateRegisterSourceRequestParams(tenant, namespace, sourceName, sourceConfig, uploadedInputStream != null);
         this.validatePermission(tenant,
@@ -208,7 +207,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                              final String sourcePkgUrl,
                              final SourceConfig sourceConfig,
                              final String clientRole,
-                             AuthenticationDataHttps clientAuthenticationDataHttps,
+                             AuthenticationDataSource clientAuthenticationDataHttps,
                              UpdateOptionsImpl updateOptions) {
         validateSourceEnabled();
         validateUpdateSourceRequestParams(tenant, namespace, sourceName, sourceConfig, uploadedInputStream != null);
@@ -447,7 +446,7 @@ public class SourcesImpl extends MeshComponentImpl<V1alpha1Source, V1alpha1Sourc
                               SourceConfig sourceConfig,
                               V1alpha1Source v1alpha1Source,
                               String clientRole,
-                              AuthenticationDataHttps clientAuthenticationDataHttps) {
+                              AuthenticationDataSource clientAuthenticationDataHttps) {
         try {
             V1alpha1SourceSpecPod podPolicy = v1alpha1Source.getSpec().getPod();
             if (podPolicy == null) {

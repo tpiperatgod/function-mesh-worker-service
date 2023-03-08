@@ -65,6 +65,22 @@ images:
 
 zookeeper:
   replicaCount: 1
+  securityContext:
+    runAsNonRoot: true
+  configData:
+    PULSAR_MEM: >
+      -Xms64m -Xmx128m
+    PULSAR_GC: >
+      -XX:+UseG1GC
+      -XX:MaxGCPauseMillis=10
+      -Dcom.sun.management.jmxremote
+      -Djute.maxbuffer=10485760
+      -XX:+ParallelRefProcEnabled
+      -XX:+UnlockExperimentalVMOptions
+      -XX:+DoEscapeAnalysis
+      -XX:+DisableExplicitGC
+      -XX:+PerfDisableSharedMem
+      -Dzookeeper.forceSync=no
 
 bookkeeper:
   replicaCount: 1
@@ -88,7 +104,6 @@ bookkeeper:
       -XX:MaxGCPauseMillis=10
       -XX:+ParallelRefProcEnabled
       -XX:+UnlockExperimentalVMOptions
-      -XX:+AggressiveOpts
       -XX:+DoEscapeAnalysis
       -XX:ParallelGCThreads=4
       -XX:ConcGCThreads=4
@@ -107,15 +122,16 @@ pulsar_metadata:
 functions:
   configData:
     functionsWorkerServiceNarPackage: /pulsar/mesh-worker-service.nar
+    narExtractionDirectory: /tmp
     functionsWorkerServiceCustomConfigs:
       uploadEnabled: true
       functionEnabled: true
       sinkEnabled: true
       sourceEnabled: true
       functionRunnerImages:
-        "JAVA": streamnative/pulsar-functions-java-runner:2.9.3.19
-        "PYTHON": streamnative/pulsar-functions-python-runner:2.9.3.19
-        "GO": streamnative/pulsar-functions-go-runner:2.9.3.19
+        "JAVA": streamnative/pulsar-functions-java-runner:2.11.0.0-rc3
+        "PYTHON": streamnative/pulsar-functions-python-runner:2.11.0.0-rc3
+        "GO": streamnative/pulsar-functions-go-runner:2.11.0.0-rc3
       oauth2SecretName: sn-platform-oauth2-private-key
 
 broker:
@@ -123,7 +139,25 @@ broker:
     - name: "PULSAR_PREFIX_brokerDeleteInactiveTopicsEnabled"
       value: "false"
   replicaCount: 1
+  securityContext:
+      runAsNonRoot: true
   configData:
+    PULSAR_GC: >
+      -XX:+UseG1GC
+      -XX:MaxGCPauseMillis=10
+      -Dio.netty.leakDetectionLevel=disabled
+      -Dio.netty.recycler.linkCapacity=1024
+      -XX:+ParallelRefProcEnabled
+      -XX:+UnlockExperimentalVMOptions
+      -XX:+DoEscapeAnalysis
+      -XX:ParallelGCThreads=4
+      -XX:ConcGCThreads=4
+      -XX:G1NewSizePercent=50
+      -XX:+DisableExplicitGC
+      -XX:-ResizePLAB
+      -XX:+ExitOnOutOfMemoryError
+      -XX:+PerfDisableSharedMem
+    PULSAR_EXTRA_OPTS: "-Djava.io.tmpdir=/tmp -Dnar.extraction.tmpdir=/tmp"
     ## Enable `autoSkipNonRecoverableData` since bookkeeper is running
     ## without persistence
     autoSkipNonRecoverableData: "true"
@@ -132,10 +166,30 @@ broker:
     managedLedgerDefaultWriteQuorum: "1"
     managedLedgerDefaultAckQuorum: "1"
     enablePackagesManagement: "true"
+    loadBalancerEnabled: "false"
     PULSAR_PREFIX_enablePackagesManagement: "true"
+    PULSAR_PREFIX_loadBalancerEnabled: "false"
 
 proxy:
   replicaCount: 1
+  securityContext:
+    runAsNonRoot: true
+  configData:
+    PULSAR_GC: >
+      -XX:+UseG1GC
+      -XX:MaxGCPauseMillis=10
+      -Dio.netty.leakDetectionLevel=disabled
+      -Dio.netty.recycler.linkCapacity=1024
+      -XX:+ParallelRefProcEnabled
+      -XX:+UnlockExperimentalVMOptions
+      -XX:+DoEscapeAnalysis
+      -XX:ParallelGCThreads=4
+      -XX:ConcGCThreads=4
+      -XX:G1NewSizePercent=50
+      -XX:+DisableExplicitGC
+      -XX:-ResizePLAB
+      -XX:+ExitOnOutOfMemoryError
+      -XX:+PerfDisableSharedMem
 
 auth:
   authorization:

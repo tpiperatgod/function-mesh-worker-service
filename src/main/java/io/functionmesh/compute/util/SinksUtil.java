@@ -118,7 +118,10 @@ public class SinksUtil {
         }
         String archive = sinkConfig.getArchive();
         SinkConfigUtils.ExtractedSinkDetails extractedSinkDetails =
-                new SinkConfigUtils.ExtractedSinkDetails("", customRuntimeOptions.getInputTypeClassName());
+                new SinkConfigUtils.ExtractedSinkDetails(
+                        "",
+                        customRuntimeOptions.getInputTypeClassName(),
+                        sinkConfig.getClassName());
         Map<String, String> customLabelClaims =
                 getCustomLabelClaims(clusterName, sinkConfig.getTenant(), sinkConfig.getNamespace(),
                         sinkConfig.getName(), worker, kind);

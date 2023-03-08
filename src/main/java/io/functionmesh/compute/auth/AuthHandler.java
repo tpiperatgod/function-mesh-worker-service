@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package io.functionmesh.compute.auth;
 
 import io.functionmesh.compute.MeshWorkerService;
@@ -25,18 +24,18 @@ import io.kubernetes.client.openapi.ApiException;
 import java.io.IOException;
 import okhttp3.Call;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
+import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 
 public interface AuthHandler {
     String CLIENT_AUTHENTICATION_PLUGIN_CLAIM = "clientAuthenticationPlugin";
     String CLIENT_AUTHENTICATION_PARAMETERS_CLAIM = "clientAuthenticationParameters";
 
     AuthResults handle(MeshWorkerService workerService, String clientRole,
-                       AuthenticationDataHttps authDataHttps, String component);
+                       AuthenticationDataSource authDataHttps, String component);
 
     default void cleanUp(MeshWorkerService workerService, String clientRole,
-                 AuthenticationDataHttps authDataHttps, String component,
-                 String clusterName, String tenant, String namespace, String componentName) {
+                         AuthenticationDataSource authDataHttps, String component,
+                         String clusterName, String tenant, String namespace, String componentName) {
 
         try {
             Call deleteAuthSecretCall = workerService.getCoreV1Api()
