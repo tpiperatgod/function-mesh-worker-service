@@ -103,6 +103,20 @@ public class FunctionsImpl extends MeshComponentImpl<V1alpha1Function, V1alpha1F
         if (jarUploaded && customConfig != null && !customConfig.isUploadEnabled()) {
             throw new RestException(Response.Status.BAD_REQUEST, "Uploading Jar File is not enabled");
         }
+        if (customConfig != null && customConfig.getDisabledRuntimes() != null) {
+            if (functionConfig.getRuntime() != null && customConfig.getDisabledRuntimes().contains(functionConfig.getRuntime().toString().toLowerCase())) {
+                throw new RestException(Response.Status.BAD_REQUEST, String.format("Runtime %s is not enabled", functionConfig.getRuntime()));
+            }
+            if (functionConfig.getPy() != null && customConfig.getDisabledRuntimes().contains(FunctionConfig.Runtime.PYTHON.toString().toLowerCase())) {
+                throw new RestException(Response.Status.BAD_REQUEST, "Runtime 'python' is not enabled");
+            }
+            if (functionConfig.getJar() != null && customConfig.getDisabledRuntimes().contains(FunctionConfig.Runtime.JAVA.toString().toLowerCase())) {
+                throw new RestException(Response.Status.BAD_REQUEST, "Runtime 'java' is not enabled");
+            }
+            if (functionConfig.getGo() != null && customConfig.getDisabledRuntimes().contains(FunctionConfig.Runtime.GO.toString().toLowerCase())) {
+                throw new RestException(Response.Status.BAD_REQUEST, "Runtime 'go' is not enabled");
+            }
+        }
         this.validateResources(functionConfig.getResources(),
                 worker().getWorkerConfig().getFunctionInstanceMinResources(),
                 worker().getWorkerConfig().getFunctionInstanceMaxResources());

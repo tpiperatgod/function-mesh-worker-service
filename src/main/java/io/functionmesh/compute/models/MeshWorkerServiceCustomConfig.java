@@ -249,6 +249,11 @@ public class MeshWorkerServiceCustomConfig {
     )
     protected String connectorDefinitionsFilePath = "conf/connectors.yaml";
 
+    @FieldContext(
+            doc = "The set of disabled runtimes, available values are `java`, `python`, `go`."
+    )
+    protected List<String> disabledRuntimes;
+
     public List<V1alpha1SinkSpecPodVolumes> asV1alpha1SinkSpecPodVolumesList() throws JsonProcessingException {
         ObjectMapper objectMapper = ObjectMapperFactory.getThreadLocal();
         TypeReference<List<V1alpha1SinkSpecPodVolumes>> typeRef =

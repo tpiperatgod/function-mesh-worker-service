@@ -245,6 +245,9 @@ public class FunctionImplV2Test {
         functionRunnerImages.put("PYTHON", "pulsar-mesh-function-runner-python:latest");
         functionRunnerImages.put("GO", "pulsar-mesh-function-runner-go:latest");
         when(meshWorkerServiceCustomConfig.getFunctionRunnerImages()).thenReturn(functionRunnerImages);
+        List<String> disabledRuntimes = new ArrayList<>();
+        disabledRuntimes.add("python");
+        when(meshWorkerServiceCustomConfig.getDisabledRuntimes()).thenReturn(disabledRuntimes);
         return meshWorkerServiceCustomConfig;
     }
 
@@ -308,6 +311,22 @@ public class FunctionImplV2Test {
         V1alpha1Function v1alpha1FunctionFinal = v1alpha1FunctionArgumentCaptor.getValue();
 
         verifyParameterForCreate(functionConfig, meshWorkerService, v1alpha1FunctionFinal);
+    }
+
+    @Test
+    public void registerFunctionWithDisabledRuntimeTest() {
+        FunctionConfig functionConfig = mockFunctionConfig();
+        functionConfig.setPy("/pulsar/examples/python-examples/exclamation_function.py");
+
+        V1alpha1Function functionResource = mock(V1alpha1Function.class);
+        when(mockedKubernetesApiResponse.getObject()).thenReturn(functionResource);
+        try {
+            this.resource.registerFunction(tenant, namespace, function, null, null, functionConfig.getJar(),
+                    functionConfig, null, null);
+        } catch (
+                RestException restException) {
+            Assert.assertEquals("Runtime 'python' is not enabled", restException.getMessage());
+        }
     }
 
     @Test
