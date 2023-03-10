@@ -259,21 +259,21 @@
             <url>https://repo1.maven.org/maven2</url>
         </repository>
         <repository>
-            <id>ossrh</id>
+            <id>ossrh-snapshot</id>
             <url>https://s01.oss.sonatype.org/service/local/repositories/0/content</url>
         </repository>
         <repository>
-            <id>nexus-snapshot</id>
+            <id>snapshot</id>
             <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
         </repository>
     </repositories>
     <distributionManagement>
         <snapshotRepository>
-            <id>ossrh</id>
+            <id>ossrh-snapshot</id>
             <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
         </snapshotRepository>
         <repository>
-            <id>ossrh</id>
+            <id>ossrh-snapshot</id>
             <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
