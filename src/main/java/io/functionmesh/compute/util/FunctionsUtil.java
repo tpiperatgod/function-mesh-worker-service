@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -119,7 +119,7 @@ public class FunctionsUtil {
                         functionConfig.getName(), worker, kind);
         Function.FunctionDetails functionDetails;
         try {
-            functionDetails = FunctionConfigUtils.convert(functionConfig, null);
+            functionDetails = FunctionConfigUtils.convert(functionConfig, (ClassLoader) null);
         } catch (IllegalArgumentException ex) {
             log.error("cannot convert FunctionConfig to FunctionDetails", ex);
             throw new RestException(Response.Status.BAD_REQUEST,

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -118,7 +118,10 @@ public class SinksUtil {
         }
         String archive = sinkConfig.getArchive();
         SinkConfigUtils.ExtractedSinkDetails extractedSinkDetails =
-                new SinkConfigUtils.ExtractedSinkDetails("", customRuntimeOptions.getInputTypeClassName());
+                new SinkConfigUtils.ExtractedSinkDetails(
+                        "",
+                        customRuntimeOptions.getInputTypeClassName(),
+                        sinkConfig.getClassName());
         Map<String, String> customLabelClaims =
                 getCustomLabelClaims(clusterName, sinkConfig.getTenant(), sinkConfig.getNamespace(),
                         sinkConfig.getName(), worker, kind);
