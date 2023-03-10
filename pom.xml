@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -19,31 +19,43 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <groupId>io.functionmesh.proxy</groupId>
     <artifactId>mesh-worker-service</artifactId>
-    <version>2.9.3.19</version>
-
+    <version>3.0.0.1-SNAPSHOT</version>
     <properties>
-        <pulsar.version>2.9.3.19</pulsar.version>
+        <pulsar.version>3.0.0.1-SNAPSHOT</pulsar.version>
         <lombok.version>1.18.24</lombok.version>
         <log4j2.version>2.17.1</log4j2.version>
         <kubernetes-client.version>12.0.2</kubernetes-client.version>
         <license.plugin.version>3.0</license.plugin.version>
-        <mockito.version>1.10.19</mockito.version>
-        <powermock.version>1.7.4</powermock.version>
+        <mockito.version>3.12.4</mockito.version>
+        <powermock.version>2.0.9</powermock.version>
         <jetty.version>9.4.48.v20220622</jetty.version>
         <nifi-nar-maven-plugin.version>1.2.0</nifi-nar-maven-plugin.version>
         <function-mesh.version>v0.11.1</function-mesh.version>
         <grpc.version>1.42.1</grpc.version>
+        <maven-surefire-plugin.version>3.0.0-M1</maven-surefire-plugin.version>
+        <redirectTestOutputToFile>true</redirectTestOutputToFile>
         <maven-checkstyle-plugin.version>3.1.2</maven-checkstyle-plugin.version>
         <puppycrawl.checkstyle.version>8.37</puppycrawl.checkstyle.version>
+        <test.additional.args>
+            --add-opens java.base/jdk.internal.loader=ALL-UNNAMED
+            --add-opens java.base/java.lang=ALL-UNNAMED <!--Mockito-->
+            --add-opens java.base/java.io=ALL-UNNAMED <!--Bookkeeper NativeIO-->
+            --add-opens java.base/java.util=ALL-UNNAMED <!--System Lambda-->
+            --add-opens java.base/java.net=ALL-UNNAMED
+            --add-opens java.base/java.security=ALL-UNNAMED
+            --add-opens java.base/java.math=ALL-UNNAMED
+            --add-opens java.base/java.util.stream=ALL-UNNAMED
+            --add-opens java.base/java.util.concurrent=ALL-UNNAMED
+            --add-opens java.base/sun.nio.fs=ALL-UNNAMED
+            --add-opens java.base/sun.net=ALL-UNNAMED <!--netty.DnsResolverUtil-->
+            --add-opens java.management/sun.management=ALL-UNNAMED <!--JvmDefaultGCMetricsLogger & MBeanStatsGenerator-->
+            --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED <!--MBeanStatsGenerator-->
+        </test.additional.args>
     </properties>
-
     <dependencies>
         <dependency>
             <groupId>io.streamnative</groupId>
@@ -95,7 +107,7 @@
         </dependency>
         <dependency>
             <groupId>org.powermock</groupId>
-            <artifactId>powermock-api-mockito</artifactId>
+            <artifactId>powermock-api-mockito2</artifactId>
             <version>${powermock.version}</version>
         </dependency>
         <dependency>
@@ -108,7 +120,6 @@
             <artifactId>jetty-servlet</artifactId>
             <version>${jetty.version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-proxy</artifactId>
@@ -143,15 +154,30 @@
             </exclusions>
         </dependency>
     </dependencies>
-
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <argLine> -Xmx2G
+                        -Dpulsar.allocator.pooled=false
+                        -Dpulsar.allocator.leak_detection=Advanced
+                        -Dlog4j.configurationFile="log4j2.xml"
+                        ${test.additional.args}
+                    </argLine>
+                    <reuseForks>false</reuseForks>
+                    <forkCount>1</forkCount>
+                    <redirectTestOutputToFile>${redirectTestOutputToFile}</redirectTestOutputToFile>
+                    <trimStackTrace>false</trimStackTrace>
+                </configuration>
+            </plugin>
+            <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>8</source>
-                    <target>8</target>
+                    <source>17</source>
+                    <target>17</target>
                 </configuration>
             </plugin>
             <!-- license -->
@@ -226,13 +252,29 @@
             </plugin>
         </plugins>
     </build>
-
     <repositories>
         <repository>
             <id>central</id>
             <layout>default</layout>
             <url>https://repo1.maven.org/maven2</url>
         </repository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/service/local/repositories/0/content</url>
+        </repository>
+        <repository>
+            <id>nexus-snapshot</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </repository>
     </repositories>
-
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
 </project>

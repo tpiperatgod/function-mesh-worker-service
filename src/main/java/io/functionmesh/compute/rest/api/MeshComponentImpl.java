@@ -77,7 +77,6 @@ import org.apache.bookkeeper.clients.exceptions.NamespaceNotFoundException;
 import org.apache.bookkeeper.clients.exceptions.StreamNotFoundException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
 import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.common.functions.FunctionConfig;
@@ -136,7 +135,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                                    final String namespace,
                                    final String componentName,
                                    final String clientRole,
-                                   AuthenticationDataHttps clientAuthenticationDataHttps) {
+                                   AuthenticationDataSource clientAuthenticationDataHttps) {
         this.validateGetInfoRequestParams(tenant, namespace, componentName, apiKind);
 
         this.validatePermission(tenant,
@@ -590,7 +589,7 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
     @Override
     public StreamingOutput downloadFunction(String path,
                                             String clientRole,
-                                            AuthenticationDataHttps clientAuthenticationDataHttps) {
+                                            AuthenticationDataSource clientAuthenticationDataHttps) {
         // To do
         return null;
     }
@@ -600,7 +599,8 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
                                             String namespace,
                                             String componentName,
                                             String clientRole,
-                                            AuthenticationDataHttps clientAuthenticationDataHttps) {
+                                            AuthenticationDataSource clientAuthenticationDataHttps,
+                                            boolean transformFunction) {
         // To do
         return null;
     }
@@ -876,4 +876,3 @@ public abstract class MeshComponentImpl<T extends io.kubernetes.client.common.Ku
         }
     }
 }
-

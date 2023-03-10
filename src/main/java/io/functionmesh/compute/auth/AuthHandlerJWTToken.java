@@ -23,7 +23,7 @@ import io.functionmesh.compute.MeshWorkerService;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
+import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 
 public class AuthHandlerJWTToken implements AuthHandler {
 
@@ -31,7 +31,7 @@ public class AuthHandlerJWTToken implements AuthHandler {
     private static final String TOKEN_TYPE  = "Bearer";
 
     @Override
-    public AuthResults handle(MeshWorkerService workerService, String clientRole, AuthenticationDataHttps authDataHttps,
+    public AuthResults handle(MeshWorkerService workerService, String clientRole, AuthenticationDataSource authDataHttps,
                               String component) {
         AuthResults results = new AuthResults();
         Map<String, byte[]> valueMap = new HashMap<>();

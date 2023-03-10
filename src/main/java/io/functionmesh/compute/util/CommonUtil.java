@@ -57,7 +57,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
+import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.common.functions.FunctionConfig;
@@ -524,7 +524,8 @@ public class CommonUtil {
         return null;
     }
 
-    public static AuthResults doAuth(MeshWorkerService workerService, String clientRole, AuthenticationDataHttps clientAuthenticationDataHttps, String component) {
+    public static AuthResults doAuth(MeshWorkerService workerService, String clientRole,
+                                     AuthenticationDataSource clientAuthenticationDataHttps, String component) {
         String pluginName = workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin();
         if (workerService.getMeshWorkerServiceCustomConfig() != null) {
             if (workerService.getMeshWorkerServiceCustomConfig().isUsingInsecureAuth())
@@ -533,7 +534,8 @@ public class CommonUtil {
         AuthHandler handler = AUTH_HANDLERS.get(pluginName);
         if (handler == null) {
             throw new RestException(Response.Status.INTERNAL_SERVER_ERROR,
-                    String.format("No handler for given auth plugin: %s", workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin()));
+                    String.format("No handler for given auth plugin: %s",
+                            workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin()));
         }
         return handler.handle(workerService, clientRole, clientAuthenticationDataHttps, component);
     }

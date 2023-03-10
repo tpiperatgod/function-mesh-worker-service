@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package io.functionmesh.compute.auth;
 
 import static io.functionmesh.compute.util.CommonUtil.OAUTH_PLUGIN_NAME;
@@ -28,7 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
-import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
+import org.apache.pulsar.broker.authentication.AuthenticationDataSource;
 
 /*
  This auth handler will read the auth parameter from the config and pass it to the function-mesh, which is not secure.
@@ -38,7 +37,8 @@ import org.apache.pulsar.broker.authentication.AuthenticationDataHttps;
 public class AuthHandlerInsecure implements AuthHandler {
 
     @Override
-    public AuthResults handle(MeshWorkerService workerService, String clientRole, AuthenticationDataHttps authDataHttps,
+    public AuthResults handle(MeshWorkerService workerService, String clientRole,
+                              AuthenticationDataSource authenticationDataSource,
                               String component) {
         AuthResults results = new AuthResults();
         if (!StringUtils.isEmpty(workerService.getWorkerConfig().getBrokerClientAuthenticationPlugin())

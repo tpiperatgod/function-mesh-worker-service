@@ -18,10 +18,7 @@
  */
 package io.functionmesh.compute;
 
-import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.IOException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.pulsar.broker.PulsarServerException;
@@ -35,9 +32,6 @@ import org.apache.pulsar.functions.worker.WorkerConfig;
 import org.apache.pulsar.functions.worker.WorkerService;
 import org.apache.pulsar.functions.worker.rest.WorkerServer;
 import org.apache.pulsar.metadata.api.extended.MetadataStoreExtended;
-import org.apache.pulsar.zookeeper.GlobalZooKeeperCache;
-import org.apache.pulsar.zookeeper.ZooKeeperClientFactory;
-import org.apache.pulsar.zookeeper.ZookeeperBkClientFactoryImpl;
 
 /**
  * This class for test.
@@ -47,13 +41,9 @@ public class MeshWorker {
 
     private final OrderedExecutor orderedExecutor =
             OrderedExecutor.newBuilder().numThreads(8).name("zk-cache-ordered").build();
-    private final ScheduledExecutorService cacheExecutor = Executors.newScheduledThreadPool(10,
-            new DefaultThreadFactory("zk-cache-callback"));
     private final WorkerConfig workerConfig;
     private final WorkerService workerService;
     private final ErrorNotifier errorNotifier;
-    private ZooKeeperClientFactory zkClientFactory = null;
-    private GlobalZooKeeperCache globalZkCache;
     private PulsarResources pulsarResources;
     private MetadataStoreExtended configMetadataStore;
     private WorkerServer server;
@@ -80,33 +70,14 @@ public class MeshWorker {
         }
     }
 
-    public ZooKeeperClientFactory getZooKeeperClientFactory() {
-        if (zkClientFactory == null) {
-            zkClientFactory = new ZookeeperBkClientFactoryImpl(orderedExecutor);
-        }
-        // Return default factory
-        return zkClientFactory;
-    }
-
     private AuthorizationService getAuthorizationService() throws PulsarServerException {
         if (this.workerConfig.isAuthorizationEnabled()) {
             log.info("starting configuration cache service");
-
-            this.globalZkCache = new GlobalZooKeeperCache(getZooKeeperClientFactory(),
-                    (int) workerConfig.getZooKeeperSessionTimeoutMillis(),
-                    workerConfig.getZooKeeperOperationTimeoutSeconds(),
-                    workerConfig.getConfigurationStoreServers(),
-                    orderedExecutor, cacheExecutor,
-                    workerConfig.getZooKeeperOperationTimeoutSeconds());
             try {
-                this.globalZkCache.start();
-            } catch (IOException e) {
-                throw new PulsarServerException(e);
-            }
-
-            try {
-                configMetadataStore = PulsarResources.createMetadataStore(workerConfig.getConfigurationStoreServers(),
-                        (int) workerConfig.getZooKeeperSessionTimeoutMillis());
+                configMetadataStore = PulsarResources.createConfigMetadataStore(
+                        workerConfig.getConfigurationMetadataStoreUrl(),
+                        (int) workerConfig.getMetadataStoreSessionTimeoutMillis(),
+                        workerConfig.isMetadataStoreAllowReadOnlyOperations());
             } catch (IOException e) {
                 throw new PulsarServerException(e);
             }
@@ -128,16 +99,25 @@ public class MeshWorker {
     }
 
     protected void stop() {
-        if (null != this.server) {
-            this.server.stop();
+        try {
+            if (null != this.server) {
+                this.server.stop();
+            }
+            workerService.stop();
+        } catch (Exception e) {
+            log.warn("Failed to gracefully stop worker service ", e);
         }
-        workerService.stop();
-        if (this.globalZkCache != null) {
+
+        if (this.configMetadataStore != null) {
             try {
-                this.globalZkCache.close();
-            } catch (IOException e) {
+                this.configMetadataStore.close();
+            } catch (Exception e) {
                 log.warn("Failed to close global zk cache ", e);
             }
+        }
+
+        if (orderedExecutor != null) {
+            orderedExecutor.shutdownNow();
         }
     }
 }
