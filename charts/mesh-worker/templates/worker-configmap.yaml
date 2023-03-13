@@ -1,0 +1,96 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ include "mesh-worker.fullname" . }}-configmap
+data:
+  functions_worker.yml: |
+    workerId: {{ .Values.id }}
+    workerHostname: {{ include "mesh-worker.fullname" . }}
+    workerPort: {{ .Values.worker.workerPort }}
+    workerPortTls: {{ .Values.worker.workerPortTls }}
+    functionsWorkerServiceNarPackage: {{ .Values.worker.functionsWorkerServiceNarPackage }}
+    configurationStoreServers: {{ .Values.pulsar.stateStoreServers }}
+    zooKeeperSessionTimeoutMillis: 30000
+    zooKeeperOperationTimeoutSeconds: 30
+    numFunctionPackageReplicas: 1
+    downloadDirectory: download/pulsar_functions
+    useTls: false
+    pulsarServiceUrl: {{ .Values.pulsar.serviceUrl }}
+    pulsarWebServiceUrl: {{ .Values.pulsar.webServiceUrl }}
+    pulsarFunctionsNamespace: public/functions
+    pulsarFunctionsCluster: {{ .Values.id }}
+    functionMetadataTopicName: metadata
+    clusterCoordinationTopicName: coordinate
+    useCompactedMetadataTopic: false
+    numHttpServerThreads: 8
+    schedulerClassName: "org.apache.pulsar.functions.worker.scheduler.RoundRobinScheduler"
+    functionAssignmentTopicName: "assignments"
+    failureCheckFreqMs: 30000
+    rescheduleTimeoutMs: 60000
+    rebalanceCheckFreqSec: -1
+    initialBrokerReconnectMaxRetries: 60
+    assignmentWriteMaxRetries: 60
+    instanceLivenessCheckFreqMs: 30000
+    topicCompactionFrequencySec: 1800
+    exposeAdminClientEnabled: false
+    functionRuntimeFactoryClassName: org.apache.pulsar.functions.runtime.process.ProcessRuntimeFactory
+    functionRuntimeFactoryConfigs:
+        # location of log files for functions
+        logDirectory: logs/
+        # change the jar location only when you put the java instance jar in a different location
+        javaInstanceJarLocation:
+        # change the python instance location only when you put the python instance jar in a different location
+        pythonInstanceLocation:
+        # change the extra dependencies location:
+        extraFunctionDependenciesDir:
+    authenticationEnabled: false
+    authorizationEnabled: false
+    authenticationProviders:
+    authorizationProvider: org.apache.pulsar.broker.authorization.PulsarAuthorizationProvider
+    superUserRoles:
+    tlsEnabled: false
+    tlsCertificateFilePath:
+    tlsKeyFilePath:
+    tlsTrustCertsFilePath:
+    tlsAllowInsecureConnection: false
+    tlsEnableHostnameVerification: false
+    tlsCertRefreshCheckDurationSec: 300
+    connectorsDirectory: ./connectors
+    functionsDirectory: ./functions
+    validateConnectorConfig: false
+    initializedDlogMetadata: false
+    functionsWorkerServiceCustomConfigs:
+        functionEnabled: true
+        functionRunnerImages:
+            GO: {{ .Values.pulsar.runnerImages.go }}
+            JAVA: {{ .Values.pulsar.runnerImages.java }}
+            PYTHON: {{ .Values.pulsar.runnerImages.python }}
+        sinkEnabled: true
+        sourceEnabled: true
+        uploadEnabled: true
+        jobNamespace: default
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ include "mesh-worker.fullname" . }}-client-configmap
+data:
+  client.conf: |
+    webServiceUrl=http://{{ include "mesh-worker.fullname" . }}:{{ .Values.worker.workerPort }}/
+    brokerServiceUrl={{ .Values.pulsar.serviceUrl }}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ include "mesh-worker.fullname" . }}-broker-configmap
+data:
+  broker.conf: |
+    functionsWorkerEnabled=true
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ include "mesh-worker.fullname" . }}-function-mesh-configmap
+data:
+  brokerServiceURL:  {{ .Values.pulsar.serviceUrl }}
+  webServiceURL: {{ .Values.pulsar.webServiceUrl }}

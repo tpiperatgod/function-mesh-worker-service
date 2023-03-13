@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "mesh-worker.fullname" . }}
+  labels:
+    {{- include "mesh-worker.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "mesh-worker.selectorLabels" . | nindent 6 }}
+  replicas: {{ .Values.replicaCount }}
+  serviceName: {{ include "mesh-worker.fullname" . }}
+  template:
+    metadata:
+      labels:
+        {{- include "mesh-worker.selectorLabels" . | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 10
+      serviceAccountName: {{ include "mesh-worker.serviceAccountName" . }}
+      containers:
+        - name: pulsar-worker
+          image: {{ include "mesh-worker.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/pulsar/bin/pulsar", "functions-worker"]
+          ports:
+            - containerPort: 6750
+              name: pulsar-worker
+          volumeMounts:
+            - name: pulsar-functions-worker
+              mountPath: /pulsar/conf/functions_worker.yml
+              subPath: functions_worker.yml
+            - name: pulsar-functions-worker-client
+              mountPath: /pulsar/conf/client.conf
+              subPath: client.conf
+            - name: pulsar-functions-worker-broker
+              mountPath: /pulsar/conf/broker.conf
+              subPath: broker.conf
+{{- with .Values.worker.extraVolumeMounts }}
+{{ toYaml . | indent 12 }}
+{{- end }}
+      volumes:
+        - name: pulsar-functions-worker
+          configMap:
+            name: {{ include "mesh-worker.fullname" . }}-configmap
+        - name: pulsar-functions-worker-client
+          configMap:
+            name: {{ include "mesh-worker.fullname" . }}-client-configmap
+        - name: pulsar-functions-worker-broker
+          configMap:
+            name: {{ include "mesh-worker.fullname" . }}-broker-configmap
+{{- with .Values.worker.extraVolumes }}
+{{ toYaml . | indent 8 }}
+{{- end }}

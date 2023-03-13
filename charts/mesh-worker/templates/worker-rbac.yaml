@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "mesh-worker.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: {{ include "mesh-worker.namespace" . }}
+roleRef:
+  kind: ClusterRole
+  name: {{ .Values.serviceAccount.functionMeshClusterRole }}
+  apiGroup: rbac.authorization.k8s.io
