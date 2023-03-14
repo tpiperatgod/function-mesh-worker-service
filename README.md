@@ -40,10 +40,29 @@ docker run -td --name worker -p 6750:6750 -v /YOUR-CONF/functions_worker.yml:/pu
 
 To combine the worker service and pulsar cluster's admin endpoints, you should start a Pulsar proxy. For details, see [configure-proxies](https://pulsar.apache.org/docs/next/functions-worker-run-separately#configure-proxies-for-standalone-function-workers).
 
-
 #### Run in k8s
 
-For details, see a sample [YAML file](./examples/standalone.yaml). You can update the configuration based on your requirement and apply it.
+Try to deploy mesh-worker with [mesh-worker helm chart](charts/mesh-worker/). 
+
+```shell
+helm install [Release Name] charts/mesh-worker [Flags]
+```
+
+You can specify the `functionsWorkerServiceNarPackage` by updating the `values.yaml` file as follows.
+
+```yaml
+worker:
+  ...
+  extraVolumes:
+    - name: mesh-worker-service
+      hostPath:
+        path: /<path-to-your-functions-worker-service-nar-package>/mesh-worker-service-2.9.3.19.nar
+  extraVolumeMounts:
+    - name: mesh-worker-service
+      mountPath: /pulsar/lib/mesh-worker-service.nar
+```
+
+Alternatively, see a sample [YAML file](./examples/standalone.yaml). You can update the configuration based on your requirement and apply it.
 
 (Optional) If you want to use another Kubernetes cluster to manage Function mesh resources, you must add the `KUBE_CONFIG` environment variable and related volume to the Pod.
 
@@ -67,7 +86,6 @@ volumes:
         path: config
 ...
 ```
-
 
 ### Configuring the development environment
 
@@ -105,7 +123,7 @@ curl http://localhost:6750/admin/v3/functions/test/default/functionmesh-sample-e
    --ram 1 \
    --custom-runtime-options \
    "{"clusterName": "test-pulsar", "inputTypeClassName": "java.lang.String", "outputTypeClassName": "java.lang.String"}"
-```
+ ```
 
 ##### sink connector
  ```shell script
@@ -119,7 +137,7 @@ curl http://localhost:6750/admin/v3/functions/test/default/functionmesh-sample-e
    --auto-ack true \
    --custom-runtime-options \
    "{"clusterName": "test-pulsar", "inputTypeClassName": "org.apache.pulsar.io.datagenerator.Person"}"
-```
+ ```
 
 ##### source connector
  ```shell script
@@ -132,7 +150,7 @@ curl http://localhost:6750/admin/v3/functions/test/default/functionmesh-sample-e
    --source-config "{"sleepBetweenMessages": "5000"}"
    --custom-runtime-options \
    "{"clusterName": "test-pulsar", "outputTypeClassName": "org.apache.pulsar.io.datagenerator.Person"}"
-```
+ ```
 
 #### updateFunction
  ```shell script
@@ -149,7 +167,7 @@ curl http://localhost:6750/admin/v3/functions/test/default/functionmesh-sample-e
    --cpu 0.2 \
    --ram 1 \
    --user-config "{"clusterName": "test-pulsar", "typeClassName": "java.lang.String"}"
-```
+ ```
 
 #### getFunctionInfo
  ```shell script
@@ -157,7 +175,7 @@ curl http://localhost:6750/admin/v3/functions/test/default/functionmesh-sample-e
    --tenant public \
    --namespace default \
    --name word-count
-```
+ ```
 
 #### deregisterFunction
  ```shell script
@@ -165,7 +183,7 @@ curl http://localhost:6750/admin/v3/functions/test/default/functionmesh-sample-e
    --tenant public \
    --namespace default \
    --name word-count
-```
+ ```
 
 ## More tools
 

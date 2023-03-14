@@ -33,9 +33,12 @@ import io.functionmesh.compute.auth.AuthHandlerInsecure;
 import io.functionmesh.compute.auth.AuthHandlerJWTToken;
 import io.functionmesh.compute.auth.AuthHandlerOauth;
 import io.functionmesh.compute.auth.AuthResults;
+import io.functionmesh.compute.functions.models.V1alpha1FunctionSpec;
 import io.functionmesh.compute.models.CustomRuntimeOptions;
 import io.functionmesh.compute.models.HPASpec;
 import io.functionmesh.compute.models.MeshWorkerServiceCustomConfig;
+import io.functionmesh.compute.sinks.models.V1alpha1SinkSpec;
+import io.functionmesh.compute.sources.models.V1alpha1SourceSpec;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1OwnerReference;
 import java.io.File;
@@ -195,6 +198,42 @@ public class CommonUtil {
                 return FunctionConfig.ProcessingGuarantees.ATMOST_ONCE;
             case "effectively_once":
                 return FunctionConfig.ProcessingGuarantees.EFFECTIVELY_ONCE;
+        }
+        return null;
+    }
+
+    public static V1alpha1FunctionSpec.ProcessingGuaranteeEnum convertFunctionProcessingGuarantee(FunctionConfig.ProcessingGuarantees processingGuarantees) {
+        switch (processingGuarantees) {
+            case ATLEAST_ONCE:
+                return V1alpha1FunctionSpec.ProcessingGuaranteeEnum.ATLEAST_ONCE;
+            case ATMOST_ONCE:
+                return V1alpha1FunctionSpec.ProcessingGuaranteeEnum.ATMOST_ONCE;
+            case EFFECTIVELY_ONCE:
+                return V1alpha1FunctionSpec.ProcessingGuaranteeEnum.EFFECTIVELY_ONCE;
+        }
+        return null;
+    }
+
+    public static V1alpha1SinkSpec.ProcessingGuaranteeEnum convertSinkProcessingGuarantee(FunctionConfig.ProcessingGuarantees processingGuarantees) {
+        switch (processingGuarantees) {
+            case ATLEAST_ONCE:
+                return V1alpha1SinkSpec.ProcessingGuaranteeEnum.ATLEAST_ONCE;
+            case ATMOST_ONCE:
+                return V1alpha1SinkSpec.ProcessingGuaranteeEnum.ATMOST_ONCE;
+            case EFFECTIVELY_ONCE:
+                return V1alpha1SinkSpec.ProcessingGuaranteeEnum.EFFECTIVELY_ONCE;
+        }
+        return null;
+    }
+
+    public static V1alpha1SourceSpec.ProcessingGuaranteeEnum convertSourceProcessingGuarantee(FunctionConfig.ProcessingGuarantees processingGuarantees) {
+        switch (processingGuarantees) {
+            case ATLEAST_ONCE:
+                return V1alpha1SourceSpec.ProcessingGuaranteeEnum.ATLEAST_ONCE;
+            case ATMOST_ONCE:
+                return V1alpha1SourceSpec.ProcessingGuaranteeEnum.ATMOST_ONCE;
+            case EFFECTIVELY_ONCE:
+                return V1alpha1SourceSpec.ProcessingGuaranteeEnum.EFFECTIVELY_ONCE;
         }
         return null;
     }

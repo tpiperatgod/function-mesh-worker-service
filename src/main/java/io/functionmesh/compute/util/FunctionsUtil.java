@@ -147,6 +147,10 @@ public class FunctionsUtil {
         }
         v1alpha1FunctionSpec.setClassName(functionConfig.getClassName());
 
+        if (functionConfig.getProcessingGuarantees() != null) {
+            v1alpha1FunctionSpec.setProcessingGuarantee(CommonUtil.convertFunctionProcessingGuarantee(functionConfig.getProcessingGuarantees()));
+        }
+
         V1alpha1FunctionSpecInput v1alpha1FunctionSpecInput = new V1alpha1FunctionSpecInput();
 
         for (Map.Entry<String, Function.ConsumerSpec> inputSpecs : functionDetails.getSource().getInputSpecsMap()

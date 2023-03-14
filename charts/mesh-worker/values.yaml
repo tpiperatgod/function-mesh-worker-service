@@ -1,0 +1,47 @@
+# Default values for mesh-worker.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+id: standalone
+
+image:
+  repository: streamnative/sn-pulsar
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "2.9.3.18"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  functionMeshClusterRole: "function-mesh-function-mesh-controller-manager"
+
+service:
+  type: ClusterIP
+  ports:
+  - name: pulsar-worker
+    protocol: TCP
+    port: 6750
+    targetPort: 6750
+  - name: pulsar-worker-tls
+    protocol: TCP
+    port: 6751
+    targetPort: 6751
+
+pulsar:
+  stateStoreServers: sn-platform-pulsar-zookeeper.default.svc.cluster.local:2181
+  serviceUrl: pulsar://sn-platform-pulsar-broker.default.svc.cluster.local:6650
+  webServiceUrl: http://sn-platform-pulsar-broker.default.svc.cluster.local:8080
+  runnerImages:
+    go: streamnative/pulsar-functions-go-runner:2.9.3.18
+    java: streamnative/pulsar-functions-java-runner:2.9.3.18
+    python: streamnative/pulsar-functions-python-runner:2.9.3.18
+
+worker:
+  workerPort: 6750
+  workerPortTls: 6751
+  functionsWorkerServiceNarPackage: /pulsar/lib/mesh-worker-service.nar
+  extraVolumes: []
+  extraVolumeMounts: []

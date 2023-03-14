@@ -147,6 +147,10 @@ public class SourcesUtil {
         v1alpha1SourceSpec.setTenant(sourceConfig.getTenant());
         v1alpha1SourceSpec.setNamespace(sourceConfig.getNamespace());
 
+        if (sourceConfig.getProcessingGuarantees() != null) {
+            v1alpha1SourceSpec.setProcessingGuarantee(CommonUtil.convertSourceProcessingGuarantee(sourceConfig.getProcessingGuarantees()));
+        }
+
         if (StringUtils.isNotEmpty(customConfig.getImagePullPolicy())) {
             v1alpha1SourceSpec.setImagePullPolicy(customConfig.getImagePullPolicy());
         }

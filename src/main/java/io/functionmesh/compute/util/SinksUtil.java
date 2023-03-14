@@ -150,6 +150,10 @@ public class SinksUtil {
         v1alpha1SinkSpec.setTenant(sinkConfig.getTenant());
         v1alpha1SinkSpec.setNamespace(sinkConfig.getNamespace());
 
+        if (sinkConfig.getProcessingGuarantees() != null) {
+            v1alpha1SinkSpec.setProcessingGuarantee(CommonUtil.convertSinkProcessingGuarantee(sinkConfig.getProcessingGuarantees()));
+        }
+
         if (StringUtils.isNotEmpty(customConfig.getImagePullPolicy())) {
             v1alpha1SinkSpec.setImagePullPolicy(customConfig.getImagePullPolicy());
         }

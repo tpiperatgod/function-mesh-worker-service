@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mesh-worker.fullname" . }}
+  labels:
+    {{- include "mesh-worker.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "mesh-worker.selectorLabels" . | nindent 4 }}
+  type: {{ .Values.service.type }}
+  ports:
+{{- with .Values.service.ports }}
+{{ toYaml . | indent 2 }}
+{{- end }}
